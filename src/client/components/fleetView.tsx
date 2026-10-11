@@ -180,7 +180,7 @@ export function makeFleetView(
             <div className="lc-cols">
               {forest !== null
                 ? (
-                  <div className="lc-col lc-col-graph flex-[2] min-w-[min(420px,100%)]">
+                  <div className="lc-col lc-col-graph flex-1 min-w-[min(420px,100%)]">
                     <AgentGraph
                       sessionId={sessionId}
                       forest={forest}
