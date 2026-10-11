@@ -309,6 +309,7 @@ export const DICT_ZH = {
   'fleet.comms.rescan': '重新扫描',
   'fleet.comms.filter': '按 Agent 过滤',
   'fleet.comms.all': '全部 Agent',
+  'fleet.comms.noMatch': '该 Agent 没有通讯记录',
   'fleet.comms.empty': '没有发现跨 Agent 消息',
   'fleet.comms.truncated': '仅展示摘录（已达路由上限）',
   'loading': '正在读取会话日志…',

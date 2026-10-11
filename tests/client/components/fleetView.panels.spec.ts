@@ -252,6 +252,12 @@ describe('FleetView — the panels over one family', () => {
     // Pinning a sender outside the family releases instead of ringing a member that has no graph card.
     await click(queryAll(rows[1], '.lc-comms-peer')[0])
     await until(() => queryAll(m.container, '.lc-agent-pinned, .lc-member-pinned').length === 0, 'the ghost pin never released')
+
+    // A graph pick narrows the comms timeline by session id; the pick chip clears it.
+    await click(query(m.container, '[data-agent="w2"]'))
+    assert.ok(text(query(m.container, '.lc-comms')).includes(DICT_EN['fleet.comms.noMatch']), 'side-quest rode no relays')
+    await click(query(m.container, '.lc-comms .lc-tasks-filter'))
+    await until(() => queryAll(m.container, '.lc-comms-row').length === 6, 'the rows never returned')
     await m.unmount()
     ctx.dispose()
   })

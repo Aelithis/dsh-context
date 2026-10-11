@@ -311,6 +311,7 @@ export const DICT_EN = {
   'fleet.comms.rescan': 'Rescan',
   'fleet.comms.filter': 'Filter by agent',
   'fleet.comms.all': 'All agents',
+  'fleet.comms.noMatch': 'No comms for this agent',
   'fleet.comms.empty': 'No inter-agent messages found',
   'fleet.comms.truncated': 'Showing excerpts only (route caps)',
   'loading': 'Reading the session log…',

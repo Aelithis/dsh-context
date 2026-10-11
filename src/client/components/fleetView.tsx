@@ -114,6 +114,15 @@ export function makeFleetView(
       else if (ownerFilter === id || (member !== null && ownerFilter === member.name)) setOwnerFilter(null)
     }
 
+    // The picked agent's session id: a roster member joins by name, a plain subagent picks by
+    // its own — the one key the task board and the comms timeline both narrow by. A key neither
+    // can account for (a hostile snapshot's transient) rides raw: both boards name it on their
+    // chips and empty together, and the next sound snapshot restores them.
+    const pickId = useMemo(() => {
+      if (ownerFilter === null) return null
+      return team?.members.find(m => m.name === ownerFilter)?.id ?? ownerFilter
+    }, [ownerFilter, team])
+
     if (data === null) {
       return (
         <div className="lc-root">
@@ -216,6 +225,8 @@ export function makeFleetView(
               comms={comms}
               labelOf={labelOf}
               onPin={setPinnedId}
+              pickId={pickId}
+              onPickClear={() => { setOwnerFilter(null) }}
               t={t}
               fmt={kit.fmt}
             />
