@@ -163,6 +163,18 @@ export interface Baseline {
     /** The provider sources carrying the plugin id and the section shape the fold matches. */
     providerFiles: readonly { file: string; needles: readonly string[] }[]
   }
+  /** The system-prompt injection seam (src/host/promptInjection.ts): the
+   * prompt-registry service must expose the ordered-section face and the
+   * centrally owned order anchors the plugin reads, and the loader must
+   * commit volatile-only config edits into the running references, so a
+   * preference edit applies from the next model step without remounting. */
+  prompt: {
+    serviceFile: string
+    sectionNeedle: string
+    orderAnchors: readonly string[]
+    loaderVolatileFile: string
+    loaderVolatileNeedle: string
+  }
 }
 
 /** One support-matrix entry. Every supported line is the V4 generation, so
@@ -264,6 +276,13 @@ function baseline(id: BaselineId, tag: string, session: string): Baseline {
       loopFile: 'packages/core/agent-loop/src/agent.ts',
       loopNeedles: ["'agent/pre-step'", "append('user/message'"],
       prependProofFile: 'packages/context/time-context/src/index.ts',
+    },
+    prompt: {
+      serviceFile: 'packages/core/system-prompt/src/index.ts',
+      sectionNeedle: 'section(section: PromptSection)',
+      orderAnchors: ['HARNESS_IDENTITY', 'DEPLOYMENT_PERSONA_SUFFIX'],
+      loaderVolatileFile: 'vendor/loader/src/config/entry.ts',
+      loaderVolatileNeedle: 'updateVolatile(ref, source)',
     },
   }
 }

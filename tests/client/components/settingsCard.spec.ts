@@ -4,7 +4,7 @@ import { describe, test } from 'vitest'
 import { makePluginConfigCard } from '../../../src/client/components/settingsCard'
 import type { SettingsState } from '../../../src/client/settings'
 import { DICT_EN } from '../../../src/client/i18n'
-import { click, keydown, makeKit, mount, query, queryAll, text } from '../helpers/kit'
+import { blur, click, focus, keydown, makeKit, mount, query, queryAll, text, typeText } from '../helpers/kit'
 
 const kit = makeKit()
 const PluginConfigCard = makePluginConfigCard(kit)
@@ -14,7 +14,7 @@ function hookFor(state: SettingsState) {
 }
 
 function stateOf(partial: Partial<SettingsState> = {}): SettingsState {
-  return { status: 'ready', placement: 'all', granularity: 'step', mode: 'total', deltaBase: 'step', toolSort: 'count', fileSort: 'count', insightsEntry: 'show', durationCurve: 'show', fleetTab: 'show', writable: true, ...partial }
+  return { status: 'ready', placement: 'all', granularity: 'step', mode: 'total', deltaBase: 'step', toolSort: 'count', fileSort: 'count', insightsEntry: 'show', durationCurve: 'show', fleetTab: 'show', promptPrefix: '', promptSuffix: '', writable: true, ...partial }
 }
 
 /** Menu items portaled into document.body while a select is open. */
@@ -33,14 +33,18 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await m2.unmount()
   })
 
-  test('renders the nine rows flat — no card chrome', async () => {
+  test('renders the nine selects and the two prompt text rows flat — no card chrome', async () => {
     const m = await mount(h(PluginConfigCard, { useContextSettings: hookFor(stateOf({ status: 'loading', writable: false })) }))
     assert.equal(m.container.querySelector('.lc-settings-card'), null, 'no settings-section chrome')
     assert.ok(query(m.container, '.lc-settings-prefs'))
     const selects = queryAll<HTMLButtonElement>(m.container, '.lc-settings-select')
     assert.equal(selects.length, 9)
     assert.ok(selects.every(s => s.disabled), 'loading is not ready: the rows are disabled')
-    assert.equal(m.container.querySelector('.lc-settings-note'), null)
+    const textareas = queryAll<HTMLTextAreaElement>(m.container, '.lc-settings-textarea')
+    assert.equal(textareas.length, 2)
+    assert.ok(textareas.every(t => t.disabled), 'loading is not ready: the text rows are disabled')
+    assert.ok(text(m.container).includes(DICT_EN['settings.promptHint']))
+    assert.equal(m.container.querySelector('[role="status"]'), null, 'no read-only notice while loading')
     await m.unmount()
   })
 
@@ -52,7 +56,7 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     }))
     const selects = queryAll<HTMLButtonElement>(m.container, '.lc-settings-select')
     assert.ok(selects.every(s => !s.disabled))
-    assert.equal(m.container.querySelector('.lc-settings-note'), null)
+    assert.equal(m.container.querySelector('[role="status"]'), null, 'writable: no read-only notice')
     assert.ok(text(m.container).includes(DICT_EN['settings.placement']))
     assert.ok(text(selects[0]).includes(DICT_EN['placement.all']))
     await click(selects[0])
@@ -220,7 +224,65 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     assert.equal(note.getAttribute('role'), 'status')
     assert.equal(text(note), DICT_EN['settings.readOnly'])
     assert.ok(queryAll<HTMLButtonElement>(m.container, '.lc-settings-select').every(s => s.disabled))
+    assert.ok(queryAll<HTMLTextAreaElement>(m.container, '.lc-settings-textarea').every(t => t.disabled))
     await m.unmount()
+  })
+
+  test('prompt text rows: typing stays local, the blur commits, an unmount without a blur commits too', async () => {
+    const calls: [string, string][] = []
+    const m = await mount(h(PluginConfigCard, {
+      useContextSettings: hookFor(stateOf()),
+      set: (field, value) => { calls.push([field, value]) },
+    }))
+    const textareas = queryAll<HTMLTextAreaElement>(m.container, '.lc-settings-textarea')
+    assert.ok(textareas.every(t => !t.disabled))
+    assert.equal(textareas[0].placeholder, DICT_EN['settings.promptPlaceholder'])
+
+    await focus(textareas[0])
+    await typeText(textareas[0], 'Be terse.')
+    assert.equal(textareas[0].value, 'Be terse.')
+    assert.deepEqual(calls, [], 'typing does not write the wire')
+
+    await blur(textareas[0])
+    assert.deepEqual(calls, [['promptPrefix', 'Be terse.']], 'the blur commits the draft')
+
+    await blur(textareas[1])
+    assert.deepEqual(calls, [['promptPrefix', 'Be terse.']], 'blurring an untouched row commits nothing')
+
+    await focus(textareas[1])
+    await typeText(textareas[1], 'Sign as Atlas.')
+    await m.unmount()
+    assert.deepEqual(calls, [['promptPrefix', 'Be terse.'], ['promptSuffix', 'Sign as Atlas.']], 'the unmount commits a pending draft')
+  })
+
+  test('prompt text rows: a committed draft is not re-committed; an idle row follows the served value; a focused row is never clobbered', async () => {
+    const calls: [string, string][] = []
+    const m = await mount(h(PluginConfigCard, {
+      useContextSettings: hookFor(stateOf({ promptPrefix: 'served' })),
+      set: (field, value) => { calls.push([field, value]) },
+    }))
+    const prefix = query<HTMLTextAreaElement>(m.container, '.lc-settings-textarea')
+    assert.equal(prefix.value, 'served')
+
+    await focus(prefix)
+    await typeText(prefix, 'served!')
+    // A host push lands while the row is being edited.
+    await m.update(h(PluginConfigCard, {
+      useContextSettings: hookFor(stateOf({ promptPrefix: 'pushed' })),
+      set: (field, value) => { calls.push([field, value]) },
+    }))
+    assert.equal(query<HTMLTextAreaElement>(m.container, '.lc-settings-textarea').value, 'served!', 'the in-progress draft survives the push')
+    await blur(query(m.container, '.lc-settings-textarea'))
+    assert.deepEqual(calls, [['promptPrefix', 'served!']])
+
+    // Idle again: the next push is followed.
+    await m.update(h(PluginConfigCard, {
+      useContextSettings: hookFor(stateOf({ promptPrefix: 'pushed' })),
+      set: (field, value) => { calls.push([field, value]) },
+    }))
+    assert.equal(query<HTMLTextAreaElement>(m.container, '.lc-settings-textarea').value, 'pushed')
+    await m.unmount()
+    assert.deepEqual(calls, [['promptPrefix', 'served!']], 'no re-commit of an already served value')
   })
 
   test('a value matching no option falls back to the raw id; a missing set never throws', async () => {

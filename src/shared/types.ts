@@ -175,6 +175,10 @@ export interface PluginSettings {
   insightsEntry: InsightsEntry
   defaultDurationCurve: DefaultDurationCurve
   fleetTab: FleetTab
+  /** Free text joined ahead of the harness's assembled system prompt; empty disables. */
+  promptPrefix: string
+  /** Free text joined behind the harness's assembled system prompt; empty disables. */
+  promptSuffix: string
 }
 
 export type SettingsField = keyof PluginSettings

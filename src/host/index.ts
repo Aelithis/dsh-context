@@ -22,6 +22,7 @@ import { watchDetailChannel } from './detail'
 import { createFallbackActivityDefinition, createFallbackHeadersDefinition, createFallbackTimelineDefinition } from './fallback'
 import { watchFleetChannel } from './fleet'
 import { createContextHeadersDefinition } from './headers'
+import { watchPromptInjection } from './promptInjection'
 import { watchStepIdentity } from './stepIdentity'
 import { watchSkillCatalog } from './skills'
 import { createContextTimelineDefinition } from './timeline'
@@ -65,6 +66,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.sessionProjections.register(createContextHeadersDefinition(name => attribution.ownerOf(name)))
   ctx.sessionProjections.register(createContextActivityDefinition())
   watchActivityBackfill(ctx, coldReads)
+  watchPromptInjection(ctx, config)
 }
 
 export type { Category, ContextEventRecord, RequestRecord, Snapshot, ContextTimeline, SurfaceNode } from '../shared/types'

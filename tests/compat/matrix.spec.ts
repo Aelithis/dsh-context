@@ -260,6 +260,28 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       )
     })
 
+    test('host: the system-prompt injection seam', () => {
+      // The prefix/suffix sections register through the prompt registry's
+      // ordered-section face, anchored on its centrally owned order names,
+      // and the preference edits ride the loader's volatile-only commit into
+      // the running references — a moved seam names itself here instead of
+      // silently dropping the configured text.
+      const prompt = baseline.prompt
+      assert.equal(
+        staging.dshHasString(baseline.tag, prompt.sectionNeedle, prompt.serviceFile),
+        true,
+        'the ordered-section face',
+      )
+      for (const anchor of prompt.orderAnchors) {
+        assert.equal(staging.dshHasString(baseline.tag, anchor, prompt.serviceFile), true, `order anchor: ${anchor}`)
+      }
+      assert.equal(
+        staging.dshHasString(baseline.tag, prompt.loaderVolatileNeedle, prompt.loaderVolatileFile),
+        true,
+        'the loader volatile-only commit',
+      )
+    })
+
     test('client: platform module table answers every bundle require', async () => {
       const table = await staging.platformModulesOf(baseline)
       const unanswerable = staging.bundleRequires().filter(spec => !table.includes(spec))

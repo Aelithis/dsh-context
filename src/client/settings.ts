@@ -31,6 +31,8 @@ export interface SettingsState {
   insightsEntry: InsightsEntry
   durationCurve: DefaultDurationCurve
   fleetTab: FleetTab
+  promptPrefix: string
+  promptSuffix: string
   writable: boolean
 }
 
@@ -61,6 +63,8 @@ type Prefs = {
   insightsEntry?: InsightsEntry
   durationCurve?: DefaultDurationCurve
   fleetTab?: FleetTab
+  promptPrefix?: string
+  promptSuffix?: string
 }
 
 function prefsOf(value: unknown): Prefs {
@@ -76,11 +80,13 @@ function prefsOf(value: unknown): Prefs {
     ...(v.insightsEntry === 'show' || v.insightsEntry === 'hide' ? { insightsEntry: v.insightsEntry } : {}),
     ...(v.defaultDurationCurve === 'show' || v.defaultDurationCurve === 'hide' ? { durationCurve: v.defaultDurationCurve } : {}),
     ...(v.fleetTab === 'show' || v.fleetTab === 'hide' ? { fleetTab: v.fleetTab } : {}),
+    ...(typeof v.promptPrefix === 'string' ? { promptPrefix: v.promptPrefix } : {}),
+    ...(typeof v.promptSuffix === 'string' ? { promptSuffix: v.promptSuffix } : {}),
   }
 }
 
 export function createContextSettings(): ContextSettings {
-  let state: SettingsState = { status: 'loading', placement: 'all', granularity: 'step', mode: 'total', deltaBase: 'step', toolSort: 'count', fileSort: 'count', insightsEntry: 'show', durationCurve: 'show', fleetTab: 'show', writable: false }
+  let state: SettingsState = { status: 'loading', placement: 'all', granularity: 'step', mode: 'total', deltaBase: 'step', toolSort: 'count', fileSort: 'count', insightsEntry: 'show', durationCurve: 'show', fleetTab: 'show', promptPrefix: '', promptSuffix: '', writable: false }
   let scope: SettingsScopeLike | undefined
   const listeners = new Set<() => void>()
   /** Every field is a scalar, so a shallow compare is the store's identity check — and a new preference
@@ -111,6 +117,8 @@ export function createContextSettings(): ContextSettings {
       insightsEntry: prefs.insightsEntry ?? (raw?.insightsEntry === undefined ? state.insightsEntry : 'show'),
       durationCurve: prefs.durationCurve ?? (raw?.defaultDurationCurve === undefined ? state.durationCurve : 'show'),
       fleetTab: prefs.fleetTab ?? (raw?.fleetTab === undefined ? state.fleetTab : 'show'),
+      promptPrefix: prefs.promptPrefix ?? (raw?.promptPrefix === undefined ? state.promptPrefix : ''),
+      promptSuffix: prefs.promptSuffix ?? (raw?.promptSuffix === undefined ? state.promptSuffix : ''),
       writable: snap.writable,
     })
     return { placement: prefs.placement, insightsEntry: prefs.insightsEntry, fleetTab: prefs.fleetTab }

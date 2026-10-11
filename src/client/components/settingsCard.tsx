@@ -1,7 +1,7 @@
 /** The dsh-context preference card, keyed on the Host-served `dsh-context` namespace: while that namespace is
  * unavailable (a deployment without the Host half, or a remote browser) the card renders nothing. */
 
-import { useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import { IconChevronDown } from '../primitives'
 import type { SettingsField, SettingsState } from '../settings'
@@ -53,6 +53,49 @@ function PrefRow(props: PrefRowProps): ReactElement {
 }
 
 type Translate = ViewKit['t']
+
+interface PromptTextRowProps {
+  label: string
+  placeholder: string
+  value: string
+  disabled: boolean
+  onCommit: (text: string) => void
+}
+
+/** One free-text preference row: a local draft committed on blur (and on an
+ *  unmount without a prior blur), so typing never writes the wire per keystroke. */
+function PromptTextRow(props: PromptTextRowProps): ReactElement {
+  const [draft, setDraft] = useState(props.value)
+  const [focused, setFocused] = useState(false)
+  const latest = useRef({ draft: props.value, value: props.value, commit: props.onCommit })
+  latest.current = { draft, value: props.value, commit: props.onCommit }
+  // Follow the served value only while the row is idle: a host push (or the
+  // optimistic echo) must never clobber in-progress typing.
+  if (!focused && draft !== props.value) setDraft(props.value)
+  useEffect(() => () => {
+    const { draft: text, value, commit } = latest.current
+    if (text !== value) commit(text)
+  }, [])
+  const rows = Math.min(8, Math.max(2, draft.split('\n').length))
+  return (
+    <div className="lc-settings-row lc-settings-textrow">
+      <span className="lc-settings-label">{props.label}</span>
+      <textarea
+        className="lc-settings-textarea"
+        rows={rows}
+        placeholder={props.placeholder}
+        disabled={props.disabled}
+        value={draft}
+        onFocus={() => { setFocused(true) }}
+        onBlur={() => {
+          setFocused(false)
+          if (draft !== props.value) props.onCommit(draft)
+        }}
+        onChange={(event) => { setDraft(event.target.value) }}
+      />
+    </div>
+  )
+}
 
 /** The three on/off gates (entry visibility, the Fleet tab, the trend duration curve) share one row shape. */
 function ShowHideRow(props: { t: Translate; label: string; value: string; disabled: boolean; onPick: (id: string) => void }): ReactElement {
@@ -143,6 +186,21 @@ function PreferenceRows(props: { t: Translate; state: SettingsState; set?: Setti
           { id: 'path', label: t('files.sort.path') },
         ]}
         onPick={(id) => { set?.('defaultFileSort', id) }}
+      />
+      <p className="lc-settings-note">{t('settings.promptHint')}</p>
+      <PromptTextRow
+        label={t('settings.promptPrefix')}
+        placeholder={t('settings.promptPlaceholder')}
+        value={state.promptPrefix}
+        disabled={disabled}
+        onCommit={(text) => { set?.('promptPrefix', text) }}
+      />
+      <PromptTextRow
+        label={t('settings.promptSuffix')}
+        placeholder={t('settings.promptPlaceholder')}
+        value={state.promptSuffix}
+        disabled={disabled}
+        onCommit={(text) => { set?.('promptSuffix', text) }}
       />
     </>
   )

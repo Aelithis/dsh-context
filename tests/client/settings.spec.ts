@@ -53,6 +53,8 @@ describe('createContextSettings defaults', () => {
       insightsEntry: 'show',
       durationCurve: 'show',
       fleetTab: 'show',
+      promptPrefix: '',
+      promptSuffix: '',
       writable: false,
     })
     assert.equal(s.defaultPlacement(), 'all')
@@ -90,6 +92,8 @@ describe('set', () => {
     assert.equal(s.defaultPlacement(), 'sidebar')
     s.set('defaultDeltaBase', 'turn')
     assert.equal(s.defaultDeltaBase(), 'turn')
+    s.set('promptPrefix', 'Be terse.')
+    assert.equal(s.store.getSnapshot().promptPrefix, 'Be terse.')
   })
 
   test('an unchanged value does not notify listeners', () => {
@@ -207,6 +211,17 @@ describe('set', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     assert.equal(s.fleetTab(), 'hide')
   })
+
+  test('a rejected prompt write rolls back to the scope truth', async () => {
+    const s = createContextSettings()
+    const scope = new TestSettingsScope({ status: 'ready', value: { promptPrefix: 'kept' }, writable: true })
+    s.attach(scope)
+    scope.failSet = true
+    s.set('promptPrefix', 'draft')
+    assert.equal(s.store.getSnapshot().promptPrefix, 'draft', 'the optimistic echo lands first')
+    await new Promise(resolve => setTimeout(resolve, 0))
+    assert.equal(s.store.getSnapshot().promptPrefix, 'kept', 'the echo rolls back to the scope truth')
+  })
 })
 
 describe('attach', () => {
@@ -224,6 +239,8 @@ describe('attach', () => {
         insightsEntry: 'hide',
         defaultDurationCurve: 'hide',
         fleetTab: 'hide',
+        promptPrefix: 'Be terse.',
+        promptSuffix: 'Sign as Atlas.',
       },
       writable: true,
     })
@@ -239,6 +256,8 @@ describe('attach', () => {
       insightsEntry: 'hide',
       durationCurve: 'hide',
       fleetTab: 'hide',
+      promptPrefix: 'Be terse.',
+      promptSuffix: 'Sign as Atlas.',
       writable: true,
     })
   })
@@ -272,6 +291,8 @@ describe('attach', () => {
         insightsEntry: 'show',
         durationCurve: 'show',
         fleetTab: 'show',
+        promptPrefix: '',
+        promptSuffix: '',
         writable: false,
       })
     }
@@ -281,7 +302,7 @@ describe('attach', () => {
     const s = createContextSettings()
     s.attach(new TestSettingsScope({
       status: 'ready',
-      value: { defaultPlacement: 'window', defaultGranularity: 'bogus', defaultTrendMode: 7, defaultDeltaBase: 'bogus', defaultToolSort: 'alpha', defaultFileSort: 'alpha', insightsEntry: 42, defaultDurationCurve: 'always', fleetTab: 7 },
+      value: { defaultPlacement: 'window', defaultGranularity: 'bogus', defaultTrendMode: 7, defaultDeltaBase: 'bogus', defaultToolSort: 'alpha', defaultFileSort: 'alpha', insightsEntry: 42, defaultDurationCurve: 'always', fleetTab: 7, promptPrefix: 9, promptSuffix: {} },
       writable: false,
     }))
     assert.equal(s.defaultPlacement(), 'all')
@@ -293,6 +314,8 @@ describe('attach', () => {
     assert.equal(s.insightsEntry(), 'show')
     assert.equal(s.defaultDurationCurve(), 'show')
     assert.equal(s.fleetTab(), 'show')
+    assert.equal(s.store.getSnapshot().promptPrefix, '', 'a non-string prompt value degrades to the empty default')
+    assert.equal(s.store.getSnapshot().promptSuffix, '')
   })
 
   test('an invalid scope placement degrades to all instead of keeping the current one', () => {
@@ -346,6 +369,7 @@ describe('attach', () => {
     s.set('defaultToolSort', 'size')
     s.set('insightsEntry', 'hide')
     s.set('defaultDurationCurve', 'hide')
+    s.set('promptPrefix', 'drafted')
     s.attach(new TestSettingsScope({ status: 'ready', value: { defaultFileSort: 'latest' }, writable: false }))
     assert.equal(s.defaultPlacement(), 'tab', 'the in-session choice survives a section without the field')
     assert.equal(s.defaultGranularity(), 'step')
@@ -354,6 +378,7 @@ describe('attach', () => {
     assert.equal(s.defaultFileSort(), 'latest')
     assert.equal(s.insightsEntry(), 'hide', 'the in-session entry choice survives a section without the field')
     assert.equal(s.defaultDurationCurve(), 'hide', 'the in-session curve choice survives a section without the field')
+    assert.equal(s.store.getSnapshot().promptPrefix, 'drafted', 'the in-session prompt text survives a section without the field')
   })
 
   test('scope updates republish to subscribers', () => {

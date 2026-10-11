@@ -118,6 +118,17 @@ export async function click(el: HTMLElement): Promise<void> {
   })
 }
 
+/** Type into an input/textarea through act: the native value setter plus the
+ * input event React's onChange listens for (a plain assignment is swallowed
+ * by React's value tracker). */
+export async function typeText(el: HTMLTextAreaElement | HTMLInputElement, text: string): Promise<void> {
+  await act(async () => {
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+    Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, text)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
 /** Pointer hover. React 18 synthesizes onMouseEnter/onMouseLeave from the
  * BUBBLING mouseover/mouseout pair — dispatching raw mouseenter/leave (they do not bubble) never reaches React's handlers. */
 export async function hover(el: Element): Promise<void> {

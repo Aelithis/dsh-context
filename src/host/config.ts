@@ -56,6 +56,9 @@ export const Config = z.object({
   insightsEntry: volatileField(z.union(['show', 'hide']).default('show').loose()),
   defaultDurationCurve: volatileField(z.union(['show', 'hide']).default('show').loose()),
   fleetTab: volatileField(z.union(['show', 'hide']).default('show').loose()),
+  // Loose: a stale persisted value (or a non-string) degrades to the empty default instead of failing the entry.
+  promptPrefix: volatileField(z.string().default('').loose()),
+  promptSuffix: volatileField(z.string().default('').loose()),
 })
 
 export function resolveBounds(config: Config | undefined): FoldBounds {
