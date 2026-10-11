@@ -176,17 +176,31 @@ describe('MemberBoard — team cards', () => {
     await m.unmount()
   })
 
-  test('clicking the pinned card releases the pin', async () => {
-    const pins = new Array<string | null>()
-    const m = await mount(h(MemberBoard, propsOf({ pinnedId: 'w1', onPin: id => { pins.push(id) } })))
-    const pinned = queryAll(m.container, '.lc-member-card')[1]
-    await click(pinned)
-    assert.deepEqual([...pins], [null])
+  test('picks report the card’s id; the parent owns the toggle', async () => {
+    const pins = new Array<string>()
+    // The parent-side toggle, emulated: a pick on the picked card releases, otherwise it pins.
+    let pinned: string | null = 'w1'
+    function Controlled(): ReactElement {
+      return h(MemberBoard, propsOf({
+        pinnedId: pinned,
+        onPin: (id) => {
+          pins.push(id)
+          pinned = pinned === id ? null : id
+        },
+      }))
+    }
+    const m = await mount(h(Controlled))
+    const card = (): HTMLElement => queryAll(m.container, '.lc-member-card')[1]
+    await click(card())
+    await m.update(h(Controlled))
+    await click(card())
+    await m.update(h(Controlled))
+    assert.deepEqual([...pins], ['w1', 'w1'])
     await m.unmount()
   })
 
-  test('keyboard pins; the failure badge and an empty roster render', async () => {
-    const pins = new Array<string | null>()
+  test('keyboard picks report the id; the failure badge and an empty roster render', async () => {
+    const pins = new Array<string>()
     // The pin is a controlled prop: the wrapper plays the view, holding its state.
     let pinned: string | null = 'w1'
     function Controlled(): ReactElement {
@@ -195,20 +209,20 @@ describe('MemberBoard — team cards', () => {
         pinnedId: pinned,
         onPin: (id) => {
           pins.push(id)
-          pinned = id
+          pinned = pinned === id ? null : id
         },
       }))
     }
     const m = await mount(h(Controlled))
     assert.ok(text(m.container).includes(DICT_EN['fleet.team.failureShort']))
-    // The card starts pinned (w1): Enter releases, Space re-pins, an unrelated key is inert.
+    // The card starts pinned (w1): Enter reports the pick (released), Space picks again.
     const card = (): HTMLElement => queryAll(m.container, '.lc-member-card')[1]
     await act(async () => { card().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
     await m.update(h(Controlled))
     await act(async () => { card().dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })) })
     await m.update(h(Controlled))
     await act(async () => { card().dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })) })
-    assert.deepEqual([...pins], [null, 'w1'])
+    assert.deepEqual([...pins], ['w1', 'w1'])
     await m.unmount()
   })
 
@@ -286,14 +300,14 @@ describe('MemberBoard — the other-agents cards', () => {
     assert.deepEqual([...pins], ['s1', 's1'])
     await m.unmount()
 
-    // The pinned card rings; a re-click releases, and so does the Space key.
-    const again = new Array<string | null>()
+    // The pinned card rings; picks (click and Space) report the card's id — the parent toggles.
+    const again = new Array<string>()
     const m2 = await mount(h(MemberBoard, propsOf({ pinnedId: 's1', onPin: id => { again.push(id) } })))
     const pinnedCard = otherCards(m2.container)[0]
     assert.ok(pinnedCard.className.includes('lc-member-pinned'))
     await click(pinnedCard)
     await act(async () => { pinnedCard.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })) })
-    assert.deepEqual([...again], [null, null])
+    assert.deepEqual([...again], ['s1', 's1'])
     await m2.unmount()
   })
 

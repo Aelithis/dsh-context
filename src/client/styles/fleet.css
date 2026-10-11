@@ -92,6 +92,8 @@
 .lc-tasks-view { margin-left: auto; }
 .lc-team-task-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .lc-team-task-subject { flex: 1; min-width: 0; font-size: 12px; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+/* Delegation subjects are prompts, not task names: two clamped lines, full text on hover. */
+.lc-team-task-subject-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lc-team-task-owner { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--dsw-alias-brand-primary, var(--color-blue-500)); cursor: pointer; }
 .lc-team-task-desc { margin-top: 5px; font-size: 11.5px; line-height: 1.45; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lc-team-task-desc-open { display: block; overflow: visible; }
@@ -105,6 +107,17 @@
 .lc-team-task-scopes { overflow-wrap: anywhere; }
 .lc-team-task-warning { margin-top: 5px; font-size: 10.5px; color: var(--color-amber-500); }
 .lc-team-task-meta .lc-inspector-btn { margin-left: auto; }
+
+/* Owner-grouped board: the group head wears the members board's hue icon, downsized to head scale. */
+.lc-tasks-group-head .lc-member-icon { width: 20px; height: 20px; border-radius: 6px; }
+/* A headless delegation row carries the same icon inside its own head. */
+.lc-tasks-row-icon { width: 20px; height: 20px; border-radius: 6px; }
+/* A subagent's prompt title runs long: the head label ellipsizes rather than wrapping the band. */
+.lc-tasks-group-head .lc-team-task-owner { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+/* A delegation row's live readout: the run's figures left, the occupancy figure right. */
+.lc-team-task-run { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 10.5px; line-height: 1.3; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); font-variant-numeric: tabular-nums; }
+.lc-team-task-run-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-team-task-run-pct { flex: none; font-weight: 600; }
 
 /* ---- Comms timeline ---- */
 .lc-comms-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

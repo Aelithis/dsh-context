@@ -105,14 +105,15 @@ export function makeFleetView(
       openSessionVia(ctx, id)
     }
 
-    /** A graph-node pick rings the card and, for a team member, narrows the task board to their
-     * owned tasks; picking again releases both. */
+    /** A graph-node or member-card pick rings the node, and narrows the task board to that
+     * agent's work — members by roster name, plain subagents by their own session; picking again
+     * releases both. */
     const select = (id: string): void => {
       const next = pinnedId === id ? null : id
       setPinnedId(next)
       const member = teamMemberOf(team, id)
-      if (next !== null) setOwnerFilter(member?.name ?? null)
-      else if (member !== null && ownerFilter === member.name) setOwnerFilter(null)
+      if (next !== null) setOwnerFilter(member?.name ?? id)
+      else if (ownerFilter === id || (member !== null && ownerFilter === member.name)) setOwnerFilter(null)
     }
 
     if (data === null) {
@@ -129,13 +130,21 @@ export function makeFleetView(
     // session, so one dismissal holds across the Context tab and this one.
     const gate = unsupportedOf(data.unsupported)
     const leadDetail = leadId !== undefined ? landedDetails.get(leadId) ?? null : null
-    /** A task-board owner pick toggles the pin, so a second pick on the same owner releases it. */
+    /** A task-board row pick toggles the pin; a release also lets go of a task-board narrowing
+     * still pointing at that agent (the same pair select() manages for graph and member picks). */
     const pinToggle = (id: string | null): void => {
-      setPinnedId(prev => (prev === id ? null : id))
+      const releasing = pinnedId === id
+      setPinnedId(releasing ? null : id)
+      if (releasing && id !== null) {
+        const member = teamMemberOf(team, id)
+        const key = member?.name ?? id
+        if (ownerFilter === key) setOwnerFilter(null)
+      }
     }
     const taskBoard = (
       <TaskBoard
         team={team}
+        forest={forest}
         ownerFilter={ownerFilter}
         onOwnerFilter={setOwnerFilter}
         focusTaskId={focusTaskId}
@@ -143,6 +152,7 @@ export function makeFleetView(
         onPinMember={pinToggle}
         onHoverMember={setHoverId}
         t={t}
+        fmt={kit.fmt}
       />
     )
     // The boards column's two cards stack; the network column is the graph alone, and either seat
@@ -156,7 +166,7 @@ export function makeFleetView(
             leadDetail={leadDetail}
             detailOf={id => details.landed.get(id)}
             pinnedId={pinnedId}
-            onPin={setPinnedId}
+            onPin={select}
             onHover={setHoverId}
             onOpen={open}
             ownerFilter={ownerFilter}

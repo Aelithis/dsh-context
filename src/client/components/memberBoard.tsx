@@ -12,7 +12,7 @@ import { useMemo, useState, type CSSProperties, type ReactElement } from 'react'
 import { IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
 import { familyHue, fmtDurationCompact, pressureColorOf } from '../agentTree'
-import { tasksOfOwner, teamMemberOf, type FleetTeam } from '../fleetTeam'
+import { familyOthersOf, tasksOfOwner, type FleetTeam } from '../fleetTeam'
 import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
 import type { ViewKit } from '../viewkit'
 
@@ -25,7 +25,9 @@ export interface MemberBoardProps {
   /** Landed details keyed by session id (latest replies ride them). */
   detailOf: (id: string) => { detail: FleetDetail | null } | undefined
   pinnedId: string | null
-  onPin: (id: string | null) => void
+  /** The card pick (click/keyboard) — reported raw; the parent owns the toggle and the
+   * task-board narrowing (the graph's select semantics). */
+  onPin: (id: string) => void
   onHover: (id: string | null) => void
   onOpen: (id: string) => void
   /** The task board's owner filter, owned by the view so the boards interlock. */
@@ -37,20 +39,25 @@ export interface MemberBoardProps {
 
 /** One card's hue: the lead carries the brand color, every other card a golden-angled hue —
  * teammates by roster order, other agents by their level-1 family (the graph's link hue). */
-const BRAND_HUE = 'var(--dsw-alias-brand-primary, var(--color-blue-500))'
+export const BRAND_HUE = 'var(--dsw-alias-brand-primary, var(--color-blue-500))'
 
-function memberStyle(hue: string): CSSProperties {
+export function memberStyle(hue: string): CSSProperties {
   return { '--lc-member-hue': hue } as CSSProperties
 }
 
-/** The run's activity line above a card's foot: consumption, duration, then steps — the graph
- * cards' own meta readout. */
-function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
+/** The run's activity figures a surface carries: consumption, duration, then steps — with the
+ * occupancy figure beside them. */
+export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): { bits: string[]; pct: number | null } {
   const bits: string[] = []
   if (node.head !== null && node.head.tokens > 0) bits.push(fmt(node.head.tokens))
   if (node.durationMs !== null) bits.push(fmtDurationCompact(node.durationMs))
   if (node.requests > 0) bits.push(t('agents.steps', { n: node.requests }))
-  const pct = node.head !== null ? node.head.pct : null
+  return { bits, pct: node.head !== null ? node.head.pct : null }
+}
+
+/** The run's activity line above a card's foot — the graph cards' own meta readout. */
+function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
+  const { bits, pct } = runMetaOf(node, t, fmt)
   if (bits.length === 0 && pct === null) return null
   return (
     <div className="lc-member-meta">
@@ -87,10 +94,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
 
   // The other-agents section: family nodes outside the team roster, minus the current session
   // (its own card already headlines the network graph).
-  const othersAll = useMemo(
-    () => forest.nodes.filter(n => !n.isCurrent && teamMemberOf(team, n.id) === null),
-    [forest, team],
-  )
+  const othersAll = useMemo(() => familyOthersOf(forest, team), [forest, team])
   const others = useMemo(() => {
     const needle = query.trim().toLowerCase()
     const out = othersAll.filter((node) => {
@@ -185,7 +189,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
             <span className="lc-kind-n">{fmt(members.length)}</span>
           </div>
           <div className="lc-members-grid">
-            {members.map((member, index) => {
+            {members.map((member) => {
               const node = nodeById.get(member.id)
               const running = node?.running === true
               const info = roster.get(member.name)
@@ -202,14 +206,14 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       + (props.pinnedId === member.id ? ' lc-member-pinned' : '')
                       + (member.phase === 'failed' ? ' lc-member-failed' : '')
                   }
-                  style={memberStyle(member.role === 'lead' ? BRAND_HUE : familyHue(index))}
+                  style={memberStyle(member.role === 'lead' ? BRAND_HUE : familyHue(team.members.indexOf(member)))}
                   role="button"
                   tabIndex={0}
-                  onClick={() => { props.onPin(props.pinnedId === member.id ? null : member.id) }}
+                  onClick={() => { props.onPin(member.id) }}
                   onKeyDown={(ev) => {
                     if (ev.key !== 'Enter' && ev.key !== ' ') return
                     ev.preventDefault()
-                    props.onPin(props.pinnedId === member.id ? null : member.id)
+                    props.onPin(member.id)
                   }}
                   onMouseEnter={() => { props.onHover(member.id) }}
                   onMouseLeave={() => { props.onHover(null) }}
@@ -303,11 +307,11 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                   style={memberStyle(familyHue(node.family))}
                   role="button"
                   tabIndex={0}
-                  onClick={() => { props.onPin(props.pinnedId === node.id ? null : node.id) }}
+                  onClick={() => { props.onPin(node.id) }}
                   onKeyDown={(ev) => {
                     if (ev.key !== 'Enter' && ev.key !== ' ') return
                     ev.preventDefault()
-                    props.onPin(props.pinnedId === node.id ? null : node.id)
+                    props.onPin(node.id)
                   }}
                   onMouseEnter={() => { props.onHover(node.id) }}
                   onMouseLeave={() => { props.onHover(null) }}

@@ -10,6 +10,7 @@
  */
 
 import { asRecord } from './services'
+import type { AgentForest, AgentNode } from './agentTree'
 
 export interface FleetTeamMember {
   id: string
@@ -128,4 +129,12 @@ export function memberIdByName(team: FleetTeam | null, name: string | undefined)
 export function tasksOfOwner(team: FleetTeam | null, ownerName: string | undefined): FleetTeamTask[] {
   if (team === null || ownerName === undefined) return []
   return team.tasks.filter(task => task.ownerName === ownerName)
+}
+
+/** The family's nodes outside the team roster — plain subagents, ancestors, siblings. The current
+ * session never counts (the members board's "other agents" and the task board's delegations share
+ * this scope). */
+export function familyOthersOf(forest: AgentForest | null, team: FleetTeam | null): AgentNode[] {
+  if (forest === null) return []
+  return forest.nodes.filter(n => !n.isCurrent && teamMemberOf(team, n.id) === null)
 }

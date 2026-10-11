@@ -120,8 +120,8 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(board).includes(DICT_EN['fleet.board.others']))
     assert.equal(queryAll(board, '.lc-member-card').length, 4)
     assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
-    // The task board's completion bar.
-    assert.ok(text(query(m.container, '.lc-tasks-progress')).includes('0/1 done'))
+    // The task board's completion bar: team task-1 in flight, the w2 delegation settled.
+    assert.ok(text(query(m.container, '.lc-tasks-progress')).includes('1/2 done'))
     // The comms panel opens collapsed.
     assert.ok(text(query(m.container, '.lc-comms')).includes('Scan 3 sessions'))
     // The network card stands alone: the boards beside it carry the agent detail.
@@ -169,14 +169,33 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('worker-bee'))
     assert.deepEqual([...opened], [], 'a pick never jumps')
 
-    // Picking a non-member node moves the ring and releases the owner filter.
+    // A row pick on the narrowed board releases the pin and the narrowing together.
+    await click(query(m.container, '[data-task="task-1"]'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+
+    // A row release with the filter already moved on from leaves it alone.
+    await click(query(m.container, '[data-agent="w1"]'))
+    await click(query(m.container, '.lc-tasks-filter'))
+    await click(query(m.container, '[data-task="task-1"]'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+
+    // A delegation row release pairs the same way, by session id.
+    await click(query(m.container, '[data-agent="w2"]'))
+    await click(query(m.container, '[data-task="w2"]'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+
+    // Picking a non-member node moves the ring and narrows the task board to its own delegation.
     await click(query(m.container, '[data-agent="w2"]'))
     assert.ok(query(m.container, '[data-agent="w2"]').className.includes('lc-agent-pinned'))
-    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+    assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('side-quest'), 'the chip names the subagent, not its id')
 
     // Picking the pinned node again releases both.
     await click(query(m.container, '[data-agent="w2"]'))
     assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
 
     // Unpinning a member releases its owner filter when it still points at them…
     await click(query(m.container, '[data-agent="w1"]'))
@@ -358,10 +377,11 @@ describe('FleetView — the panels over one family', () => {
     const progress = query(m.container, '.lc-summary-progress')
     assert.ok(text(progress).includes(DICT_EN['fleet.summary.subs']))
     assert.ok(text(progress).includes('1/2'))
-    // No team: the members board lists the subagents and the task board points at the team mode.
+    // No team: the members board lists the subagents, and the task board boards their delegations.
     assert.ok(text(query(m.container, '.lc-members')).includes(DICT_EN['fleet.board.noTeam']))
     assert.equal(queryAll(m.container, '.lc-member-card').length, 2)
-    assert.ok(text(query(m.container, '.lc-tasks')).includes(DICT_EN['fleet.tasks.noTeam']))
+    assert.ok(!text(query(m.container, '.lc-tasks')).includes(DICT_EN['fleet.tasks.noTeam']), 'delegations board, no pointer')
+    assert.deepEqual(queryAll(m.container, '.lc-tasks .lc-team-task').length, 2)
     await m.unmount()
     ctx.dispose()
   })
