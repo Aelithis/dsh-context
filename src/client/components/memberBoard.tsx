@@ -220,7 +220,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                 >
                   <div className="lc-member-head">
                     <span className="lc-member-icon">
-                      {member.role === 'lead' ? <IconUsersOutlineRegular size={15} /> : <IconUserOutlineRegular size={15} />}
+                      {member.role === 'lead' ? <IconUsersOutlineRegular size={13} /> : <IconUserOutlineRegular size={13} />}
                     </span>
                     <b className="lc-member-name">{member.name}</b>
                     {isCurrent ? <span className="lc-agents-badge">{t('agents.self')}</span> : null}
@@ -318,7 +318,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                 >
                   <div className="lc-member-head">
                     <span className="lc-member-icon">
-                      <IconUserOutlineRegular size={15} />
+                      <IconUserOutlineRegular size={13} />
                     </span>
                     {/* A subagent's prompt title IS its identity, and it runs long: two clamped
                         lines where the roster name stays one. */}

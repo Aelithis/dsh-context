@@ -331,7 +331,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     return (
       <Section label={t('fleet.tasks.agent')}>
         <div className="lc-team-task-box-agent">
-          <span className="lc-member-icon lc-tasks-row-icon" style={memberStyle(hue)}>
+          <span className="lc-member-icon" style={memberStyle(hue)}>
             <IconUserOutlineRegular size={13} />
           </span>
           <button
@@ -377,7 +377,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           {/* The delegation IS the agent here: its family hue rides the row's own icon, so the
               band needs no group head above a subject that would only repeat it. The session id
               rides the tooltip — same-prompt delegations differ only by their figures otherwise. */}
-          <span className="lc-member-icon lc-tasks-row-icon" style={memberStyle(hue)}>
+          <span className="lc-member-icon" style={memberStyle(hue)}>
             <IconUserOutlineRegular size={13} />
           </span>
           <StateDot state={row.dot} size={9} />

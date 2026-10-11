@@ -49,8 +49,8 @@
 .lc-member-failed { opacity: 0.7; }
 .lc-member-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .lc-member-icon {
-  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
-  border-radius: 8px; color: var(--lc-member-hue, var(--dsw-alias-label-secondary));
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  border-radius: 6px; color: var(--lc-member-hue, var(--dsw-alias-label-secondary));
   background: color-mix(in srgb, var(--lc-member-hue, var(--dsw-alias-label-secondary)) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--lc-member-hue, var(--dsw-alias-border-l2)) 35%, transparent);
 }
@@ -115,10 +115,6 @@
 .lc-team-task-warning { margin-top: 5px; font-size: 10.5px; color: var(--color-amber-500); }
 .lc-team-task-meta .lc-inspector-btn { margin-left: auto; }
 
-/* Owner-grouped board: the group head wears the members board's hue icon, downsized to head scale. */
-.lc-tasks-group-head .lc-member-icon { width: 20px; height: 20px; border-radius: 6px; }
-/* A headless delegation row carries the same icon inside its own head. */
-.lc-tasks-row-icon { width: 20px; height: 20px; border-radius: 6px; }
 /* A subagent's prompt title runs long: the head label ellipsizes rather than wrapping the band. */
 .lc-tasks-group-head .lc-team-task-owner { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 /* A delegation row's live readout: the run's figures left, the occupancy figure right. */
