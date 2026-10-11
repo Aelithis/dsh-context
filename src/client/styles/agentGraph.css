@@ -125,7 +125,7 @@
 .lc-agents-part { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .lc-agents-part i { width: 7px; height: 7px; border-radius: 2px; }
 .lc-agents-part em { font-style: normal; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); font-variant-numeric: tabular-nums; }
-.lc-agents-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.lc-agents-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 10px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .lc-agents-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .lc-agents-legend-item i { width: 8px; height: 8px; border-radius: 2px; }
 .lc-agents-legend-free { background: color-mix(in srgb, var(--dsw-alias-label-secondary) 18%, transparent); }

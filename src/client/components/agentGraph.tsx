@@ -199,6 +199,23 @@ export function makeAgentGraph(
             : null}
         </div>
 
+        <div className="lc-agents-legend">
+          {CATS.map(c => (
+            <span key={c.key} className="lc-agents-legend-item">
+              <i style={{ background: c.color }} />
+              {catLabel(c.key)}
+            </span>
+          ))}
+          <span className="lc-agents-legend-item">
+            <i className="lc-agents-legend-free" />
+            {t('agents.legend.free')}
+          </span>
+          <span className="lc-agents-legend-item">
+            <i className="lc-agents-legend-edge" />
+            {t('agents.running')}
+          </span>
+        </div>
+
         <div className="lc-agents-split">
           <div className="lc-agents-main">
             <div className="lc-agents-stage" ref={stageRef}>
@@ -258,23 +275,6 @@ export function makeAgentGraph(
             </div>
 
             {forest.solo ? <div className="lc-empty lc-agents-solo">{t('agents.solo')}</div> : null}
-
-            <div className="lc-agents-legend">
-              {CATS.map(c => (
-                <span key={c.key} className="lc-agents-legend-item">
-                  <i style={{ background: c.color }} />
-                  {catLabel(c.key)}
-                </span>
-              ))}
-              <span className="lc-agents-legend-item">
-                <i className="lc-agents-legend-free" />
-                {t('agents.legend.free')}
-              </span>
-              <span className="lc-agents-legend-item">
-                <i className="lc-agents-legend-edge" />
-                {t('agents.running')}
-              </span>
-            </div>
           </div>
 
           {props.inspector === false ? null : inspector}
