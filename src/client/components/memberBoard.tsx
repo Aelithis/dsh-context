@@ -1,15 +1,17 @@
 /**
  * The Fleet members board — every agent of the family in one panel, in two sections: the team's
  * roster as full cards (identity, duty, latest reply, live task count), then the family's other
- * agents (plain subagents, ancestors, siblings) as compact rows. The toolbar's search, status
- * filter, and sort steer both sections. A pick pins the agent (ringing its graph node); a member
- * card's task chip filters the task board to that owner; the open button jumps to the session.
+ * agents (plain subagents, ancestors, siblings) as cards in the same form — their label in place
+ * of a roster name, and the run's tokens/duration/steps in place of the duty line. The toolbar's
+ * search, status filter, and sort steer both sections. A pick pins the agent (ringing its graph
+ * node); a member card's task chip filters the task board to that owner; the open button jumps
+ * to the session.
  */
 
 import { useMemo, useState, type CSSProperties, type ReactElement } from 'react'
 import { IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
-import { familyHue, fmtDurationCompact } from '../agentTree'
+import { familyHue, fmtDurationCompact, pressureColorOf } from '../agentTree'
 import { tasksOfOwner, teamMemberOf, type FleetTeam } from '../fleetTeam'
 import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
 import type { ViewKit } from '../viewkit'
@@ -33,12 +35,29 @@ export interface MemberBoardProps {
   fmt: ViewKit['fmt']
 }
 
-/** One member's card hue: the lead carries the brand color, teammates their golden-angled roster
- * hue (the graph's family-hue idiom). */
-function memberStyle(index: number, lead: boolean): CSSProperties {
-  return {
-    '--lc-member-hue': lead ? 'var(--dsw-alias-brand-primary, var(--color-blue-500))' : familyHue(index),
-  } as CSSProperties
+/** One card's hue: the lead carries the brand color, every other card a golden-angled hue —
+ * teammates by roster order, other agents by their level-1 family (the graph's link hue). */
+const BRAND_HUE = 'var(--dsw-alias-brand-primary, var(--color-blue-500))'
+
+function memberStyle(hue: string): CSSProperties {
+  return { '--lc-member-hue': hue } as CSSProperties
+}
+
+/** The run's activity line above a card's foot: consumption, duration, then steps — the graph
+ * cards' own meta readout. */
+function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
+  const bits: string[] = []
+  if (node.head !== null && node.head.tokens > 0) bits.push(fmt(node.head.tokens))
+  if (node.durationMs !== null) bits.push(fmtDurationCompact(node.durationMs))
+  if (node.requests > 0) bits.push(t('agents.steps', { n: node.requests }))
+  const pct = node.head !== null ? node.head.pct : null
+  if (bits.length === 0 && pct === null) return null
+  return (
+    <div className="lc-member-meta">
+      <span className="lc-member-meta-text">{bits.join(' · ')}</span>
+      {pct !== null ? <span className="lc-member-meta-pct" style={{ color: pressureColorOf(pct) }}>{pct}%</span> : null}
+    </div>
+  )
 }
 
 type StatusFilter = 'all' | 'running' | 'done' | 'idle'
@@ -183,7 +202,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       + (props.pinnedId === member.id ? ' lc-member-pinned' : '')
                       + (member.phase === 'failed' ? ' lc-member-failed' : '')
                   }
-                  style={memberStyle(index, member.role === 'lead')}
+                  style={memberStyle(member.role === 'lead' ? BRAND_HUE : familyHue(index))}
                   role="button"
                   tabIndex={0}
                   onClick={() => { props.onPin(props.pinnedId === member.id ? null : member.id) }}
@@ -225,6 +244,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       {t('fleet.members.reply')} {detail.lastReply.text}
                     </div>
                   ) : null}
+                  {node !== undefined ? memberMeta(node, t, fmt) : null}
                   <div className="lc-member-foot">
                     {activeTasks.length > 0 ? (
                       <button
@@ -273,38 +293,52 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
             {t('fleet.board.others')}
             <span className="lc-kind-n">{fmt(others.length)}</span>
           </div>
-          <ul className="lc-fleet-rows">
+          <div className="lc-members-grid">
             {others.map((node) => {
-              const pct = node.head !== null ? node.head.pct : null
-              const meta: string[] = []
-              if (node.head !== null) meta.push(fmt(node.head.tokens))
-              if (node.model !== undefined) meta.push(node.model)
-              if (node.durationMs !== null) meta.push(fmtDurationCompact(node.durationMs))
-              if (node.requests > 0) meta.push(t('agents.steps', { n: node.requests }))
+              const detail = props.detailOf(node.id)?.detail ?? null
               return (
-                <li key={node.id}>
-                  <div
-                    className={'lc-fleet-row' + (props.pinnedId === node.id ? ' lc-fleet-row-pinned' : '')}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { props.onPin(props.pinnedId === node.id ? null : node.id) }}
-                    onKeyDown={(ev) => {
-                      if (ev.key !== 'Enter' && ev.key !== ' ') return
-                      ev.preventDefault()
-                      props.onPin(props.pinnedId === node.id ? null : node.id)
-                    }}
-                    onMouseEnter={() => { props.onHover(node.id) }}
-                    onMouseLeave={() => { props.onHover(null) }}
-                  >
-                    {node.running || node.completed
-                      ? <StateDot state={node.running ? 'ongoing' : 'done'} size={10} className="lc-agent-state" />
-                      : <span className="lc-fleet-dot-idle" />}
-                    <span className="lc-fleet-row-label" title={node.label}>{node.label}</span>
-                    <span className="lc-fleet-row-meta">{meta.join(' · ')}</span>
-                    {pct !== null ? <span className="lc-fleet-row-pct">{pct}%</span> : null}
+                <div
+                  key={node.id}
+                  className={'lc-member-card' + (props.pinnedId === node.id ? ' lc-member-pinned' : '')}
+                  style={memberStyle(familyHue(node.family))}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { props.onPin(props.pinnedId === node.id ? null : node.id) }}
+                  onKeyDown={(ev) => {
+                    if (ev.key !== 'Enter' && ev.key !== ' ') return
+                    ev.preventDefault()
+                    props.onPin(props.pinnedId === node.id ? null : node.id)
+                  }}
+                  onMouseEnter={() => { props.onHover(node.id) }}
+                  onMouseLeave={() => { props.onHover(null) }}
+                >
+                  <div className="lc-member-head">
+                    <span className="lc-member-icon">
+                      <IconUserOutlineRegular size={15} />
+                    </span>
+                    {/* A subagent's prompt title IS its identity, and it runs long: two clamped
+                        lines where the roster name stays one. */}
+                    <b className="lc-member-name lc-member-name-wrap" title={node.label}>{node.label}</b>
+                    <StateDot
+                      state={node.running ? 'ongoing' : node.completed ? 'done' : 'idle'}
+                      size={9}
+                      className="lc-member-dot"
+                    />
+                  </div>
+                  <div className="lc-member-status">
+                    {node.running ? t('agents.running') : node.completed ? t('fleet.filter.done') : t('fleet.memberInactive')}
+                    {node.model !== undefined ? <span className="lc-member-model">{node.model}</span> : null}
+                  </div>
+                  {detail?.lastReply !== undefined ? (
+                    <div className="lc-member-reply" title={detail.lastReply.text}>
+                      {t('fleet.members.reply')} {detail.lastReply.text}
+                    </div>
+                  ) : null}
+                  {memberMeta(node, t, fmt)}
+                  <div className="lc-member-foot">
                     <button
                       type="button"
-                      className="lc-inspector-btn lc-fleet-row-open"
+                      className="lc-inspector-btn lc-member-open"
                       title={t('fleet.open')}
                       onClick={(ev) => {
                         ev.stopPropagation()
@@ -314,10 +348,10 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       →
                     </button>
                   </div>
-                </li>
+                </div>
               )
             })}
-          </ul>
+          </div>
         </>
       ) : null}
 

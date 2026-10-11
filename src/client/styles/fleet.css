@@ -29,9 +29,11 @@
 .lc-members-note { margin: 2px 0 6px; font-size: 11px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
 
 /* ---- Members board ---- */
-.lc-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 8px; }
+/* The 200px floor keeps the two-column read the common case: the unified cards are compact
+   enough that two of them fit the boards column down to a narrow pane. */
+.lc-members-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 8px; }
 .lc-member-card {
-  display: flex; flex-direction: column; gap: 5px; padding: 10px 12px; border-radius: 10px;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px;
   background: var(--dsw-alias-bg-layer-2);
   /* The member's roster hue (golden-angled, shared with the graph's family links) tints the icon ring. */
   border: 1px solid var(--dsw-alias-border-l2);
@@ -53,13 +55,19 @@
   border: 1px solid color-mix(in srgb, var(--lc-member-hue, var(--dsw-alias-border-l2)) 35%, transparent);
 }
 .lc-member-name { flex: 1; min-width: 0; font-size: 12.5px; color: var(--dsw-alias-label-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Other agents wear their prompt title as the name: two clamped lines beat a harsher ellipsis. */
+.lc-member-name-wrap { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.25; }
 .lc-member-dot { flex: none; }
 .lc-member-status { display: flex; align-items: baseline; gap: 8px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .lc-member-model { font-variant-numeric: tabular-nums; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lc-member-desc { font-size: 11.5px; line-height: 1.4; color: var(--dsw-alias-label-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .lc-member-reply { font-size: 11px; line-height: 1.4; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lc-member-reply::before { content: none; }
-.lc-member-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 3px; }
+/* The run's activity line (the graph cards' meta readout): figures left, occupancy right. */
+.lc-member-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-size: 10.5px; line-height: 1.3; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
+.lc-member-meta-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-member-meta-pct { flex: none; font-weight: 600; }
+.lc-member-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 2px; }
 .lc-member-tasks { border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-brand-primary, var(--color-blue-500)); font: inherit; font-size: 10.5px; padding: 1px 8px; border-radius: 999px; cursor: pointer; }
 .lc-member-tasks:hover { border-color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
 .lc-member-tasks-on { background: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 14%, transparent); border-color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
@@ -97,18 +105,6 @@
 .lc-team-task-scopes { overflow-wrap: anywhere; }
 .lc-team-task-warning { margin-top: 5px; font-size: 10.5px; color: var(--color-amber-500); }
 .lc-team-task-meta .lc-inspector-btn { margin-left: auto; }
-
-.lc-fleet-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.lc-fleet-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; font-size: 12px; }
-.lc-fleet-row:hover { background: var(--dsw-alias-bg-layer-2); }
-.lc-fleet-row:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, var(--color-blue-500)); outline-offset: 1px; }
-.lc-fleet-row-pinned { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 55%, transparent); background: var(--dsw-alias-bg-layer-2); }
-.lc-fleet-dot-idle { flex: none; width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--dsw-alias-label-secondary) 30%, transparent); }
-.lc-fleet-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); }
-.lc-fleet-row-team { color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
-.lc-fleet-row-meta { flex: none; font-size: 11px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
-.lc-fleet-row-pct { flex: none; font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
-.lc-fleet-row-open { flex: none; padding: 1px 7px; }
 
 /* ---- Comms timeline ---- */
 .lc-comms-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

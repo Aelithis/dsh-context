@@ -84,7 +84,7 @@ function makeView(ctx: TestClientCtx, useKit = kit) {
 }
 
 describe('FleetView — the panels over one family', () => {
-  test('the other-agents row open button jumps to the session', async () => {
+  test('the other-agents card open button jumps to the session', async () => {
     stubFleetRoute()
     const opened = new Array<string>()
     const ctx = new TestClientCtx({
@@ -92,7 +92,8 @@ describe('FleetView — the panels over one family', () => {
     })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
-    await click(query(query(m.container, '.lc-fleet-row'), '.lc-fleet-row-open'))
+    const cards = queryAll(m.container, '.lc-member-card')
+    await click(query(cards[cards.length - 1], '.lc-member-open'))
     assert.deepEqual([...opened], ['w2'])
     await m.unmount()
     ctx.dispose()
@@ -112,11 +113,12 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(summary).includes('0/1'))
     // The network card header carries the team chip.
     assert.ok(text(query(m.container, '.lc-agents')).includes('team · 3 members · 1 tasks'))
-    // The members board: team cards + the other-agents section (w2, the plain subagent).
+    // The members board: team cards (the ghost's roster row included) + the other-agents
+    // section (w2, the plain subagent) in the same card form.
     const board = query(m.container, '.lc-members')
     assert.ok(text(board).includes('worker-bee'))
     assert.ok(text(board).includes(DICT_EN['fleet.board.others']))
-    assert.deepEqual(queryAll(board, '.lc-fleet-row').length, 1)
+    assert.equal(queryAll(board, '.lc-member-card').length, 4)
     assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
     // The task board's completion bar.
     assert.ok(text(query(m.container, '.lc-tasks-progress')).includes('0/1 done'))
@@ -187,10 +189,6 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
     await click(query(m.container, '[data-agent="w1"]'))
     assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
-
-    // The corner button still jumps.
-    await click(query(query(m.container, '[data-agent="w1"]'), '.lc-agent-open'))
-    assert.deepEqual([...opened], ['w1'])
     await m.unmount()
     ctx.dispose()
   })
@@ -362,7 +360,7 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(progress).includes('1/2'))
     // No team: the members board lists the subagents and the task board points at the team mode.
     assert.ok(text(query(m.container, '.lc-members')).includes(DICT_EN['fleet.board.noTeam']))
-    assert.deepEqual(queryAll(m.container, '.lc-fleet-row').length, 2)
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 2)
     assert.ok(text(query(m.container, '.lc-tasks')).includes(DICT_EN['fleet.tasks.noTeam']))
     await m.unmount()
     ctx.dispose()
