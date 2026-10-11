@@ -11,12 +11,9 @@ const PACKAGE_KEY = 'dsh-context'
 /** 40 ticks at the 100ms tick: enough for the page's package load. */
 const POLL_TICKS = 40
 
-function buttonsOf(doc: Document): HTMLButtonElement[] {
-  return [...doc.querySelectorAll<HTMLButtonElement>('button')]
-}
-
 function findPanelEntry(doc: Document): HTMLButtonElement | undefined {
-  return buttonsOf(doc).find(b => PLUGIN_LABELS.has(b.getAttribute('aria-label') ?? ''))
+  return [...doc.querySelectorAll<HTMLButtonElement>('button')]
+    .find(b => PLUGIN_LABELS.has(b.getAttribute('aria-label') ?? ''))
 }
 
 /** The bundle card's open control: the one button inside the card that is not the enable switch (the

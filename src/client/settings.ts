@@ -3,7 +3,7 @@
 
 import type { DefaultDeltaBase, DefaultFileSort, DefaultGranularity, DefaultDurationCurve, DefaultPlacement, DefaultToolSort, DefaultTrendMode, FleetTab, InsightsEntry, SettingsField } from '../shared/types'
 
-export type { DefaultDeltaBase, DefaultFileSort, DefaultGranularity, DefaultDurationCurve, DefaultPlacement, DefaultToolSort, DefaultTrendMode, FleetTab, InsightsEntry, SettingsField } from '../shared/types'
+export type { DefaultDeltaBase, DefaultFileSort, DefaultToolSort, SettingsField } from '../shared/types'
 
 /** The bound settings form (`ctx.configForms.get`), as consumed. */
 export interface SettingsScopeLike {
@@ -100,12 +100,16 @@ export function createContextSettings(): ContextSettings {
   }
   const sync = (bound: SettingsScopeLike): { placement?: DefaultPlacement; insightsEntry?: InsightsEntry; fleetTab?: FleetTab } => {
     const snap = bound.getSnapshot()
-    const prefs = prefsOf(snap.value)
+    // Bounded catch (the compatibility.md parser gate): a value that throws on property access
+    // keeps the current state instead of throwing into the mirror's fan-out.
+    let prefs: Prefs = {}
+    let raw: Record<string, unknown> | undefined
+    try {
+      prefs = prefsOf(snap.value)
+      raw = snap.value !== null && typeof snap.value === 'object' ? snap.value as Record<string, unknown> : undefined
+    } catch { /* hostile value */ }
     // Fail open: a config problem must never leave an entry hidden. A value the plugin cannot understand
     // degrades to the field's default; a section without the field (older Host half) keeps the current state.
-    const raw = snap.value !== null && typeof snap.value === 'object'
-      ? snap.value as Record<string, unknown>
-      : undefined
     publish({
       status: snap.status === 'ready' || snap.status === 'unavailable' ? snap.status : 'loading',
       placement: prefs.placement ?? (raw?.defaultPlacement === undefined ? state.placement : 'all'),
@@ -143,7 +147,12 @@ export function createContextSettings(): ContextSettings {
     attach(bound) {
       scope = bound
       sync(bound)
-      return bound.subscribe(() => { sync(bound) })
+      const unsubscribe = bound.subscribe(() => { sync(bound) })
+      return () => {
+        unsubscribe()
+        // A set() after disposal must not write into a dead form.
+        if (scope === bound) scope = undefined
+      }
     },
     set(field, value) {
       publish({ ...state, ...prefsOf({ [field]: value }) })

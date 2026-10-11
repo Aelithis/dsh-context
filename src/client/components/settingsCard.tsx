@@ -7,7 +7,7 @@ import { IconChevronDown } from '../primitives'
 import type { SettingsField, SettingsState } from '../settings'
 import type { ViewKit } from '../viewkit'
 
-export interface SettingsCardProps {
+interface SettingsCardProps {
   useContextSettings?: <T>(selector: (state: SettingsState) => T) => T
   set?: (field: SettingsField, value: string) => void
 }

@@ -438,4 +438,46 @@ describe('attach', () => {
     assert.equal(calls, 0)
     assert.equal(s.defaultGranularity(), 'step')
   })
+
+  test('a set after the disposer runs never reaches the dead scope', () => {
+    const s = createContextSettings()
+    const scope = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const detach = s.attach(scope)
+    detach()
+    s.set('defaultTrendMode', 'delta')
+    assert.deepEqual(scope.sets, [])
+  })
+
+  test('disposing a superseded attach keeps the newer scope bound', () => {
+    const s = createContextSettings()
+    const first = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const second = new TestSettingsScope({ status: 'ready', value: {}, writable: true })
+    const detachFirst = s.attach(first)
+    s.attach(second)
+    detachFirst()
+    s.set('defaultTrendMode', 'delta')
+    assert.deepEqual(first.sets, [])
+    assert.deepEqual(second.sets, [{ field: 'defaultTrendMode', value: 'delta' }])
+  })
+
+  test('a snapshot value that throws on property access keeps the current state', () => {
+    const s = createContextSettings()
+    const hostile = new Proxy({}, { get() { throw new Error('hostile') } })
+    s.attach(new TestSettingsScope({ status: 'ready', value: hostile, writable: true }))
+    assert.deepEqual(s.store.getSnapshot(), {
+      status: 'ready',
+      placement: 'all',
+      granularity: 'step',
+      mode: 'total',
+      deltaBase: 'step',
+      toolSort: 'count',
+      fileSort: 'count',
+      insightsEntry: 'show',
+      durationCurve: 'show',
+      fleetTab: 'show',
+      promptPrefix: '',
+      promptSuffix: '',
+      writable: true,
+    })
+  })
 })
