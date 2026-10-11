@@ -168,7 +168,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
         {/* The page's one scroll region. */}
         <div className="lc-ov-pagescroll">
           <div className="lc-ov-pagecontent">
-            <div className="lc-ov-pagehead">
+            <div className="lc-ov-pagehead" data-window-drag>
               <h1 className="lc-ov-pagetitle">{t('ov.title')}</h1>
               <button type="button" className="lc-ov-settings" title={t('plugin.settingsOpen')} onClick={() => { openPluginSettings() }}>
                 <IconSettings size={14} />{t('plugin.settings')}
