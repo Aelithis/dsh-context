@@ -1,7 +1,7 @@
 /** The dsh-context preference card, keyed on the Host-served `dsh-context` namespace: while that namespace is
  * unavailable (a deployment without the Host half, or a remote browser) the card renders nothing. */
 
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import { IconChevronDown } from '../primitives'
 import type { SettingsField, SettingsState } from '../settings'
@@ -113,95 +113,113 @@ function ShowHideRow(props: { t: Translate; label: string; value: string; disabl
   )
 }
 
+/** One titled preference group: the harness projects no group chrome into the
+ *  `plugins.bundle.config` slot, so the card draws its own — a small heading over
+ *  its rows, a hairline separating the groups. */
+function Group(props: { title: string; children: ReactNode }): ReactElement {
+  return (
+    <div className="lc-settings-group" role="group" aria-label={props.title}>
+      <div className="lc-settings-group-title">{props.title}</div>
+      {props.children}
+    </div>
+  )
+}
+
 function PreferenceRows(props: { t: Translate; state: SettingsState; set?: SettingsCardProps['set'] }): ReactElement {
   const { t, state, set } = props
   const disabled = state.status !== 'ready' || !state.writable
   return (
     <>
-      <PrefRow
-        label={t('settings.placement')}
-        value={state.placement}
-        disabled={disabled}
-        options={[
-          { id: 'all', label: t('placement.all') },
-          { id: 'tab', label: t('placement.tab') },
-          { id: 'sidebar', label: t('placement.sidebar') },
-        ]}
-        onPick={(id) => { set?.('defaultPlacement', id) }}
-      />
-      <ShowHideRow t={t} label={t('settings.insightsEntry')} value={state.insightsEntry} disabled={disabled}
-        onPick={(id) => { set?.('insightsEntry', id) }} />
-      <ShowHideRow t={t} label={t('settings.fleetTab')} value={state.fleetTab} disabled={disabled}
-        onPick={(id) => { set?.('fleetTab', id) }} />
-      <PrefRow
-        label={t('settings.gran')}
-        value={state.granularity}
-        disabled={disabled}
-        options={[
-          { id: 'step', label: t('gran.step') },
-          { id: 'turn', label: t('gran.turn') },
-        ]}
-        onPick={(id) => { set?.('defaultGranularity', id) }}
-      />
-      <PrefRow
-        label={t('settings.mode')}
-        value={state.mode}
-        disabled={disabled}
-        options={[
-          { id: 'total', label: t('gran.total') },
-          { id: 'delta', label: t('gran.delta') },
-        ]}
-        onPick={(id) => { set?.('defaultTrendMode', id) }}
-      />
-      <ShowHideRow t={t} label={t('settings.durationCurve')} value={state.durationCurve} disabled={disabled}
-        onPick={(id) => { set?.('defaultDurationCurve', id) }} />
-      <PrefRow
-        label={t('settings.deltaBase')}
-        value={state.deltaBase}
-        disabled={disabled}
-        options={[
-          { id: 'step', label: t('browser.base.step') },
-          { id: 'turn', label: t('browser.base.turn') },
-        ]}
-        onPick={(id) => { set?.('defaultDeltaBase', id) }}
-      />
-      <PrefRow
-        label={t('settings.toolSort')}
-        value={state.toolSort}
-        disabled={disabled}
-        options={[
-          { id: 'size', label: t('tool.sort.size') },
-          { id: 'count', label: t('tool.sort.count') },
-          { id: 'name', label: t('tool.sort.name') },
-        ]}
-        onPick={(id) => { set?.('defaultToolSort', id) }}
-      />
-      <PrefRow
-        label={t('settings.fileSort')}
-        value={state.fileSort}
-        disabled={disabled}
-        options={[
-          { id: 'count', label: t('files.sort.count') },
-          { id: 'latest', label: t('files.sort.latest') },
-          { id: 'path', label: t('files.sort.path') },
-        ]}
-        onPick={(id) => { set?.('defaultFileSort', id) }}
-      />
-      <p className="lc-settings-note">{t('settings.promptHint')}</p>
-      <PromptTextRow
-        label={t('settings.promptPrefix')}
-        placeholder={t('settings.promptPlaceholder')}
-        value={state.promptPrefix}
-        disabled={disabled}
-        onCommit={(text) => { set?.('promptPrefix', text) }}
-      />
-      <PromptTextRow
-        label={t('settings.promptSuffix')}
-        placeholder={t('settings.promptPlaceholder')}
-        value={state.promptSuffix}
-        disabled={disabled}
-        onCommit={(text) => { set?.('promptSuffix', text) }}
-      />
+      <Group title={t('settings.group.entry')}>
+        <PrefRow
+          label={t('settings.placement')}
+          value={state.placement}
+          disabled={disabled}
+          options={[
+            { id: 'all', label: t('placement.all') },
+            { id: 'tab', label: t('placement.tab') },
+            { id: 'sidebar', label: t('placement.sidebar') },
+          ]}
+          onPick={(id) => { set?.('defaultPlacement', id) }}
+        />
+        <ShowHideRow t={t} label={t('settings.insightsEntry')} value={state.insightsEntry} disabled={disabled}
+          onPick={(id) => { set?.('insightsEntry', id) }} />
+        <ShowHideRow t={t} label={t('settings.fleetTab')} value={state.fleetTab} disabled={disabled}
+          onPick={(id) => { set?.('fleetTab', id) }} />
+      </Group>
+      <Group title={t('settings.group.view')}>
+        <PrefRow
+          label={t('settings.gran')}
+          value={state.granularity}
+          disabled={disabled}
+          options={[
+            { id: 'step', label: t('gran.step') },
+            { id: 'turn', label: t('gran.turn') },
+          ]}
+          onPick={(id) => { set?.('defaultGranularity', id) }}
+        />
+        <PrefRow
+          label={t('settings.mode')}
+          value={state.mode}
+          disabled={disabled}
+          options={[
+            { id: 'total', label: t('gran.total') },
+            { id: 'delta', label: t('gran.delta') },
+          ]}
+          onPick={(id) => { set?.('defaultTrendMode', id) }}
+        />
+        <ShowHideRow t={t} label={t('settings.durationCurve')} value={state.durationCurve} disabled={disabled}
+          onPick={(id) => { set?.('defaultDurationCurve', id) }} />
+        <PrefRow
+          label={t('settings.deltaBase')}
+          value={state.deltaBase}
+          disabled={disabled}
+          options={[
+            { id: 'step', label: t('browser.base.step') },
+            { id: 'turn', label: t('browser.base.turn') },
+          ]}
+          onPick={(id) => { set?.('defaultDeltaBase', id) }}
+        />
+        <PrefRow
+          label={t('settings.toolSort')}
+          value={state.toolSort}
+          disabled={disabled}
+          options={[
+            { id: 'size', label: t('tool.sort.size') },
+            { id: 'count', label: t('tool.sort.count') },
+            { id: 'name', label: t('tool.sort.name') },
+          ]}
+          onPick={(id) => { set?.('defaultToolSort', id) }}
+        />
+        <PrefRow
+          label={t('settings.fileSort')}
+          value={state.fileSort}
+          disabled={disabled}
+          options={[
+            { id: 'count', label: t('files.sort.count') },
+            { id: 'latest', label: t('files.sort.latest') },
+            { id: 'path', label: t('files.sort.path') },
+          ]}
+          onPick={(id) => { set?.('defaultFileSort', id) }}
+        />
+      </Group>
+      <Group title={t('settings.group.prompt')}>
+        <p className="lc-settings-note">{t('settings.promptHint')}</p>
+        <PromptTextRow
+          label={t('settings.promptPrefix')}
+          placeholder={t('settings.promptPlaceholder')}
+          value={state.promptPrefix}
+          disabled={disabled}
+          onCommit={(text) => { set?.('promptPrefix', text) }}
+        />
+        <PromptTextRow
+          label={t('settings.promptSuffix')}
+          placeholder={t('settings.promptPlaceholder')}
+          value={state.promptSuffix}
+          disabled={disabled}
+          onCommit={(text) => { set?.('promptSuffix', text) }}
+        />
+      </Group>
     </>
   )
 }

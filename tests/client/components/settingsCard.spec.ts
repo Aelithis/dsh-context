@@ -33,17 +33,24 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await m2.unmount()
   })
 
-  test('renders the nine selects and the two prompt text rows flat — no card chrome', async () => {
+  test('renders the nine selects and the two prompt text rows across three titled groups — no card chrome', async () => {
     const m = await mount(h(PluginConfigCard, { useContextSettings: hookFor(stateOf({ status: 'loading', writable: false })) }))
     assert.equal(m.container.querySelector('.lc-settings-card'), null, 'no settings-section chrome')
     assert.ok(query(m.container, '.lc-settings-prefs'))
+    const groups = queryAll(m.container, '.lc-settings-group')
+    assert.equal(groups.length, 3)
+    assert.deepEqual(groups.map(g => g.getAttribute('aria-label')), [
+      DICT_EN['settings.group.entry'],
+      DICT_EN['settings.group.view'],
+      DICT_EN['settings.group.prompt'],
+    ])
     const selects = queryAll<HTMLButtonElement>(m.container, '.lc-settings-select')
     assert.equal(selects.length, 9)
     assert.ok(selects.every(s => s.disabled), 'loading is not ready: the rows are disabled')
     const textareas = queryAll<HTMLTextAreaElement>(m.container, '.lc-settings-textarea')
     assert.equal(textareas.length, 2)
     assert.ok(textareas.every(t => t.disabled), 'loading is not ready: the text rows are disabled')
-    assert.ok(text(m.container).includes(DICT_EN['settings.promptHint']))
+    assert.ok(text(groups[2]).includes(DICT_EN['settings.promptHint']), 'the prompt hint lives inside the prompt group')
     assert.equal(m.container.querySelector('[role="status"]'), null, 'no read-only notice while loading')
     await m.unmount()
   })
