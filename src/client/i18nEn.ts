@@ -212,7 +212,7 @@ export const DICT_EN = {
   'files.glyph.lang.html': 'HTML',
   'agents.title': 'Agent Network',
   'agents.sub': 'Live context of this agent and its subagents · click a node to open its session',
-  'agents.subSelect': 'Live context of this agent and its subagents · click a node to highlight it, → opens its session',
+  'agents.subSelect': 'Live context of this agent and its subagents · click a node to highlight it',
   'agents.chip.count': '{n} agents',
   'agents.chip.running': '{n} running',
   'agents.chip.tokens': '{n} tokens in context',

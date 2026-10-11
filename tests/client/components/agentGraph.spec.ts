@@ -526,7 +526,7 @@ describe('AgentGraph — the Fleet seat', () => {
     await m2.unmount()
   })
 
-  test('select mode: a card click highlights instead of jumping; the corner button keeps the jump', async () => {
+  test('select mode: a card click highlights instead of jumping', async () => {
     const face = new FakeSessions(family())
     const View = makeView(face)
     const selected = new Array<string>()
@@ -545,18 +545,11 @@ describe('AgentGraph — the Fleet seat', () => {
     const self = query(m.container, '.lc-agent-card.lc-agent-self')
     assert.equal(self.getAttribute('role'), 'button')
     await click(self)
-    // The current card never carries the corner jump.
-    assert.equal(self.querySelector('.lc-agent-open'), null)
 
     const worker = query(m.container, '[data-agent="worker"]')
     await click(worker)
     assert.deepEqual([...selected], ['root', 'worker'])
     assert.deepEqual(face.opened, [], 'a pick never jumps')
-
-    // The corner button jumps without disturbing the selection.
-    await click(query(worker, '.lc-agent-open'))
-    assert.deepEqual(face.opened, ['worker'])
-    assert.deepEqual([...selected], ['root', 'worker'])
 
     // Enter selects; an unrelated key is inert.
     await act(async () => {
@@ -570,7 +563,7 @@ describe('AgentGraph — the Fleet seat', () => {
       )
     })
     assert.deepEqual([...selected], ['root', 'worker', 'done'])
-    assert.deepEqual(face.opened, ['worker'])
+    assert.deepEqual(face.opened, [], 'no card corner jump: the boards carry the open buttons')
     await m.unmount()
   })
 
@@ -580,7 +573,6 @@ describe('AgentGraph — the Fleet seat', () => {
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.ok(text(m.container).includes(DICT_EN['agents.sub']))
     assert.equal(query(m.container, '.lc-agent-card.lc-agent-self').getAttribute('role'), null)
-    assert.equal(queryAll(m.container, '.lc-agent-open').length, 0)
     await click(query(m.container, '[data-agent="worker"]'))
     assert.deepEqual(face.opened, ['worker'])
     await m.unmount()

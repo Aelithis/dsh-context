@@ -210,7 +210,7 @@ export const DICT_ZH = {
   'files.glyph.lang.html': 'HTML',
   'agents.title': 'Agent 网络',
   'agents.sub': '当前 Agent 与子 Agent 的实时上下文 · 点击节点跳转会话',
-  'agents.subSelect': '当前 Agent 与子 Agent 的实时上下文 · 点击节点高亮联动，→ 打开会话',
+  'agents.subSelect': '当前 Agent 与子 Agent 的实时上下文 · 点击节点高亮联动',
   'agents.chip.count': '{n} 个 Agent',
   'agents.chip.running': '{n} 个运行中',
   'agents.chip.tokens': '上下文合计 {n}',

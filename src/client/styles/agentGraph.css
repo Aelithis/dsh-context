@@ -21,8 +21,8 @@
 .lc-agent-card {
   position: absolute;
   /* Mirrors AGENT_CARD_H in agentTree.ts: the layout lands link endpoints on the card's edges. */
-  height: 104px;
-  padding: 9px 10px;
+  height: 100px;
+  padding: 7px 9px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -50,13 +50,6 @@
   border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 55%, var(--dsw-alias-border-l2));
 }
 .lc-agent-card-head { display: flex; align-items: flex-start; gap: 6px; }
-/* Select mode (the Fleet tab): the card body highlights, this corner button keeps the jump. */
-.lc-agent-open {
-  flex: none; align-self: center; border: 0; background: transparent; cursor: pointer;
-  font: inherit; font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 6px;
-  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
-}
-.lc-agent-open:hover { color: var(--dsw-alias-brand-primary, var(--color-blue-500)); background: var(--dsw-alias-bg-layer-1); }
 /* The harness's own StateDot (the header popup's glyph), nudged onto the title's first line. */
 .lc-agent-state { margin-top: 2px; }
 /* Fixed two-line title box: every card's metric and bar sit at the same height,

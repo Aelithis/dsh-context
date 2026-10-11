@@ -4,8 +4,8 @@
  * every node is a live card of that session's own context — title, occupancy, and a composition
  * bar. Links are bezier curves fanned out from the parent's foot, hued per level-1 family; hovering
  * a card lights its whole lineage (ancestors and subtree). A card click follows the mount: the
- * sidebar jumps straight to that agent's session; the Fleet tab selects instead (`onSelect` — ring
- * + cross-panel linkage), with the jump on the card's corner button.
+ * sidebar jumps straight to that agent's session; the Fleet tab selects instead (`onSelect` —
+ * ring + cross-panel linkage), and the jump lives on the boards' own open buttons.
  *
  * The sidebar mount pairs the graph with the inspector (agentInspector.tsx) on its right — the
  * `lc-card` container query folds that split to stacked on the narrow pane — following the hovered
@@ -140,8 +140,8 @@ export function makeAgentGraph(
       if (id === current.id) return
       openSessionVia(ctx, id)
     }
-    // Select mode (the Fleet tab): a card click rings the node and steers the sibling panels,
-    // and even the current card is pickable; the jump lives on the card's corner button.
+    // Select mode (the Fleet tab): a card click rings the node and steers the sibling panels;
+    // even the current card is pickable. The jump stays with the boards' own open buttons.
     const select = props.onSelect
     const keyOpen = (id: string) => (ev: KeyboardEvent) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') return
@@ -371,19 +371,6 @@ function AgentCard(props: CardProps): ReactElement {
             whenever a long title claims both lines. The lc-agent-self-badge class carries no
             rule of its own — it stays as the specs' anchor for the self marker. */}
         {node.isCurrent ? <span className="lc-agents-badge lc-agent-self-badge">{props.t('agents.self')}</span> : null}
-        {selectable && !node.isCurrent ? (
-          <button
-            type="button"
-            className="lc-agent-open"
-            title={props.t('fleet.open')}
-            onClick={(ev) => {
-              ev.stopPropagation()
-              props.onOpen(node.id)
-            }}
-          >
-            →
-          </button>
-        ) : null}
       </div>
       <div className="lc-agent-metric">
         <b className="lc-agent-tokens">{metricBits.length > 0 ? metricBits.join(' · ') : '—'}</b>
