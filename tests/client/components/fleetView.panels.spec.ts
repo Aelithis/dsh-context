@@ -1,13 +1,13 @@
-// FleetView integration — the four panels over one family: the team projection (list-row and
-// direct seats), pin/hover steering between the list and the inspector, and the comms scan off
-// the stubbed fleet route.
+// FleetView integration — the panels over one family: the overview strip, the team projection
+// (list-row and direct seats), pin/hover/select steering across the graph and the boards, and the
+// comms scan off the stubbed fleet route.
 
 import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { afterEach, describe, test, vi } from 'vitest'
 import { makeFleetView } from '../../../src/client/components/fleetView'
 import { makeAgentHeads } from '../../../src/client/agentHeads'
-import { DICT_ZH } from '../../../src/client/i18n'
+import { DICT_EN, DICT_ZH } from '../../../src/client/i18n'
 import { resetTimelineDetailStores } from '../../../src/client/timelineSource'
 import { TestClientCtx, asClientCtx } from '../helpers/harness'
 import { click, hover, makeKit, mount, query, queryAll, text, until } from '../helpers/kit'
@@ -41,6 +41,11 @@ function familySessions() {
       w1: {
         parentId: 'root', origin: 'subagent', running: true, updatedAt: 8,
         projectionValues: { subagent: { mode: 'continuable', label: 'worker-bee' }, subagentTiming: { settledMs: 42000 } },
+      },
+      // A plain subagent outside the team roster: the members board's other-agents section.
+      w2: {
+        parentId: 'root', origin: 'subagent', running: false, updatedAt: 6,
+        projectionValues: { subagent: { mode: 'one-shot', label: 'side-quest' }, subagentTiming: { settledMs: 9000, lastTurnCompleted: true } },
       },
     },
   }
@@ -78,8 +83,8 @@ function makeView(ctx: TestClientCtx, useKit = kit) {
   return makeFleetView(asClientCtx(ctx), useKit, makeAgentHeads())
 }
 
-describe('FleetView — the four panels over one family', () => {
-  test('the roster row open button jumps to the session', async () => {
+describe('FleetView — the panels over one family', () => {
+  test('the other-agents row open button jumps to the session', async () => {
     stubFleetRoute()
     const opened = new Array<string>()
     const ctx = new TestClientCtx({
@@ -87,62 +92,121 @@ describe('FleetView — the four panels over one family', () => {
     })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
-    await click(query(queryAll(m.container, '.lc-fleet-row')[1], '.lc-fleet-row-open'))
+    await click(query(query(m.container, '.lc-fleet-row'), '.lc-fleet-row-open'))
+    assert.deepEqual([...opened], ['w2'])
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('overview strip, team chip, members board, task board, and comms all render off the one derivation', async () => {
+    stubFleetRoute()
+    const ctx = new TestClientCtx({ services: { sessions: familySessions() } })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+
+    // The overview strip: family stats plus the shared-tasks progress bar.
+    const summary = query(m.container, '.lc-summary')
+    assert.ok(text(summary).includes('3 agents'))
+    assert.ok(text(summary).includes('2 running'))
+    assert.ok(text(summary).includes(DICT_EN['fleet.summary.tasks']))
+    assert.ok(text(summary).includes('0/1'))
+    // The network card header carries the team chip.
+    assert.ok(text(query(m.container, '.lc-agents')).includes('team · 3 members · 1 tasks'))
+    // The members board: team cards + the other-agents section (w2, the plain subagent).
+    const board = query(m.container, '.lc-members')
+    assert.ok(text(board).includes('worker-bee'))
+    assert.ok(text(board).includes(DICT_EN['fleet.board.others']))
+    assert.deepEqual(queryAll(board, '.lc-fleet-row').length, 1)
+    assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
+    // The task board's completion bar.
+    assert.ok(text(query(m.container, '.lc-tasks-progress')).includes('0/1 done'))
+    // The comms panel opens collapsed.
+    assert.ok(text(query(m.container, '.lc-comms')).includes('Scan 3 sessions'))
+    // The network card stands alone: the boards beside it carry the agent detail.
+    assert.equal(queryAll(m.container, '.lc-inspector').length, 0)
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('hovering a member card lights its graph card; pinning sticks and rings both', async () => {
+    stubFleetRoute()
+    const ctx = new TestClientCtx({ services: { sessions: familySessions() } })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+
+    const card = queryAll(m.container, '.lc-member-card')[1]
+    await hover(card)
+    assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-hover'))
+    await click(card)
+    // The pin survives the hover leaving, and the graph card rings.
+    await hover(queryAll(m.container, '.lc-member-card')[0])
+    const node = query(m.container, '[data-agent="w1"]')
+    assert.ok(node.className.includes('lc-agent-pinned'))
+    assert.ok(!node.className.includes('lc-agent-hover'))
+    assert.ok(query(m.container, '.lc-member-pinned') !== null, 'the member card echoes the pin')
+
+    // The member's landed detail fills its card's model, and its owned task its count.
+    await until(() => text(query(m.container, '.lc-members')).includes('deepseek-v4'), 'the descriptor never landed')
+    assert.ok(text(query(m.container, '.lc-members')).includes('1 active tasks'))
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('a graph-node pick rings the card and narrows the task board to its tasks', async () => {
+    stubFleetRoute()
+    const opened = new Array<string>()
+    const ctx = new TestClientCtx({
+      services: { sessions: familySessions(), uiWorkspace: { openSession: (id: string) => { opened.push(id) } } },
+    })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+
+    // Picking a member node: the ring lands and the owner filter narrows the task board.
+    await click(query(m.container, '[data-agent="w1"]'))
+    assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
+    assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('worker-bee'))
+    assert.deepEqual([...opened], [], 'a pick never jumps')
+
+    // Picking a non-member node moves the ring and releases the owner filter.
+    await click(query(m.container, '[data-agent="w2"]'))
+    assert.ok(query(m.container, '[data-agent="w2"]').className.includes('lc-agent-pinned'))
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+
+    // Picking the pinned node again releases both.
+    await click(query(m.container, '[data-agent="w2"]'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+
+    // Unpinning a member releases its owner filter when it still points at them…
+    await click(query(m.container, '[data-agent="w1"]'))
+    assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('worker-bee'))
+    await click(query(m.container, '[data-agent="w1"]'))
+    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
+    // …but a filter the reader moved on from is left alone.
+    await click(query(m.container, '[data-agent="w1"]'))
+    await click(query(m.container, '.lc-tasks-filter'))
+    assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
+    await click(query(m.container, '[data-agent="w1"]'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
+
+    // The corner button still jumps.
+    await click(query(query(m.container, '[data-agent="w1"]'), '.lc-agent-open'))
     assert.deepEqual([...opened], ['w1'])
     await m.unmount()
     ctx.dispose()
   })
 
-
-  test('team chip, team panel, roster list, and comms panel all render off the one derivation', async () => {
+  test('a task-board owner pick toggles the pin on the graph and the member card', async () => {
     stubFleetRoute()
     const ctx = new TestClientCtx({ services: { sessions: familySessions() } })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
 
-    // The network card header carries the team chip.
-    assert.ok(text(query(m.container, '.lc-agents')).includes('team · 3 members · 1 tasks'))
-    // The team panel: roster + task board.
-    const teamCard = query(m.container, '.lc-members')
-    assert.ok(text(teamCard).includes('worker-bee'))
-    assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
-    // The roster list.
-    assert.deepEqual(queryAll(m.container, '.lc-fleet-row').length, 2)
-    // The comms panel opens collapsed.
-    assert.ok(text(query(m.container, '.lc-comms')).includes('Scan 2 sessions'))
-
-    // The inspector follows the current session and lands its fleet detail.
-    await until(() => text(query(m.container, '.lc-inspector')).includes('Main Agent'), 'inspector never followed')
-    await m.unmount()
-    ctx.dispose()
-  })
-
-  test('hovering a list row steers the inspector; pinning sticks and rings the graph card', async () => {
-    stubFleetRoute()
-    const ctx = new TestClientCtx({ services: { sessions: familySessions() } })
-    const View = makeView(ctx)
-    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
-
-    const row = queryAll(m.container, '.lc-fleet-row')[1]
-    await hover(row)
-    assert.ok(text(query(m.container, '.lc-inspector')).includes('worker-bee'))
-    await click(row)
-    // The pin survives the hover leaving, and the graph card rings.
-    await hover(queryAll(m.container, '.lc-fleet-row')[0])
-    const inspector = query(m.container, '.lc-inspector')
-    assert.ok(text(inspector).includes('worker-bee'))
-    assert.ok(inspector.hasAttribute('data-pinned'))
+    await click(query(m.container, '.lc-team-task-owner'))
     assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
-
-    // The landed detail fills the prompt and descriptor sections.
-    await until(() => text(query(m.container, '.lc-inspector')).includes('Review the schema parser.'), 'prompt never landed')
-    assert.ok(text(query(m.container, '.lc-inspector')).includes('spawn · deepseek-v4'))
-    // Team membership section with the owned task.
-    assert.ok(text(query(m.container, '.lc-inspector')).includes('schema parsing'))
-
-    // Unpin returns the inspector to the hover/current follow.
-    await click(query(m.container, '.lc-inspector-btn'))
-    assert.ok(!query(m.container, '.lc-inspector').hasAttribute('data-pinned'))
+    assert.ok(query(m.container, '.lc-member-pinned') !== null)
+    // A second pick on the same owner releases the pin.
+    await click(query(m.container, '.lc-team-task-owner'))
+    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
     await m.unmount()
     ctx.dispose()
   })
@@ -163,15 +227,43 @@ describe('FleetView — the four panels over one family', () => {
     assert.ok(text(rows[1]).includes('ghost-nine'))
     assert.ok(text(rows[2]).includes('stranger'))
 
-    // A comms peer click pins the sender into the inspector.
+    // A comms peer click pins the sender, ringing its graph card and its member card.
     await click(queryAll(rows[0], '.lc-comms-peer')[0])
-    const inspector = query(m.container, '.lc-inspector')
-    assert.ok(text(inspector).includes('Main Agent'))
-    assert.ok(inspector.hasAttribute('data-pinned'))
+    assert.ok(query(m.container, '[data-agent="root"]').className.includes('lc-agent-pinned'))
+    assert.ok(query(m.container, '.lc-member-pinned') !== null)
 
-    // Pinning a sender outside the family releases immediately instead of haunting the inspector.
+    // Pinning a sender outside the family releases instead of ringing a member that has no graph card.
     await click(queryAll(rows[1], '.lc-comms-peer')[0])
-    await until(() => !query(m.container, '.lc-inspector').hasAttribute('data-pinned'), 'the ghost pin never released')
+    await until(() => queryAll(m.container, '.lc-agent-pinned, .lc-member-pinned').length === 0, 'the ghost pin never released')
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('a fleet-detail read that serves nothing leaves the boards standing', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 503 } as Response))
+    // Fresh session ids: the page-scope read ledger carries no settled line for them.
+    const team = {
+      members: [
+        { id: 'cold-root', name: 'cold-lead', role: 'lead', phase: 'active' },
+        { id: 'cold-w1', name: 'cold-worker', role: 'teammate', phase: 'active' },
+      ],
+      tasks: [],
+    }
+    const snapshot = {
+      byId: {
+        'cold-root': { displayTitle: 'Cold Lead', running: false, updatedAt: 3, projectionValues: { agentTeam: team } },
+        'cold-w1': { parentId: 'cold-root', origin: 'subagent', running: false, updatedAt: 2, projectionValues: { subagent: { mode: 'one-shot', label: 'cold-worker' } } },
+      },
+    }
+    const ctx = new TestClientCtx({ services: { sessions: { list: { getSnapshot: () => snapshot, subscribe: () => () => {} } } } })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'cold-root', useProjection: projectionsFor(richTimeline()) }))
+
+    // The member cards stand on the projection's own roster, with no reply to join.
+    assert.ok(text(query(m.container, '.lc-members')).includes('cold-worker'))
+    // Every read lands as a null detail: the scan settles empty instead of crashing or spinning.
+    await click(query(m.container, '.lc-comms-scan'))
+    await until(() => text(query(m.container, '.lc-comms')).includes(DICT_EN['fleet.comms.empty']), 'the scan never settled')
     await m.unmount()
     ctx.dispose()
   })
@@ -193,18 +285,20 @@ describe('FleetView — the four panels over one family', () => {
     }))
     assert.ok(query(m.container, '.lc-members') !== null)
     assert.ok(query(m.container, '.lc-tasks') !== null)
-    // The duo row: both boards share the one `.lc-cols` wrapper — members left, tasks right.
-    const duo = query(m.container, '.lc-cols')
-    assert.ok(duo !== null)
-    assert.ok(duo.contains(query(m.container, '.lc-members')))
-    assert.ok(duo.contains(query(m.container, '.lc-tasks')))
-    // The lead badge lands on the roster row too.
-    assert.ok(text(query(m.container, '.lc-fleet-row-self')).includes('lead'))
+    // The cockpit row: the network on the left, the members board over the task board on the right.
+    const columns = queryAll(query(m.container, '.lc-cols'), '.lc-col')
+    assert.equal(columns.length, 2)
+    assert.ok(columns[0].contains(query(m.container, '.lc-agents')), 'the network owns the left column')
+    assert.ok(columns[1].contains(query(m.container, '.lc-members')), 'the members board heads the right column')
+    assert.ok(columns[1].contains(query(m.container, '.lc-tasks')), 'the task board sits under it')
+    // The lead badge lands on the member card.
+    const leadCard = queryAll(m.container, '.lc-member-card')[0]
+    assert.ok(text(leadCard).includes(DICT_EN['fleet.role.lead']))
     await m.unmount()
     ctx.dispose()
   })
 
-  test('a team without a family forest serves the task board alone in the duo row', async () => {
+  test('a team without a family forest serves the task board alone in the cockpit row', async () => {
     stubFleetRoute()
     // No sessions service: the forest derivation stays null, so the members board has no roster
     // to join — the viewed session's own projection still carries the team.
@@ -214,27 +308,62 @@ describe('FleetView — the four panels over one family', () => {
       sessionId: 'root',
       useProjection: projectionsFor(richTimeline(), { agentTeam: TEAM_PROJECTION }),
     }))
-    const duo = query(m.container, '.lc-cols')
-    assert.ok(duo !== null)
+    const row = query(m.container, '.lc-cols')
+    assert.ok(row !== null)
+    assert.equal(queryAll(m.container, '.lc-agents').length, 0)
     assert.equal(queryAll(m.container, '.lc-members').length, 0)
+    assert.equal(queryAll(m.container, '.lc-summary').length, 0, 'no strip without a family')
     const tasks = query(m.container, '.lc-tasks')
     assert.ok(tasks !== null)
-    assert.ok(duo.contains(tasks), 'the task board sits in the duo row')
+    assert.ok(row.contains(tasks), 'the task board sits alone in the row')
     await m.unmount()
     ctx.dispose()
   })
 
-  test('a solo session keeps the graph alone — no list, comms, or team panels', async () => {
+  test('a solo session keeps the boards up with guidance — the graph, the strip, and pointers', async () => {
     stubFleetRoute()
     const snapshot = { byId: { only: { displayTitle: 'Solo', running: false, updatedAt: 1 } } }
     const ctx = new TestClientCtx({ services: { sessions: { list: { getSnapshot: () => snapshot, subscribe: () => () => {} } } } })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'only', useProjection: projectionsFor(richTimeline()) }))
     assert.ok(query(m.container, '.lc-agents') !== null)
-    assert.equal(queryAll(m.container, '.lc-fleet-list').length, 0)
+    // The strip paints the stats but no progress bar.
+    assert.ok(query(m.container, '.lc-summary') !== null)
+    assert.equal(queryAll(m.container, '.lc-summary-progress').length, 0)
+    // The boards stay up with guidance instead of vanishing.
+    assert.ok(text(query(m.container, '.lc-members')).includes(DICT_EN['fleet.board.solo']))
+    assert.ok(text(query(m.container, '.lc-tasks')).includes(DICT_EN['fleet.tasks.noTeam']))
     assert.equal(queryAll(m.container, '.lc-comms').length, 0)
-    assert.equal(queryAll(m.container, '.lc-members').length, 0)
-    assert.equal(queryAll(m.container, '.lc-tasks').length, 0)
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('a plain subagents session: the subagent progress bar and the no-team pointer', async () => {
+    stubFleetRoute()
+    const snapshot = {
+      byId: {
+        root: { displayTitle: 'Main Agent', running: true, updatedAt: 10 },
+        w1: {
+          parentId: 'root', origin: 'subagent', running: false, updatedAt: 8,
+          projectionValues: { subagent: { mode: 'one-shot', label: 'worker-bee' }, subagentTiming: { settledMs: 42000, lastTurnCompleted: true } },
+        },
+        w2: {
+          parentId: 'root', origin: 'subagent', running: true, updatedAt: 6,
+          projectionValues: { subagent: { mode: 'continuable', label: 'side-quest' } },
+        },
+      },
+    }
+    const ctx = new TestClientCtx({ services: { sessions: { list: { getSnapshot: () => snapshot, subscribe: () => () => {} } } } })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+    // The strip's progress counts subagent completion (one of two settled).
+    const progress = query(m.container, '.lc-summary-progress')
+    assert.ok(text(progress).includes(DICT_EN['fleet.summary.subs']))
+    assert.ok(text(progress).includes('1/2'))
+    // No team: the members board lists the subagents and the task board points at the team mode.
+    assert.ok(text(query(m.container, '.lc-members')).includes(DICT_EN['fleet.board.noTeam']))
+    assert.deepEqual(queryAll(m.container, '.lc-fleet-row').length, 2)
+    assert.ok(text(query(m.container, '.lc-tasks')).includes(DICT_EN['fleet.tasks.noTeam']))
     await m.unmount()
     ctx.dispose()
   })
@@ -244,9 +373,10 @@ describe('FleetView — the four panels over one family', () => {
     const ctx = new TestClientCtx({ locale: 'zh', services: { sessions: familySessions() } })
     const View = makeFleetView(asClientCtx(ctx), makeKit('zh'), makeAgentHeads())
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+    assert.ok(text(m.container).includes(DICT_ZH['fleet.board.title']))
     assert.ok(text(m.container).includes(DICT_ZH['fleet.members.title']))
-    assert.ok(text(m.container).includes(DICT_ZH['fleet.list.title']))
     assert.ok(text(m.container).includes(DICT_ZH['fleet.comms.title']))
+    assert.ok(text(m.container).includes(DICT_ZH['fleet.summary.tasks']))
     await m.unmount()
     ctx.dispose()
   })

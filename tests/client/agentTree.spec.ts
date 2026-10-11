@@ -697,8 +697,8 @@ describe('layoutForest', () => {
     assert.equal(pointOf.get('root')?.x, SLOT)
     // One row per depth level.
     assert.equal(pointOf.get('root')?.y, 48)
-    assert.equal(pointOf.get('a')?.y, 48 + 144)
-    assert.equal(pointOf.get('g')?.y, 48 + 2 * 144)
+    assert.equal(pointOf.get('a')?.y, 48 + 168)
+    assert.equal(pointOf.get('g')?.y, 48 + 2 * 168)
     // Links exit the parent card's bottom edge and enter the child card's top edge.
     const linkG = layout.links.find(l => l.to === 'g')
     assert.ok(linkG !== undefined)
@@ -713,7 +713,7 @@ describe('layoutForest', () => {
     assert.equal(layout.links.find(l => l.to === 'b')?.color, familyHue(1))
     assert.equal(layout.links.length, 3)
     assert.equal(layout.width, 2 * SLOT)
-    assert.equal(layout.height, 48 + 2 * 144 + 104 + 24)
+    assert.equal(layout.height, 48 + 2 * 168 + 104 + 24)
   })
 
   test('responsive: a wide stage keeps the natural pitch', () => {
@@ -747,9 +747,9 @@ describe('layoutForest', () => {
     assert.equal(pointOf.get('a')?.x, 90)
     assert.equal(pointOf.get('b')?.x, 90)
     assert.equal(pointOf.get('root')?.y, 48)
-    assert.equal(pointOf.get('a')?.y, 48 + 144)
-    assert.equal(pointOf.get('b')?.y, 48 + 2 * 144)
-    assert.equal(layout.height, 48 + 2 * 144 + 104 + 24)
+    assert.equal(pointOf.get('a')?.y, 48 + 168)
+    assert.equal(pointOf.get('b')?.y, 48 + 2 * 168)
+    assert.equal(layout.height, 48 + 2 * 168 + 104 + 24)
   })
 
   test('responsive: a level too wide even at the minimum pitch wraps into bands', () => {
@@ -763,17 +763,17 @@ describe('layoutForest', () => {
     assert.equal(pointOf.get('c')?.x, 150)
     // The wrapped band is a row of its own.
     assert.equal(pointOf.get('root')?.y, 48)
-    assert.equal(pointOf.get('a')?.y, 48 + 144)
-    assert.equal(pointOf.get('c')?.y, 48 + 2 * 144)
+    assert.equal(pointOf.get('a')?.y, 48 + 168)
+    assert.equal(pointOf.get('c')?.y, 48 + 2 * 168)
     // Links still join every child, the cross-band one included.
     const linkC = layout.links.find(l => l.to === 'c')
     assert.ok(linkC !== undefined)
     assert.equal(linkC.y1, 48 + 104)
-    assert.equal(linkC.y2, 48 + 2 * 144)
+    assert.equal(linkC.y2, 48 + 2 * 168)
     assert.equal(linkC.color, familyHue(2))
     assert.equal(layout.links.find(l => l.to === 'a')?.color, familyHue(0))
     assert.equal(layout.width, 300)
-    assert.equal(layout.height, 48 + 2 * 144 + 104 + 24)
+    assert.equal(layout.height, 48 + 2 * 168 + 104 + 24)
     assert.equal(layout.cardW, 150 - 12)
   })
 
@@ -786,7 +786,7 @@ describe('layoutForest', () => {
     const pointOf = new Map(layout.points.map(p => [p.id, p]))
     assert.equal(pointOf.get('a')?.x, slot / 2)
     assert.equal(pointOf.get('c')?.x, slot / 2)
-    assert.equal(pointOf.get('d')?.y, 48 + 2 * 144)
+    assert.equal(pointOf.get('d')?.y, 48 + 2 * 168)
     assert.equal(layout.width, 400)
     assert.equal(layout.links.length, 6)
     assert.equal(layout.cardW, slot - 12)
@@ -805,16 +805,16 @@ describe('layoutForest', () => {
     ]), 320)
     const pointOf = new Map(layout.points.map(p => [p.id, p]))
     assert.equal(pointOf.get('root')?.y, 48)
-    assert.equal(pointOf.get('p1')?.y, 48 + 144)
-    assert.equal(pointOf.get('k1')?.y, 48 + 2 * 144)
-    assert.equal(pointOf.get('p3')?.y, 48 + 3 * 144)
+    assert.equal(pointOf.get('p1')?.y, 48 + 168)
+    assert.equal(pointOf.get('k1')?.y, 48 + 2 * 168)
+    assert.equal(pointOf.get('p3')?.y, 48 + 3 * 168)
     // Kinship interleave: p1's grandchildren sit between p1's band and p3's band.
     assert.ok((pointOf.get('k1')?.y as number) < (pointOf.get('p3')?.y as number))
     // Links keep their family hue through the interleave: p1's subtree is family 0, p3 is family 2.
     assert.equal(layout.links.find(l => l.to === 'k1')?.color, familyHue(0))
     assert.equal(layout.links.find(l => l.to === 'p3')?.color, familyHue(2))
     assert.equal(layout.width, 320)
-    assert.equal(layout.height, 48 + 3 * 144 + 104 + 24)
+    assert.equal(layout.height, 48 + 3 * 168 + 104 + 24)
   })
 
   test('responsive: a partially filled band flushes before an overflowing sibling group', () => {
@@ -829,10 +829,10 @@ describe('layoutForest', () => {
       ['k2b', 'p2'],
     ]), 300)
     const pointOf = new Map(layout.points.map(p => [p.id, p]))
-    assert.equal(pointOf.get('p1')?.y, 48 + 144)
-    assert.equal(pointOf.get('k1')?.y, 48 + 2 * 144)
-    assert.equal(pointOf.get('k2a')?.y, 48 + 3 * 144)
-    assert.equal(pointOf.get('k2b')?.y, 48 + 3 * 144)
+    assert.equal(pointOf.get('p1')?.y, 48 + 168)
+    assert.equal(pointOf.get('k1')?.y, 48 + 2 * 168)
+    assert.equal(pointOf.get('k2a')?.y, 48 + 3 * 168)
+    assert.equal(pointOf.get('k2b')?.y, 48 + 3 * 168)
     assert.equal(layout.links.length, 5)
     // k2a/k2b inherit p2's family hue (1), k1 inherits p1's (0).
     assert.equal(layout.links.find(l => l.to === 'k2a')?.color, familyHue(1))

@@ -50,6 +50,13 @@
   border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 55%, var(--dsw-alias-border-l2));
 }
 .lc-agent-card-head { display: flex; align-items: flex-start; gap: 6px; }
+/* Select mode (the Fleet tab): the card body highlights, this corner button keeps the jump. */
+.lc-agent-open {
+  flex: none; align-self: center; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 6px;
+  color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary));
+}
+.lc-agent-open:hover { color: var(--dsw-alias-brand-primary, var(--color-blue-500)); background: var(--dsw-alias-bg-layer-1); }
 /* The harness's own StateDot (the header popup's glyph), nudged onto the title's first line. */
 .lc-agent-state { margin-top: 2px; }
 /* Fixed two-line title box: every card's metric and bar sit at the same height,
@@ -67,13 +74,16 @@
 
 .lc-agents-solo { padding: 4px 0 10px; }
 /* The network card's split: graph left, inspector right; the `lc-card` container query folds it
-   to stacked on narrow panes (the sidebar mount's own shape). */
+   to stacked on narrow panes (the sidebar mount's own shape, and now the Fleet tab's narrower
+   network column). */
 .lc-agents-split { display: flex; gap: 10px; align-items: flex-start; }
 .lc-agents-main { flex: 1 1 0; min-width: 0; }
 /* Both classes sit on the same element: the compound selector beats the strip's margin-top. */
 .lc-agents-inspector.lc-inspector { flex: 0 0 300px; width: 300px; margin-top: 0; position: sticky; top: 8px; max-height: min(560px, 80vh); overflow-y: auto; }
 @container lc-card (max-width: 720px) {
-  .lc-agents-split { flex-direction: column; }
+  /* Stacked, the row's `flex-start` would size each item to its content and let the graph's
+     canvas spill out of the card: the folded column stretches its items instead. */
+  .lc-agents-split { flex-direction: column; align-items: stretch; }
   .lc-agents-inspector.lc-inspector { flex: none; width: 100%; position: static; max-height: none; }
 }
 .lc-agent-pinned { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 70%, var(--dsw-alias-border-l2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 35%, transparent); }

@@ -84,7 +84,7 @@ export interface AgentForest {
 }
 
 /** The card stays readable up to this many nodes; the rest folds into an overflow note. */
-export const AGENT_TREE_LIMIT = 25
+export const AGENT_TREE_LIMIT = 40
 
 /** Fixed card height — mirrored by `.lc-agent-card`'s `height` in agentGraph.css, so a link's
  * exit point (card bottom) and entry point (card top) always land on the card's edge. */
@@ -95,8 +95,9 @@ export const AGENT_CARD_H = 104
 const SLOT_MAX = 276
 const SLOT_MIN = 150
 const CARD_GUTTER = 12
-/** Vertical pitch between depth levels: card height + a dedicated 40px link channel below it. */
-const LEVEL_H = AGENT_CARD_H + 40
+/** Vertical pitch between depth levels: card height + a dedicated 64px link channel below it,
+ * tall enough for the S-curves to read as separate strands even in a wide fan-out. */
+const LEVEL_H = AGENT_CARD_H + 64
 const PAD_Y = 48
 
 export function agentRowOf(value: unknown): AgentRow | null {

@@ -354,11 +354,11 @@ describe('AgentGraph — the family tree', () => {
 
   test('overflow chip when the family exceeds the cap', async () => {
     const byId: Record<string, unknown> = { root: { displayTitle: 'Main', running: false, updatedAt: 1 } }
-    for (let i = 0; i < 30; i++) byId['kid' + i] = { parentId: 'root', updatedAt: i }
+    for (let i = 0; i < 45; i++) byId['kid' + i] = { parentId: 'root', updatedAt: i }
     const View = makeView(new FakeSessions(byId))
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.ok(text(m.container).includes('6 more not shown'))
-    assert.ok(text(m.container).includes('31 agents'))
+    assert.ok(text(m.container).includes('46 agents'))
     await m.unmount()
   })
 
@@ -503,38 +503,87 @@ describe('AgentGraph — the family tree', () => {
   })
 })
 
-describe('AgentGraph — Fleet extras', () => {
+describe('AgentGraph — the Fleet seat', () => {
   const TEAM = {
     members: [{ id: 'root', name: 'lead', role: 'lead' as const, phase: 'active' as const }],
     tasks: [],
   }
 
-  function extras(team: import('../../../src/client/fleetTeam').FleetTeam | null) {
-    return {
-      team,
-      pinnedId: 'worker',
-      onPin: () => {},
-      detailOf: () => ({ detail: null }),
-      commsOf: () => [],
-      labelOf: (id: string) => id,
-      roster: [],
-      onFocusTask: () => {},
-    }
-  }
-
-  test('the extras team surfaces the chip when the team prop is absent; an explicit null wins', async () => {
+  test('the team prop surfaces the chip while an explicit null wins; the pin rings its card', async () => {
     const face = new FakeSessions(family())
     const View = makeView(face)
-    // extras alone: the chip reads the extras team; the pinned card rings.
-    const m = await mount(h(View, { sessionId: 'root', self: selfStats(), extras: extras(TEAM) }))
+    // The Fleet tab's own derivation seat: the chip reads the passed team, the pinned card rings.
+    const m = await mount(h(View, { sessionId: 'root', self: selfStats(), team: TEAM, pinnedId: 'worker', inspector: false }))
     assert.ok(text(m.container).includes('1 members'))
     assert.ok(query(m.container, '[data-agent="worker"]').className.includes('lc-agent-pinned'))
+    assert.equal(queryAll(m.container, '.lc-inspector').length, 0, 'the Fleet seat paints the graph alone')
     await m.unmount()
 
-    // extras with a null team hides the chip.
-    const m2 = await mount(h(View, { sessionId: 'root', self: selfStats(), extras: extras(null) }))
+    // An explicit null team hides the chip; the sidebar seat keeps its preview.
+    const m2 = await mount(h(View, { sessionId: 'root', self: selfStats(), team: null }))
     assert.ok(!text(m2.container).includes('members ·'))
+    assert.ok(query(m2.container, '.lc-inspector') !== null)
     await m2.unmount()
+  })
+
+  test('select mode: a card click highlights instead of jumping; the corner button keeps the jump', async () => {
+    const face = new FakeSessions(family())
+    const View = makeView(face)
+    const selected = new Array<string>()
+    const m = await mount(h(View, {
+      sessionId: 'root',
+      self: selfStats(),
+      team: TEAM,
+      inspector: false,
+      onSelect: (id: string) => { selected.push(id) },
+    }))
+
+    // The select-mode sub names the highlight; the open-mode copy stays with the sidebar.
+    assert.ok(text(m.container).includes(DICT_EN['agents.subSelect']))
+
+    // Every card is pickable in select mode — the current one included.
+    const self = query(m.container, '.lc-agent-card.lc-agent-self')
+    assert.equal(self.getAttribute('role'), 'button')
+    await click(self)
+    // The current card never carries the corner jump.
+    assert.equal(self.querySelector('.lc-agent-open'), null)
+
+    const worker = query(m.container, '[data-agent="worker"]')
+    await click(worker)
+    assert.deepEqual([...selected], ['root', 'worker'])
+    assert.deepEqual(face.opened, [], 'a pick never jumps')
+
+    // The corner button jumps without disturbing the selection.
+    await click(query(worker, '.lc-agent-open'))
+    assert.deepEqual(face.opened, ['worker'])
+    assert.deepEqual([...selected], ['root', 'worker'])
+
+    // Enter selects; an unrelated key is inert.
+    await act(async () => {
+      query(m.container, '[data-agent="done"]').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+      )
+    })
+    await act(async () => {
+      query(m.container, '[data-agent="done"]').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true }),
+      )
+    })
+    assert.deepEqual([...selected], ['root', 'worker', 'done'])
+    assert.deepEqual(face.opened, ['worker'])
+    await m.unmount()
+  })
+
+  test('open mode (the sidebar seat) keeps the jump copy and the inert current card', async () => {
+    const face = new FakeSessions(family())
+    const View = makeView(face)
+    const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
+    assert.ok(text(m.container).includes(DICT_EN['agents.sub']))
+    assert.equal(query(m.container, '.lc-agent-card.lc-agent-self').getAttribute('role'), null)
+    assert.equal(queryAll(m.container, '.lc-agent-open').length, 0)
+    await click(query(m.container, '[data-agent="worker"]'))
+    assert.deepEqual(face.opened, ['worker'])
+    await m.unmount()
   })
 })
 

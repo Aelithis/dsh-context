@@ -1,5 +1,6 @@
-// MemberBoard — the team roster as full cards: identity, status, model, duty description, latest
-// reply, and the owner-filter interlock with the task board.
+// MemberBoard — every family agent in one panel: the team roster as full cards (identity, status,
+// model, duty, latest reply, owner-filter interlock), the other agents as compact rows, and the
+// toolbar (search / status / sort) steering both sections, down to the no-team and solo guidance.
 
 import { act, createElement as h, type ReactElement } from 'react'
 import assert from 'node:assert/strict'
@@ -12,6 +13,22 @@ import { DICT_EN } from '../../../src/client/i18n'
 import { click, hover, makeKit, mount, query, queryAll, text, unhover } from '../helpers/kit'
 
 const kit = makeKit()
+
+/** React's controlled input needs the native setter for the change to register. */
+async function typeIn(input: HTMLInputElement, value: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+/** A controlled select flips through the same native-setter idiom. */
+async function selectIn(select: HTMLSelectElement, value: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(select, value)
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+}
 
 function nodeOf(id: string, over: Partial<AgentNode> = {}): AgentNode {
   return {
@@ -26,6 +43,9 @@ const FOREST: AgentForest = {
     nodeOf('root', { isCurrent: true, running: true, model: 'deepseek-v4' }),
     nodeOf('w1', { running: true }),
     nodeOf('w2'),
+    nodeOf('s1', { label: 'scout', running: true, model: 'deepseek-flash', head: { tokens: 800, window: 1000, pct: 80, parts: [] }, requests: 5, durationMs: 42000, updatedAt: 8 }),
+    nodeOf('s2', { label: 'archivist', completed: true, head: { tokens: 200, window: 1000, pct: 20, parts: [] }, requests: 1, durationMs: 9000, updatedAt: 6 }),
+    nodeOf('s3', { label: 'lounger', updatedAt: 4 }),
   ],
   edges: [],
   overflow: 0,
@@ -69,11 +89,12 @@ function propsOf(over: Partial<MemberBoardProps> = {}): MemberBoardProps {
     ownerFilter: null,
     onOwnerFilter: () => {},
     t: kit.t,
+    fmt: kit.fmt,
     ...over,
   }
 }
 
-describe('MemberBoard', () => {
+describe('MemberBoard — team cards', () => {
   test('cards render identity, status, duty, model, reply, and task counts', async () => {
     const details = new Map<string, { detail: FleetDetail | null }>([
       ['w1', { detail: { lastReply: { time: 100, text: 'schema parser landed' }, messages: [], truncated: false } }],
@@ -205,6 +226,142 @@ describe('MemberBoard', () => {
     assert.equal(queryAll(cards[1], '.lc-member-desc').length, 0)
     // Members without a forest node get no open button.
     assert.equal(queryAll(m.container, '.lc-member-open').length, 0)
+    await m.unmount()
+  })
+})
+
+describe('MemberBoard — the other-agents rows', () => {
+  function rowLabels(container: HTMLElement): string[] {
+    return queryAll(container, '.lc-fleet-row-label').map(el => el.textContent ?? '')
+  }
+
+  test('non-member family agents list as compact rows with meta, pct, and the open jump', async () => {
+    const pins = new Array<string | null>()
+    const opened: string[] = []
+    const hovers: (string | null)[] = []
+    const m = await mount(h(MemberBoard, propsOf({
+      onPin: id => { pins.push(id) },
+      onOpen: id => { opened.push(id) },
+      onHover: id => { hovers.push(id) },
+    })))
+    // The section head, then one row per plain subagent — the current session and team members stay out.
+    assert.ok(text(m.container).includes(DICT_EN['fleet.board.others']))
+    assert.deepEqual(rowLabels(m.container), ['scout', 'archivist', 'lounger'])
+    const rows = queryAll(m.container, '.lc-fleet-row')
+    assert.ok(text(rows[0]).includes('800 · deepseek-flash · 42s · 5 steps'))
+    assert.ok(text(rows[0]).includes('80%'))
+    assert.equal(query(rows[2], '.lc-fleet-row-meta').textContent, '', 'a stat-less row carries no meta')
+    assert.equal(queryAll(rows[2], '.lc-fleet-dot-idle').length, 1, 'the idle row wears the placeholder dot')
+
+    await hover(rows[0])
+    await click(rows[0])
+    await unhover(rows[0])
+    assert.deepEqual([...pins], ['s1'])
+    assert.deepEqual(hovers, ['s1', null])
+    await click(query(rows[0], '.lc-fleet-row-open'))
+    assert.deepEqual(opened, ['s1'])
+    assert.deepEqual([...pins], ['s1'], 'open never pins')
+
+    // Keyboard: Enter pins, Space releases, an unrelated key is inert.
+    await act(async () => { rows[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    await act(async () => { rows[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })) })
+    assert.deepEqual([...pins], ['s1', 's1'])
+    await m.unmount()
+
+    // The pinned row rings; a re-click releases, and so does the Space key.
+    const again = new Array<string | null>()
+    const m2 = await mount(h(MemberBoard, propsOf({ pinnedId: 's1', onPin: id => { again.push(id) } })))
+    const pinnedRow = queryAll(m2.container, '.lc-fleet-row')[0]
+    assert.ok(pinnedRow.className.includes('lc-fleet-row-pinned'))
+    await click(pinnedRow)
+    await act(async () => { pinnedRow.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })) })
+    assert.deepEqual([...again], [null, null])
+    await m2.unmount()
+  })
+
+  test('the toolbar searches, filters by status, and sorts — across both sections', async () => {
+    const m = await mount(h(MemberBoard, propsOf()))
+    // Status filter: running keeps the running members' cards and the running subagent's row.
+    const filters = queryAll(m.container, '.lc-fleet-filters .lc-gran-btn')
+    await click(filters[1])
+    assert.deepEqual(queryAll(m.container, '.lc-member-card').map(c => text(query(c, '.lc-member-name'))), ['lead', 'worker-bee'])
+    assert.deepEqual(rowLabels(m.container), ['scout'])
+    await click(filters[2])
+    assert.deepEqual(rowLabels(m.container), ['archivist'])
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 0, 'no member node is done')
+    await click(filters[3])
+    assert.deepEqual(rowLabels(m.container), ['lounger'])
+    await click(filters[0])
+
+    // Sort by context tokens: 800 ahead of 200 ahead of the headless idler.
+    await selectIn(query(m.container, '.lc-fleet-sort'), 'tokens')
+    assert.deepEqual(rowLabels(m.container), ['scout', 'archivist', 'lounger'])
+    // (Spawn order coincides here; the reverse fixture order proves the sort.)
+    await m.unmount()
+
+    // A headless idler mid-list exercises the sorters' null-head arms on both sides.
+    const flipped: AgentForest = { ...FOREST, nodes: [FOREST.nodes[0], FOREST.nodes[1], FOREST.nodes[2], FOREST.nodes[3], FOREST.nodes[5], FOREST.nodes[4]] }
+    const m2 = await mount(h(MemberBoard, propsOf({ forest: flipped })))
+    assert.deepEqual(rowLabels(m2.container), ['scout', 'lounger', 'archivist'], 'spawn order follows the forest')
+    await selectIn(query(m2.container, '.lc-fleet-sort'), 'tokens')
+    assert.deepEqual(rowLabels(m2.container), ['scout', 'archivist', 'lounger'])
+    await selectIn(query(m2.container, '.lc-fleet-sort'), 'duration')
+    assert.deepEqual(rowLabels(m2.container), ['scout', 'archivist', 'lounger'])
+    await selectIn(query(m2.container, '.lc-fleet-sort'), 'steps')
+    assert.deepEqual(rowLabels(m2.container), ['scout', 'archivist', 'lounger'])
+    await selectIn(query(m2.container, '.lc-fleet-sort'), 'recent')
+    assert.deepEqual(rowLabels(m2.container), ['scout', 'archivist', 'lounger'])
+    await m2.unmount()
+  })
+
+  test('search narrows both sections; a dead end names it', async () => {
+    const m = await mount(h(MemberBoard, propsOf()))
+    await typeIn(query(m.container, '.lc-fleet-search'), 'worker')
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 1)
+    assert.equal(queryAll(m.container, '.lc-fleet-row').length, 0)
+    await typeIn(query(m.container, '.lc-fleet-search'), 'zzz-no-match')
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 0)
+    assert.ok(text(m.container).includes(DICT_EN['fleet.list.empty']))
+    await m.unmount()
+  })
+})
+
+describe('MemberBoard — guidance states', () => {
+  test('no team: the note names the mode and the family rows still list', async () => {
+    const m = await mount(h(MemberBoard, propsOf({ team: null })))
+    assert.ok(text(m.container).includes(DICT_EN['fleet.board.noTeam']))
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 0)
+    // Without a roster every non-current node is an "other agent".
+    assert.deepEqual(
+      queryAll(m.container, '.lc-fleet-row-label').map(el => el.textContent),
+      ['w1', 'w2', 'scout', 'archivist', 'lounger'],
+    )
+    await m.unmount()
+  })
+
+  test('solo without a team: the panel points at the subagent tool and skips the toolbar', async () => {
+    const solo: AgentForest = { nodes: [nodeOf('root', { isCurrent: true })], edges: [], overflow: 0, solo: true }
+    const m = await mount(h(MemberBoard, propsOf({ team: null, forest: solo })))
+    assert.ok(text(m.container).includes(DICT_EN['fleet.board.solo']))
+    assert.equal(queryAll(m.container, '.lc-fleet-toolbar').length, 0)
+    assert.equal(queryAll(m.container, '.lc-fleet-row').length, 0)
+    await m.unmount()
+  })
+
+  test('a one-member team over a solo forest skips the toolbar too', async () => {
+    const solo: AgentForest = { nodes: [nodeOf('root', { isCurrent: true })], edges: [], overflow: 0, solo: true }
+    const team: FleetTeam = { members: [{ id: 'root', name: 'lead', role: 'lead', phase: 'active' }], tasks: [] }
+    const m = await mount(h(MemberBoard, propsOf({ team, forest: solo })))
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 1, 'the lead card stands')
+    assert.equal(queryAll(m.container, '.lc-fleet-toolbar').length, 0)
+    await m.unmount()
+  })
+
+  test('a team whose members all filtered out hides the section but keeps the rows', async () => {
+    const m = await mount(h(MemberBoard, propsOf()))
+    await typeIn(query(m.container, '.lc-fleet-search'), 'scout')
+    assert.equal(queryAll(m.container, '.lc-member-card').length, 0)
+    assert.equal(queryAll(m.container, '.lc-fleet-row').length, 1)
     await m.unmount()
   })
 })
