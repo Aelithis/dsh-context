@@ -86,6 +86,14 @@
   .lc-agents-split { flex-direction: column; align-items: stretch; }
   .lc-agents-inspector.lc-inspector { flex: none; width: 100%; position: static; max-height: none; }
 }
+
+/* The Fleet tab's cockpit row: the network card stretches to the boards column's full height
+   (members + tasks), so the row reads as one level band — the browser view's lc-col-browser
+   idiom. Wrapped onto its own line (narrow pane) the column holds only this card, so the
+   stretch is a no-op and nothing balloons. Content stays top-aligned: centering would push the
+   canvas below the fold whenever the boards run tall. */
+.lc-col-graph { display: flex; flex-direction: column; }
+.lc-col-graph > .lc-card { flex: 1; }
 .lc-agent-pinned { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 70%, var(--dsw-alias-border-l2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 35%, transparent); }
 .lc-agents-chip-team { color: var(--dsw-alias-brand-primary, var(--color-blue-500)); border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 40%, transparent); }
 .lc-inspector[data-pinned] { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 45%, var(--dsw-alias-border-l2)); }
