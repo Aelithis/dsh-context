@@ -158,34 +158,36 @@ export function makeFleetView(
             onFocusTask: setFocusTaskId,
           }}
         />
-        {team !== null && forest !== null
-          ? (
-            <MemberBoard
-              team={team}
-              forest={forest}
-              leadDetail={leadDetail}
-              detailOf={id => details.landed.get(id)}
-              pinnedId={pinnedId}
-              onPin={setPinnedId}
-              onHover={setHoverId}
-              onOpen={open}
-              ownerFilter={ownerFilter}
-              onOwnerFilter={setOwnerFilter}
-              t={t}
-            />
-          )
-          : null}
         {team !== null
           ? (
-            <TaskBoard
-              team={team}
-              ownerFilter={ownerFilter}
-              onOwnerFilter={setOwnerFilter}
-              focusTaskId={focusTaskId}
-              onFocusTask={setFocusTaskId}
-              onPinMember={setPinnedId}
-              t={t}
-            />
+            <div className="lc-cols">
+              {forest !== null
+                ? (
+                  <MemberBoard
+                    team={team}
+                    forest={forest}
+                    leadDetail={leadDetail}
+                    detailOf={id => details.landed.get(id)}
+                    pinnedId={pinnedId}
+                    onPin={setPinnedId}
+                    onHover={setHoverId}
+                    onOpen={open}
+                    ownerFilter={ownerFilter}
+                    onOwnerFilter={setOwnerFilter}
+                    t={t}
+                  />
+                )
+                : null}
+              <TaskBoard
+                team={team}
+                ownerFilter={ownerFilter}
+                onOwnerFilter={setOwnerFilter}
+                focusTaskId={focusTaskId}
+                onFocusTask={setFocusTaskId}
+                onPinMember={setPinnedId}
+                t={t}
+              />
+            </div>
           )
           : null}
         {forest !== null && !forest.solo

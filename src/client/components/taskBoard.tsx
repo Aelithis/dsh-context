@@ -76,7 +76,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
   }
 
   return (
-    <div className="lc-card lc-tasks" ref={boardRef}>
+    <div className="lc-card lc-tasks flex-1 min-w-[min(360px,100%)]" ref={boardRef}>
       <div className="lc-card-title">
         <span className="lc-card-title-text">
           <IconChecklistOutlineRegular size={14} />

@@ -193,8 +193,33 @@ describe('FleetView — the four panels over one family', () => {
     }))
     assert.ok(query(m.container, '.lc-members') !== null)
     assert.ok(query(m.container, '.lc-tasks') !== null)
+    // The duo row: both boards share the one `.lc-cols` wrapper — members left, tasks right.
+    const duo = query(m.container, '.lc-cols')
+    assert.ok(duo !== null)
+    assert.ok(duo.contains(query(m.container, '.lc-members')))
+    assert.ok(duo.contains(query(m.container, '.lc-tasks')))
     // The lead badge lands on the roster row too.
     assert.ok(text(query(m.container, '.lc-fleet-row-self')).includes('lead'))
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('a team without a family forest serves the task board alone in the duo row', async () => {
+    stubFleetRoute()
+    // No sessions service: the forest derivation stays null, so the members board has no roster
+    // to join — the viewed session's own projection still carries the team.
+    const ctx = new TestClientCtx({ services: {} })
+    const View = makeView(ctx)
+    const m = await mount(h(View, {
+      sessionId: 'root',
+      useProjection: projectionsFor(richTimeline(), { agentTeam: TEAM_PROJECTION }),
+    }))
+    const duo = query(m.container, '.lc-cols')
+    assert.ok(duo !== null)
+    assert.equal(queryAll(m.container, '.lc-members').length, 0)
+    const tasks = query(m.container, '.lc-tasks')
+    assert.ok(tasks !== null)
+    assert.ok(duo.contains(tasks), 'the task board sits in the duo row')
     await m.unmount()
     ctx.dispose()
   })

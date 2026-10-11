@@ -46,7 +46,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
   for (const info of props.leadDetail?.roster ?? []) roster.set(info.name, info)
 
   return (
-    <div className="lc-card lc-members">      <div className="lc-card-title">
+    <div className="lc-card lc-members flex-1 min-w-[min(360px,100%)]">      <div className="lc-card-title">
       <span className="lc-card-title-text">
         <IconUsersOutlineRegular size={14} />
         {t('fleet.members.title')}
