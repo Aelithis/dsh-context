@@ -32,7 +32,7 @@ function ParamRow(props: {
   )
 }
 
-function Section(props: {
+export function Section(props: {
   label: string
   labelClass?: string
   /** Fold the head's trailing group onto a second line under width pressure (rich-text heads; the call-name head must stay one-line). */

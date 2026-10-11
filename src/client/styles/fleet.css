@@ -96,7 +96,14 @@
 .lc-team-task-subject-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .lc-team-task-owner { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--dsw-alias-brand-primary, var(--color-blue-500)); cursor: pointer; }
 .lc-team-task-desc { margin-top: 5px; font-size: 11.5px; line-height: 1.45; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.lc-team-task-desc-open { display: block; overflow: visible; }
+/* The collapsed description renders through the detail sections' Markdown body, flattened into
+   the row: no section padding or inner scroll — the clamp does the folding. The container's
+   pre-wrap is reset: markdown source whitespace is the renderer's business. */
+.lc-team-task-desc .lc-ts-desc-md { padding: 0; max-height: none; overflow: visible; white-space: normal; }
+/* The opened card's boxed sections (context tab's own chrome) sit inset on the row: one layer up,
+   one gap apart. */
+.lc-team-task .lc-ts-card { margin-top: 7px; background: var(--dsw-alias-bg-layer-1); }
+.lc-team-task-box-agent { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 7px 10px; font-size: 11.5px; }
 /* The dependency line: each blocker chip carries the blocker's own status dot, so "who waits on
    whom, and is it done" never needs a second look. */
 .lc-team-task-deps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; font-size: 10.5px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }

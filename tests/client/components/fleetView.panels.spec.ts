@@ -169,21 +169,21 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('worker-bee'))
     assert.deepEqual([...opened], [], 'a pick never jumps')
 
-    // A row pick on the narrowed board releases the pin and the narrowing together.
+    // A row pick on the narrowed board unfolds the card; the pin and the narrowing stay.
     await click(query(m.container, '[data-task="task-1"]'))
+    assert.ok(query(m.container, '[data-task="task-1"] .lc-ts-card') !== null, 'the opened card boxes up')
+    assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
+
+    // The band head's pick releases the pin and the narrowing together.
+    await click(query(m.container, '.lc-tasks-group-head .lc-team-task-owner'))
     assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
     assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
 
-    // A row release with the filter already moved on from leaves it alone.
-    await click(query(m.container, '[data-agent="w1"]'))
-    await click(query(m.container, '.lc-tasks-filter'))
-    await click(query(m.container, '[data-task="task-1"]'))
-    assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
-    assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
-
-    // A delegation row release pairs the same way, by session id.
+    // …and the delegation row pairs by session id through its opened agent box.
     await click(query(m.container, '[data-agent="w2"]'))
+    assert.ok(text(query(m.container, '.lc-tasks-filter')).includes('side-quest'), 'the chip names the subagent, not its id')
     await click(query(m.container, '[data-task="w2"]'))
+    await click(query(m.container, '[data-task="w2"] .lc-team-task-box-agent .lc-team-task-owner'))
     assert.equal(queryAll(m.container, '.lc-agent-pinned').length, 0)
     assert.equal(queryAll(m.container, '.lc-tasks-filter').length, 0)
 

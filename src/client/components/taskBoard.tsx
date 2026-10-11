@@ -5,17 +5,21 @@
  * subject, the session state is the status, the run's live figures ride the row). Rows group
  * under their owner — team members in roster order, subagents in spawn order, the unowned pool
  * last — so the board reads agent-first, like the members board beside it. The toolbar's search
- * and status filter steer the whole board; a graph-node or member-card pick narrows it to that
- * agent, a row pick rings its owner, and a blocker pick flashes the row and lights its whole
+ * and status filter steer the whole board; opening a row unfolds its description and the
+ * owner's final report-back as Markdown; a blocker pick flashes the row and lights its whole
  * prerequisite chain.
  */
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactElement } from 'react'
 import { IconChecklistOutlineRegular, IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
 import { familyHue, pressureColorOf } from '../agentTree'
+import { fmtTime } from '../format'
 import { familyOthersOf, memberIdByName, type FleetTeam, type FleetTeamTask } from '../fleetTeam'
+import type { FleetDetail } from '../../shared/types'
+import { Section } from './browserToolCard'
 import { BRAND_HUE, memberStyle, runMetaOf } from './memberBoard'
+import type { RichKit } from './richText'
 import type { ViewKit } from '../viewkit'
 
 export interface TaskBoardProps {
@@ -23,6 +27,8 @@ export interface TaskBoardProps {
   team: FleetTeam | null
   /** The family forest; null (not landed yet) boards the team's tasks alone. */
   forest: AgentForest | null
+  /** Landed details keyed by session id — a delegation's briefing prompt and the final report-back ride them. */
+  detailOf: (id: string) => { detail: FleetDetail | null } | undefined
   /** The picked owner narrowing the board: a membership NAME, or a subagent's session id. */
   ownerFilter: string | null
   onOwnerFilter: (key: string | null) => void
@@ -32,6 +38,8 @@ export interface TaskBoardProps {
   onPinMember: (id: string | null) => void
   /** Row hovers steer the graph's lineage focus toward the task's owner. */
   onHoverMember: (id: string | null) => void
+  /** The shared rich-text face: descriptions and report-backs render as Markdown. */
+  rich: RichKit
   t: ViewKit['t']
   fmt: ViewKit['fmt']
 }
@@ -91,6 +99,26 @@ function orderRows(rows: WorkRow[]): WorkRow[] {
       : rows.filter(row => row.status === key))
 }
 
+/** The Markdown body, memoized on (rich, text): a board-wide hover re-render never re-parses. */
+const MarkdownBody = memo(function MarkdownBody(props: { rich: RichKit; text: string }): ReactElement {
+  return <props.rich.RichText text={props.text} mode="md" />
+})
+
+/** One boxed section of an opened task card — the context tab's own section chrome, with the
+ * raw/Markdown switch at the head's right. Markdown is the default; the raw source is one click away. */
+function TaskTextSection(props: { label: string; text: string; rich: RichKit; meta?: ReactElement }): ReactElement {
+  const [mode, setMode] = props.rich.useRichMode()
+  return (
+    <Section
+      label={props.label}
+      actions={<props.rich.RichSwitch mode={mode} onPick={setMode} />}
+      meta={props.meta}
+    >
+      <props.rich.RichText text={props.text} mode={mode} />
+    </Section>
+  )
+}
+
 /** A group of rows under one owner; `label: null` is the unowned pool. A `stray` owner never
  * served on the roster — it keeps its own band, but no icon and no pin target. Agent groups
  * render headless: the single delegation row IS the agent (its family hue rides the row icon). */
@@ -105,7 +133,7 @@ interface OwnerGroup {
 }
 
 export function TaskBoard(props: TaskBoardProps): ReactElement {
-  const { team, forest, t, fmt } = props
+  const { team, forest, rich, t, fmt } = props
   /** Task ids with their description unfolded. */
   const [openTasks, setOpenTasks] = useState<ReadonlySet<string>>(new Set())
   const [query, setQuery] = useState('')
@@ -259,21 +287,89 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     props.onHoverMember(ownerSessionId(row) ?? null)
   }
 
-  /** A row pick pins the owner; picks landing on the row's own buttons keep their behavior. */
+  /** A row pick unfolds the card (description + final report-back); picks landing on the row's
+   * own buttons and links keep their behavior. */
   const rowClick = (row: WorkRow) => (ev: MouseEvent) => {
-    if ((ev.target as HTMLElement).closest('button') !== null) return
-    pickOwner(row)
+    const target = ev.target as HTMLElement
+    if (target.closest('button') !== null || target.closest('a') !== null) return
+    toggleOpen(row.key)
+  }
+
+  /** Keyboard mirrors the pick — on the ROW itself only: Enter on a nested button must keep
+   * activating that button, never fold the card out from under it. */
+  const rowKeyDown = (row: WorkRow) => (ev: ReactKeyboardEvent) => {
+    if (ev.target !== ev.currentTarget) return
+    if (ev.key !== 'Enter' && ev.key !== ' ') return
+    ev.preventDefault()
+    toggleOpen(row.key)
+  }
+
+  /** The opened card's boxed sections: the brief, the agent, and the final report-back — the
+   * owner's (or the subagent's) own latest words for the work. */
+  const renderOpenSections = (row: WorkRow, hue: string, desc: string | undefined): ReactElement => {
+    const ownerId = ownerSessionId(row)
+    const reply = ownerId !== undefined ? props.detailOf(ownerId)?.detail?.lastReply : undefined
+    const replyStamp = reply !== undefined ? <span className="lc-ts-card-meta">{fmtTime(reply.time)}</span> : undefined
+    return (
+      <>
+        {desc !== undefined && desc !== '' ? (
+          <TaskTextSection label={t('fleet.tasks.desc')} text={desc} rich={rich} />
+        ) : null}
+        {renderAgentBox(row, hue)}
+        {reply !== undefined ? (
+          <TaskTextSection label={t('fleet.tasks.reply')} text={reply.text} rich={rich} meta={replyStamp} />
+        ) : null}
+      </>
+    )
+  }
+
+  /** The opened card's agent box: who owns the work, at a glance — a pick on the name pins them. */
+  const renderAgentBox = (row: WorkRow, hue: string): ReactElement | null => {
+    const id = ownerSessionId(row)
+    if (id === undefined) return null
+    const node = forest?.nodes.find(n => n.id === id)
+    return (
+      <Section label={t('fleet.tasks.agent')}>
+        <div className="lc-team-task-box-agent">
+          <span className="lc-member-icon lc-tasks-row-icon" style={memberStyle(hue)}>
+            <IconUserOutlineRegular size={13} />
+          </span>
+          <button
+            type="button"
+            className="lc-team-task-owner"
+            title={t('fleet.tasks.ownerTip')}
+            onClick={() => { props.onPinMember(id) }}
+          >
+            {row.ownerLabel}
+          </button>
+          {node?.model !== undefined ? <span className="lc-member-model">{node.model}</span> : null}
+          {node !== undefined ? (
+            <span className="lc-agents-badge">
+              {node.running ? t('agents.running') : node.completed ? t('fleet.filter.done') : t('fleet.memberInactive')}
+            </span>
+          ) : null}
+        </div>
+      </Section>
+    )
   }
 
   const renderAgentRow = (row: WorkRow, hue: string): ReactElement => {
     const node = row.node as AgentNode
     const { bits, pct } = runMetaOf(node, t, fmt)
+    // The delegation's briefing prompt is the task's description; the opened row adds the
+    // subagent's final report-back. Both render as Markdown, clamped to two lines when closed.
+    const prompt = props.detailOf(node.id)?.detail?.initialPrompt
+    const open = openTasks.has(row.key)
     return (
       <li
         key={row.key}
         className={'lc-team-task' + (props.focusTaskId === row.key ? ' lc-team-task-focus' : '')}
         data-task={row.key}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
         onClick={rowClick(row)}
+        onKeyDown={rowKeyDown(row)}
         onMouseEnter={() => { hoverOwner(row) }}
         onMouseLeave={() => { hoverOwner(null) }}
       >
@@ -288,6 +384,13 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           <b className="lc-team-task-subject lc-team-task-subject-clamp" title={`${row.subject} · ${node.id}`}>{row.subject}</b>
           <span className="lc-agents-badge">{t(`fleet.task.${row.status}`)}</span>
         </div>
+        {open ? (
+          renderOpenSections(row, hue, prompt)
+        ) : prompt !== undefined && prompt !== '' ? (
+          <div className="lc-team-task-desc">
+            <MarkdownBody rich={rich} text={prompt} />
+          </div>
+        ) : null}
         {bits.length > 0 || pct !== null ? (
           <div className="lc-team-task-run">
             <span className="lc-team-task-run-text" title={bits.join(' · ')}>{bits.join(' · ')}</span>
@@ -298,8 +401,9 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     )
   }
 
-  const renderTeamRow = (row: WorkRow): ReactElement => {
+  const renderTeamRow = (row: WorkRow, hue: string): ReactElement => {
     const task = row.teamTask as FleetTeamTask
+    const open = openTasks.has(task.id)
     return (
       <li
         key={row.key}
@@ -309,7 +413,11 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           + (chain?.has(task.id) === true ? ' lc-team-task-chain' : '')
         }
         data-task={task.id}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
         onClick={rowClick(row)}
+        onKeyDown={rowKeyDown(row)}
         onMouseEnter={() => { hoverOwner(row) }}
         onMouseLeave={() => { hoverOwner(null) }}
       >
@@ -334,9 +442,11 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
             </button>
           ) : <span className="lc-agents-badge">{t('fleet.taskUnowned')}</span>}
         </div>
-        {task.description !== '' ? (
-          <div className={'lc-team-task-desc' + (openTasks.has(task.id) ? ' lc-team-task-desc-open' : '')}>
-            {task.description}
+        {open ? (
+          renderOpenSections(row, hue, task.description === '' ? undefined : task.description)
+        ) : task.description !== '' ? (
+          <div className="lc-team-task-desc">
+            <MarkdownBody rich={rich} text={task.description} />
           </div>
         ) : null}
         {task.blockedBy.length > 0 ? (
@@ -363,11 +473,6 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           <span className="lc-team-task-id">{task.id}</span>
           {task.writeScopes.length > 0 ? (
             <span className="lc-team-task-scopes">{t('fleet.taskScopes')} {task.writeScopes.join(', ')}</span>
-          ) : null}
-          {task.description !== '' ? (
-            <button type="button" className="lc-inspector-btn" onClick={() => { toggleOpen(task.id) }}>
-              {t(openTasks.has(task.id) ? 'fleet.collapse' : 'fleet.expand')}
-            </button>
           ) : null}
         </div>
         {task.warnings.length > 0 ? (
@@ -406,7 +511,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
         </div>
       ) : null}
       <ul className="lc-tasks-rows">
-        {group.rows.map(row => (row.kind === 'team' ? renderTeamRow(row) : renderAgentRow(row, group.hue)))}
+        {group.rows.map(row => (row.kind === 'team' ? renderTeamRow(row, group.hue) : renderAgentRow(row, group.hue)))}
       </ul>
     </div>
   )

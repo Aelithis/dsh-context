@@ -8,12 +8,15 @@ import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { TaskBoard, type TaskBoardProps } from '../../../src/client/components/taskBoard'
+import { makeRichText } from '../../../src/client/components/richText'
 import type { AgentForest, AgentNode } from '../../../src/client/agentTree'
 import type { FleetTeam } from '../../../src/client/fleetTeam'
+import type { FleetDetail } from '../../../src/shared/types'
 import { DICT_EN } from '../../../src/client/i18n'
 import { click, hover, makeKit, mount, query, queryAll, text, unhover } from '../helpers/kit'
 
 const kit = makeKit()
+const rich = makeRichText(kit)
 
 /** React's controlled input needs the native setter for the change to register. */
 async function typeIn(input: HTMLInputElement, value: string): Promise<void> {
@@ -53,7 +56,7 @@ const FOREST: AgentForest = {
   nodes: [
     nodeOf('root', { isCurrent: true, depth: 0 }),
     // A running delegation with live figures; a settled one; an idler that never ran.
-    nodeOf('s1', { label: 'scout the edges', running: true, head: { tokens: 800, window: 1000, pct: 80, parts: [] }, requests: 5, durationMs: 42000, updatedAt: 8 }),
+    nodeOf('s1', { label: 'scout the edges', running: true, model: 'deepseek-flash', head: { tokens: 800, window: 1000, pct: 80, parts: [] }, requests: 5, durationMs: 42000, updatedAt: 8 }),
     nodeOf('s2', { label: 'archive the wins', completed: true, head: { tokens: 200, window: 1000, pct: 20, parts: [] }, requests: 1, durationMs: 9000, updatedAt: 6 }),
     nodeOf('s3', { label: 'idle helper', updatedAt: 4 }),
   ],
@@ -66,6 +69,7 @@ function propsOf(over: Partial<TaskBoardProps> = {}): TaskBoardProps {
   return {
     team: teamOf(),
     forest: FOREST,
+    detailOf: () => undefined,
     ownerFilter: null,
     onOwnerFilter: () => {},
     focusTaskId: null,
@@ -74,6 +78,7 @@ function propsOf(over: Partial<TaskBoardProps> = {}): TaskBoardProps {
     onHoverMember: () => {},
     t: kit.t,
     fmt: kit.fmt,
+    rich,
     ...over,
   }
 }
@@ -110,11 +115,51 @@ describe('TaskBoard — the owner-grouped board', () => {
     await m.unmount()
   })
 
-  test('a row pick pins the owner and a row hover lights them; the row’s own buttons stay theirs', async () => {
+  test('a landed briefing boards as the delegation’s description; opening boxes it up', async () => {
+    const details = new Map<string, { detail: FleetDetail | null }>([
+      ['s1', { detail: { initialPrompt: 'Explore the edges of the map and report back.', lastReply: { time: 1_700_000_000_000, text: '**Edges mapped** — nothing beyond the ridge.' }, messages: [], truncated: false } }],
+      ['s2', { detail: { initialPrompt: '', messages: [], truncated: false } }],
+      ['s3', { detail: null }],
+    ])
+    const m = await mount(h(TaskBoard, propsOf({ detailOf: id => details.get(id) })))
+    // Closed: the briefing clamps into the row, no boxes.
+    assert.equal(queryAll(m.container, '[data-task="s1"] .lc-team-task-desc').length, 1)
+    assert.equal(queryAll(m.container, '[data-task="s1"] .lc-ts-card').length, 0)
+    // Opened: the boxed sections — brief, agent, final reply.
+    await click(query(m.container, '[data-task="s1"]'))
+    const boxes = queryAll(m.container, '[data-task="s1"] .lc-ts-card')
+    assert.equal(boxes.length, 3)
+    assert.ok(text(boxes[0]).includes('Explore the edges of the map'))
+    assert.ok(text(boxes[1]).includes('scout the edges'))
+    assert.ok(text(boxes[2]).includes('Edges mapped'))
+    assert.ok(text(boxes[2]).includes(DICT_EN['fleet.tasks.reply']))
+    // The head's switch flips the body to the raw source and back.
+    await click(query(boxes[0], '.lc-gran-btn'))
+    assert.ok(query(boxes[0], '.lc-ts-lines') !== null)
+    await click(queryAll(boxes[0], '.lc-gran-btn')[1])
+    assert.equal(queryAll(boxes[0], '.lc-ts-lines').length, 0)
+    // A second pick folds the card back.
+    await click(query(m.container, '[data-task="s1"]'))
+    assert.equal(queryAll(m.container, '[data-task="s1"] .lc-ts-card').length, 0)
+    // An empty briefing and a settled-empty detail board no description box.
+    await click(query(m.container, '[data-task="s2"]'))
+    assert.equal(queryAll(m.container, '[data-task="s2"] .lc-team-task-desc').length, 0)
+    assert.equal(queryAll(m.container, '[data-task="s2"] .lc-ts-card').length, 1, 'the agent box still boards')
+    await click(query(m.container, '[data-task="s3"]'))
+    assert.equal(queryAll(m.container, '[data-task="s3"] .lc-team-task-desc').length, 0)
+    await m.unmount()
+  })
+
+  test('a row pick unfolds the card and a row hover lights the owner; the row’s own buttons stay theirs', async () => {
     const pins = new Array<string | null>()
     const hovers = new Array<string | null>()
     const focuses = new Array<string | null>()
+    // The owner's landed report-back rides the opened team card.
+    const details = new Map<string, { detail: FleetDetail | null }>([
+      ['w1', { detail: { lastReply: { time: 1_700_000_000_000, text: 'Schema parser landed.' }, messages: [], truncated: false } }],
+    ])
     const m = await mount(h(TaskBoard, propsOf({
+      detailOf: id => details.get(id),
       onPinMember: id => { pins.push(id) },
       onHoverMember: id => { hovers.push(id) },
       onFocusTask: id => { focuses.push(id) },
@@ -123,30 +168,55 @@ describe('TaskBoard — the owner-grouped board', () => {
     await hover(row)
     await click(row)
     await unhover(row)
-    assert.deepEqual([...pins], ['w1'], 'the roster name joins to the member id')
     assert.deepEqual([...hovers], ['w1', null])
+    // The pick unfolded the boxed sections; a row pick never pins — the owner chip does.
+    assert.ok(query(row, '.lc-ts-card') !== null)
+    assert.deepEqual([...pins], [])
+    assert.ok(text(row).includes('Schema parser landed.'), 'the owner’s final report-back boards')
+    await click(query(row, '.lc-team-task-box-agent .lc-team-task-owner'))
+    assert.deepEqual([...pins], ['w1'])
+    // A second pick folds the card back.
+    await click(row)
+    assert.equal(queryAll(row, '.lc-ts-card').length, 0)
+    // The keyboard unfolds too: Enter opens, an unrelated key is inert.
+    await act(async () => { row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    assert.ok(query(row, '.lc-ts-card') !== null)
+    await act(async () => { row.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })) })
+    assert.ok(query(row, '.lc-ts-card') !== null)
+    await act(async () => { row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })) })
+    assert.equal(queryAll(row, '.lc-ts-card').length, 0)
+    // Enter on a nested control bubbles, but never folds the card out from under it.
+    await click(row)
+    await act(async () => {
+      query(row, '.lc-team-task-box-agent .lc-team-task-owner')
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    })
+    assert.ok(query(row, '.lc-ts-card') !== null)
+    assert.deepEqual([...pins], ['w1'])
 
-    // A pick landing on a dep chip flashes the blocker instead of pinning the owner.
+    // A pick landing on a dep chip flashes the blocker instead of unfolding.
     const blocked = query(m.container, '[data-task="task-2"]')
     await click(query(blocked, '.lc-team-task-dep'))
-    assert.deepEqual([...pins], ['w1'], 'the dep chip never pins')
     assert.deepEqual([...focuses], ['task-1'])
+    assert.equal(queryAll(blocked, '.lc-ts-card').length, 0, 'the dep chip never unfolds')
 
-    // An unowned task pins and hovers nothing.
+    // An unowned task's agent box is absent — nothing to pin.
     const ghost = query(m.container, '[data-task="task-4"]')
     await hover(ghost)
     await click(ghost)
     await unhover(ghost)
-    assert.deepEqual([...pins], ['w1'])
     assert.deepEqual([...hovers], ['w1', null, null, null], 'an off-roster owner hovers null')
+    assert.equal(queryAll(ghost, '.lc-ts-card').length, 0, 'no agent box without an owner')
+    assert.deepEqual([...pins], ['w1'])
 
-    // A delegation row pins and hovers the subagent itself.
+    // A delegation row unfolds with the agent box pinning the subagent itself.
     const scout = query(m.container, '[data-task="s1"]')
     await hover(scout)
     await click(scout)
     await unhover(scout)
-    assert.deepEqual([...pins], ['w1', 's1'])
     assert.deepEqual([...hovers], ['w1', null, null, null, 's1', null])
+    await click(query(scout, '.lc-team-task-box-agent .lc-team-task-owner'))
+    assert.deepEqual([...pins], ['w1', 's1'])
     await m.unmount()
   })
 
@@ -260,13 +330,14 @@ describe('TaskBoard — the team task DAG', () => {
     await agentFocus.unmount()
   })
 
-  test('descriptions clamp and expand; the unowned badge stands in', async () => {
+  test('the team description clamps into the row; the unowned badge stands in', async () => {
     const m = await mount(h(TaskBoard, propsOf()))
-    const expandBtn = query(m.container, '[data-task="task-1"] .lc-inspector-btn')
-    await click(expandBtn)
-    assert.ok(query(m.container, '[data-task="task-1"] .lc-team-task-desc').className.includes('lc-team-task-desc-open'))
-    await click(query(m.container, '[data-task="task-1"] .lc-inspector-btn'))
-    assert.ok(!query(m.container, '[data-task="task-1"] .lc-team-task-desc').className.includes('lc-team-task-desc-open'))
+    // Closed, the description clamps; opening replaces it with the boxed sections.
+    assert.equal(queryAll(m.container, '[data-task="task-1"] .lc-team-task-desc').length, 1)
+    assert.equal(queryAll(m.container, '[data-task="task-1"] .lc-ts-card').length, 0)
+    await click(query(m.container, '[data-task="task-1"]'))
+    assert.equal(queryAll(m.container, '[data-task="task-1"] .lc-team-task-desc').length, 0, 'the clamp gives way to the box')
+    assert.ok(text(query(m.container, '[data-task="task-1"] .lc-ts-card')).includes('Parse the spec into the internal shape.'))
     await m.unmount()
 
     const bare = teamOf()

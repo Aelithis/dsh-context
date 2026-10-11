@@ -24,6 +24,7 @@ import type { FleetDetail } from '../../shared/types'
 import { makeAgentGraph } from './agentGraph'
 import { CommsPanel } from './commsPanel'
 import { makeDetailNote } from './detailNote'
+import { makeRichText } from './richText'
 import { makeErrorBoundary } from './errorBoundary'
 import { FleetSummary } from './fleetSummary'
 import { MemberBoard } from './memberBoard'
@@ -40,6 +41,7 @@ export function makeFleetView(
   const UpgradeGate = makeUpgradeGate(kit)
   const DetailNote = makeDetailNote(kit)
   const ErrorBoundary = makeErrorBoundary(t)
+  const rich = makeRichText(kit)
 
   function FleetBody(props: SessionStandardProps): ReactElement {
     const sessionId = typeof props.sessionId === 'string' ? props.sessionId : undefined
@@ -71,19 +73,15 @@ export function makeFleetView(
       if (pinnedId !== null && !byId.has(pinnedId)) setPinnedId(null)
     }, [pinnedId, byId])
 
-    // The lead's own detail feeds the members board's roster facts. Every member's detail rides
-    // too, so the member cards' model and latest reply fill in on first paint instead of after a
-    // hover, and the comms merge sees the family's relay rows.
+    // The lead's own detail feeds the members board's roster facts. Every family node's detail
+    // rides too: a member card's model and reply, a delegation row's briefing prompt on the task
+    // board, and the comms merge's relay rows all fill in on first paint instead of after a scan.
     const leadId = team !== null ? team.members[0]?.id : undefined
-    const memberStamp = team === null ? ''
-      : team.members.map(m => `${m.id}@${byId.get(m.id)?.updatedAt ?? 0}`).join(',')
+    const detailStamp = forest === null ? '' : forest.nodes.map(n => `${n.id}@${n.updatedAt}`).join(',')
     useEffect(() => {
-      if (team === null) return
-      for (const m of team.members) {
-        const node = byId.get(m.id)
-        if (node !== undefined) details.request(m.id, node.updatedAt)
-      }
-    }, [team, memberStamp])
+      if (forest === null) return
+      for (const node of forest.nodes) details.request(node.id, node.updatedAt)
+    }, [forest, detailStamp])
 
     const landedDetails = useMemo(() => {
       const map = new Map<string, FleetDetail>()
@@ -145,12 +143,14 @@ export function makeFleetView(
       <TaskBoard
         team={team}
         forest={forest}
+        detailOf={id => details.landed.get(id)}
         ownerFilter={ownerFilter}
         onOwnerFilter={setOwnerFilter}
         focusTaskId={focusTaskId}
         onFocusTask={setFocusTaskId}
         onPinMember={pinToggle}
         onHoverMember={setHoverId}
+        rich={rich}
         t={t}
         fmt={kit.fmt}
       />
