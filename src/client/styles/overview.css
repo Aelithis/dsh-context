@@ -3,18 +3,22 @@
 .lc-ov-pagescroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 /* No width cap: the shipped first-level pages frame at 960px, this page adapts to the pane. */
 .lc-ov-pagecontent { padding: 0 clamp(24px, 4vw, 48px) 48px; }
-.lc-ov-pagehead { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-top: 28px; margin-bottom: 24px; }
+.lc-ov-pagehead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 28px; margin-bottom: 24px; }
 /* macOS hiddenInset titlebar clearance, so first-level pages align with the frame. */
 [data-platform='darwin'] .lc-ov-pagehead { padding-top: calc(28px + var(--dsh-frame-top-clearance, 0px)); }
-.lc-ov-pagetitle { flex: 0 1 auto; min-width: 0; margin: 0; font-size: 20px; line-height: 28px; font-weight: 500; }
+/* The capsules cluster at the head's 8px; only the title keeps the wider 16px lead-in. */
+.lc-ov-pagetitle { flex: 0 1 auto; min-width: 0; margin: 0 8px 0 0; font-size: 20px; line-height: 28px; font-weight: 500; }
 .lc-ov-settings { flex: none; display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); white-space: nowrap; cursor: pointer; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 /* One wrapper around the picker and range group, so the head keeps a single auto-margin push. */
 .lc-ov-headctl { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lc-ov-settings:hover { border-color: var(--dsw-alias-label-secondary); color: var(--dsw-alias-label-primary); }
-.lc-ov-balance { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 10px; border-radius: 999px; background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); font-size: 12px; line-height: 18px; text-decoration: none; color: inherit; }
+/* The head's two capsules share one chrome; only the update hint's version wears the warn token. */
+.lc-ov-balance, .lc-ov-update { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 10px; border-radius: 999px; background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); font-size: 12px; line-height: 18px; text-decoration: none; color: inherit; white-space: nowrap; }
 .lc-ov-balance:hover .lc-ov-balance-value { text-decoration: underline; }
-.lc-ov-balance-label { color: var(--dsw-alias-label-secondary); white-space: nowrap; }
-.lc-ov-balance-value { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.lc-ov-balance-label, .lc-ov-update-label { color: var(--dsw-alias-label-secondary); }
+.lc-ov-balance-value, .lc-ov-update-version { font-variant-numeric: tabular-nums; font-weight: 600; }
+.lc-ov-update:hover { border-color: var(--dsw-alias-state-warn-primary); }
+.lc-ov-update-version { color: var(--dsw-alias-state-warn-primary); }
 
 .lc-hovertip { position: fixed; z-index: 300; max-width: min(320px, 50vw); white-space: pre-line; }
 

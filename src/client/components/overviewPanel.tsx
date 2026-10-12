@@ -42,6 +42,7 @@ import { makeOverviewUsage } from './overviewUsage'
 import { makeStatsTiming } from './statsTiming'
 import { makeOverviewCard } from './overviewCard'
 import { makeOverviewSkills } from './overviewSkills'
+import { makeUpdatePill } from './updatePill'
 import { IconSettings } from '../primitives'
 
 export interface OverviewPanelProps {
@@ -64,6 +65,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
   const StatsTiming = makeStatsTiming(kit, Donut)
   const OverviewUsage = makeOverviewUsage(kit)
   const OverviewSkills = makeOverviewSkills(kit)
+  const UpdatePill = makeUpdatePill(kit)
   const ErrorBoundary = makeErrorBoundary(t)
 
   // Read per render: the slot outlet re-renders on a locale switch.
@@ -175,6 +177,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
               </button>
               {/* Renders nothing until a live figure lands, so the heading row never reflows for it. */}
               <BalanceCapsule />
+              <UpdatePill />
               {/* One wrapper so the head's right cluster pushes once; a bare `.lc-gran` sibling would split the free space. */}
               <div className="lc-ov-headctl">
                 <DateRange

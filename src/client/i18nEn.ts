@@ -480,6 +480,8 @@ export const DICT_EN = {
   'balance.title': 'DeepSeek balance',
   'balance.tip.granted': 'Granted balance',
   'balance.tip.toppedUp': 'Topped-up balance',
+  'update.label': 'Update',
+  'update.tip': 'Update {version} is available — click for the release notes',
   'ov.heat.title': 'Activity',
   'ov.heat.sub': 'Filter by date',
   'ov.heat.empty': 'No activity yet — daily usage appears once sessions make model requests',

@@ -1,10 +1,10 @@
 /** The card beside Context stats introducing the plugin. Metadata is baked in from package.json via tsdown `define`;
  * one live npm-registry check appends an `↑ vX.Y.Z` chip when newer. */
 
-import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { IconSettings } from '../primitives'
 import { siDeepseek, siGithub, type SimpleIcon } from 'simple-icons'
-import { fetchLatestVersion, isNewerVersion } from '../latestVersion'
+import { useNewerVersion } from '../latestVersion'
 import { PLUGIN_NAME, PLUGIN_REPO, PLUGIN_REPO_SHORT, PLUGIN_VERSION } from '../meta'
 import { openPluginSettings } from '../settingsJump'
 import type { ViewKit } from '../viewkit'
@@ -28,15 +28,7 @@ export function makePluginInfo(kit: ViewKit): () => ReactElement {
     </a>
   )
   return function PluginInfo(): ReactElement {
-    const [latest, setLatest] = useState<string | null>(null)
-    useEffect(() => {
-      if (PLUGIN_VERSION.includes('-dev')) return
-      let on = true
-      // fetchLatestVersion never rejects (every failure narrows to null); the `on` flag drops late results.
-      void fetchLatestVersion().then((v) => { if (on && v) setLatest(v) })
-      return () => { on = false }
-    }, [])
-    const update = latest !== null && isNewerVersion(latest, PLUGIN_VERSION) ? latest : null
+    const update = useNewerVersion()
     const nameText = PLUGIN_NAME + ' (v' + PLUGIN_VERSION + ')'
     const nameValue: ReactNode[] = [nameText]
     if (update) nameValue.push(<span key="update" className="lc-pi-update">{'↑ v' + update}</span>)
