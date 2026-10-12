@@ -573,13 +573,15 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
         </div>
       ) : null}
 
-      {groups.map(renderGroup)}
+      <div className="lc-tasks-body">
+        {groups.map(renderGroup)}
 
-      {rows.length === 0 ? (
-        <div className="lc-empty">{team === null ? t('fleet.tasks.noTeam') : t('fleet.team.empty')}</div>
-      ) : visibleCount === 0 ? (
-        <div className="lc-empty">{t('fleet.tasks.noMatch')}</div>
-      ) : null}
+        {rows.length === 0 ? (
+          <div className="lc-empty">{team === null ? t('fleet.tasks.noTeam') : t('fleet.team.empty')}</div>
+        ) : visibleCount === 0 ? (
+          <div className="lc-empty">{t('fleet.tasks.noMatch')}</div>
+        ) : null}
+      </div>
     </div>
   )
 }

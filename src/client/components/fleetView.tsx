@@ -8,7 +8,7 @@
  * agent row, a task owner chip, a blocker chip, and a comms party all steer each other.
  */
 
-import { createElement as h, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { createElement as h, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { AgentHeads } from '../agentHeads'
 import { agentSelfOf } from '../agentTree'
 import { displayCurrencyOf } from '../cost'
@@ -57,6 +57,34 @@ export function makeFleetView(
     const details = useFleetDetails()
     const [hoverId, setHoverId] = useState<string | null>(null)
     const [pinnedId, setPinnedId] = useState<string | null>(null)
+    // The boards' cap rides the network card: the task card grows with the graph beside it and
+    // bottoms out at its own default otherwise. The graph's NATURAL content height is what gets
+    // measured (last child's offset + the card's own bottom padding) — the stretched column's
+    // height would self-fulfill the cap and never bind when the members card drives the row.
+    const colsRef = useRef<HTMLDivElement | null>(null)
+    useEffect(() => {
+      const row = colsRef.current
+      /* v8 ignore start -- jsdom has neither ResizeObserver nor layout; the caps are visual. */
+      if (row === null || typeof ResizeObserver !== 'function') return
+      const graph = row.querySelector<HTMLElement>('.lc-col-graph')
+      const members = row.querySelector<HTMLElement>('.lc-members')
+      const write = (): void => {
+        let graphH = 0
+        const card = graph?.firstElementChild as HTMLElement | undefined
+        if (card !== undefined && card.lastElementChild !== null) {
+          const pad = window.parseFloat(window.getComputedStyle(card).paddingBottom)
+          graphH = card.lastElementChild.getBoundingClientRect().bottom - card.getBoundingClientRect().top + pad
+        }
+        row.style.setProperty('--lc-graph-h', `${Math.ceil(graphH)}px`)
+        row.style.setProperty('--lc-members-h', members !== null ? `${Math.ceil(members.getBoundingClientRect().height)}px` : '0px')
+      }
+      write()
+      const observer = new ResizeObserver(write)
+      if (graph !== null) observer.observe(graph)
+      if (members !== null) observer.observe(members)
+      return () => { observer.disconnect() }
+      /* v8 ignore stop */
+    }, [forest, team])
     /** The task board's owner filter and focus flash, shared with the members board. */
     const [ownerFilter, setOwnerFilter] = useState<string | null>(null)
     const [focusTaskId, setFocusTaskId] = useState<string | null>(null)
@@ -196,7 +224,7 @@ export function makeFleetView(
           : null}
         {forest !== null || boardsColumn !== null
           ? (
-            <div className="lc-cols">
+            <div className="lc-cols" ref={colsRef}>
               {forest !== null
                 ? (
                   <div className="lc-col lc-col-graph flex-1 min-w-[min(420px,100%)]">
