@@ -34,6 +34,29 @@ export interface SlotsService {
     registration: SlotRegistration,
     component: (props: { sessionId?: string } & Record<string, unknown>) => unknown,
   ): unknown
+  /** The slot ledger's raw entries view (`SlotCore.entries`): one stored record
+   * per seated entry, its `options` carrying the registered `id`/`order`/….
+   * Optional: an older face mounts without the second-mount guard. */
+  entries?(name: string): unknown
+}
+
+/** Whether the page's slot ledger already seats an entry with `id` on the named
+ * list slot. Reads the raw ledger (the view the session header renders), so a
+ * seated entry is one the harness would paint — exactly what a second mount of
+ * this bundle must not add. Fail-open: an absent, shape-shifted, or hostile
+ * face reports false, so the mount proceeds and never blanks a working one. */
+export function entrySeated(ctx: ClientCtx, name: string, id: string): boolean {
+  try {
+    const entries = ctx.slots.entries?.(name)
+    if (!Array.isArray(entries)) return false
+    for (const entry of entries) {
+      const options = asRecord(asRecord(entry)?.options)
+      if (options !== null && options.id === id) return true
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 /** The harness `SidebarRightGuideEntry` subset a right-Sidebar tab type contributes. */

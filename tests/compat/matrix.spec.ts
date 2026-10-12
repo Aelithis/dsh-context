@@ -231,6 +231,15 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       assert.equal(staging.dshHasString(baseline.tag, page.mainNeedle, page.mainFile), true, 'the layout\'s keyed main panel seat')
     })
 
+    test('client: the slot-ledger read of the second-mount guard (dsh-context#137)', () => {
+      const ledger = baseline.client.ledger
+      assert.equal(
+        staging.dshHasString(baseline.tag, ledger.needle, ledger.file),
+        true,
+        'the raw SlotCore.entries view',
+      )
+    })
+
     test('client: MarkdownText chrome prop', () => {
       assert.equal(staging.dshHasString(baseline.tag, baseline.client.markdownChrome, 'packages/client/ui-primitives/src/markdown/MarkdownText.tsx'), true)
     })

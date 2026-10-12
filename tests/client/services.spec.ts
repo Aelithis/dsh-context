@@ -8,6 +8,7 @@ import {
   contextBreakdownOf,
   contextPressureOf,
   conversationNodesOf,
+  entrySeated,
   headersOf,
   imageLoaderOf,
   numOf,
@@ -973,5 +974,54 @@ describe('activityOf', () => {
         '2026-09-19': { tokens: 1, requests: 1 },
       },
     }, 'non-record and empty-after-scrubbing tables drop whole; the days survive')
+  })
+})
+
+describe('entrySeated — the slot-ledger second-mount guard', () => {
+  /** A ctx whose slots face carries the given raw ledger (or a hostile face). */
+  const ctxWith = (entries: unknown): ClientCtx => ({ slots: { entries: () => entries } } as unknown as ClientCtx)
+
+  test('true when the ledger seats the id', () => {
+    const ctx = ctxWith([
+      { component: () => null, options: { id: 'context-jump', order: 20 } },
+    ])
+    assert.equal(entrySeated(ctx, 'conversation.chat.assistant-actions', 'context-jump'), true)
+  })
+
+  test('false when the slot seats other ids only, or nothing', () => {
+    const other = ctxWith([{ component: () => null, options: { id: 'feedback' } }])
+    assert.equal(entrySeated(other, 'conversation.chat.assistant-actions', 'context-jump'), false)
+    const empty = ctxWith([])
+    assert.equal(entrySeated(empty, 'conversation.chat.assistant-actions', 'context-jump'), false)
+  })
+
+  test('fail-open: a missing or non-function face, a non-array ledger, and a throwing face all read as unseated', () => {
+    assert.equal(entrySeated({ slots: {} } as unknown as ClientCtx, 's', 'x'), false, 'no entries member')
+    const primitive = { slots: { entries: 7 } } as unknown as ClientCtx
+    assert.equal(entrySeated(primitive, 's', 'x'), false, 'entries is not callable')
+    assert.equal(entrySeated(ctxWith('nope'), 's', 'x'), false, 'ledger is not an array')
+    const hostile = { slots: { entries: () => { throw new Error('boom') } } } as unknown as ClientCtx
+    assert.equal(entrySeated(hostile, 's', 'x'), false, 'the read throws')
+  })
+
+  test('an entry failing the stored shape drops alone; one bad entry never hides a real marker', () => {
+    const mixed = ctxWith([
+      null,
+      'row',
+      { component: () => null, options: 'not-a-record' },
+      { component: () => null, options: { id: 'context-jump' } },
+    ])
+    assert.equal(entrySeated(mixed, 's', 'context-jump'), true)
+    const badOnly = ctxWith([{ component: () => null, options: 7 }])
+    assert.equal(entrySeated(badOnly, 's', 'context-jump'), false)
+  })
+
+  test('the ledger read is keyed by slot: the face is asked for the named slot only', () => {
+    const asked: string[] = []
+    const ctx = {
+      slots: { entries: (name: string) => { asked.push(name); return [] } },
+    } as unknown as ClientCtx
+    assert.equal(entrySeated(ctx, 'conversation.chat.assistant-actions', 'context-jump'), false)
+    assert.deepEqual(asked, ['conversation.chat.assistant-actions'])
   })
 })
