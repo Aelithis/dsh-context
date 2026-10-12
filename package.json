@@ -149,7 +149,6 @@
     "react-dom": "^18.3.1",
     "shiki": "^4.3.1",
     "simple-icons": "16.32.0",
-    "tailwindcss": "4.3.3",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11",

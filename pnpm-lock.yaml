@@ -141,9 +141,6 @@ importers:
       simple-icons:
         specifier: 16.32.0
         version: 16.32.0
-      tailwindcss:
-        specifier: 4.3.3
-        version: 4.3.3
       tsdown:
         specifier: ^0.23.0
         version: 0.23.0(typescript@7.0.2)
