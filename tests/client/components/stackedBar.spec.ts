@@ -246,13 +246,13 @@ describe('StackedBar reserve masks', () => {
     await hover(headroom)
     const tip = query(m.container, '.lc-bar-tip')
     assert.ok(tip.className.includes('lc-bar-tip-on'))
-    assert.deepEqual(tipRows(tip), ['Compaction headroom', '100', 'Auto-compaction fires at 80% of the window'])
+    assert.deepEqual(tipRows(tip), ['Compaction Headroom', '100', 'Auto-compaction fires at 80% of the window'])
     assert.equal(tip.style.left, '85%')
     assert.equal(query(m.container, '.lc-stacked').className, 'lc-stacked') // hoverKey cleared
     await unhover(headroom)
     assert.equal(query(m.container, '.lc-bar-tip').className, 'lc-tip lc-bar-tip')
     await hover(output)
-    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Max output tokens', '100', 'This reply\'s output is reserved at the window\'s end'])
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '100', 'This reply\'s output is reserved at the window\'s end'])
     assert.equal(query(m.container, '.lc-bar-tip').style.left, '95%')
     // Stack-level mouseleave also clears an active mask hover.
     await unhover(query(m.container, '.lc-stacked'))
@@ -274,7 +274,7 @@ describe('StackedBar reserve masks', () => {
     assert.equal(line.style.left, '80%')
     // The headroom mask describes only itself; the trigger fact belongs to the line.
     await hover(headroom)
-    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction headroom', '60', 'Buffer kept free ahead of the output reservation'])
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction Headroom', '60', 'Buffer kept free ahead of the output reservation'])
     await unhover(headroom)
     await hover(line)
     const tip = query(m.container, '.lc-bar-tip')
