@@ -19,12 +19,11 @@
 .lc-stacked-seg, .lc-stacked-free { transform-origin: 0 50%; }
 /* The sweep rides `animate-lc-stacked-in`, staggered by each element's `--lc-i` and disabled under `motion-reduce`. */
 .lc-stacked-seg-on { filter: brightness(1.18); }
-/* The two auto-compaction reserve masks own the pointer over their own slice so each shows its own explanation. Hue tells
-   the two apart (amber = compaction headroom, the deepseek blue = the routed output reservation) and the hatch direction
-   repeats it for color-blind readers. */
+/* The two auto-compaction reserve masks: amber is the compaction headroom, the DeepSeek blue the routed output
+   reservation (reserve.ts). */
 .lc-reserve { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: auto; cursor: help; }
 .lc-reserve-headroom { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dsw-alias-state-warn-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
-.lc-reserve-output { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--dsw-alias-state-business-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
+.lc-reserve-output { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dsw-alias-state-business-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
 /* The trigger line (painted only when it detaches from the masks — reserve.ts): a 2px rule inside a
    wider lane so the hover target stays hittable; unanimated like the masks, same warn hue. */
 .lc-trigger { position: absolute; top: 0; bottom: 0; width: 9px; transform: translateX(-50%); z-index: 1; pointer-events: auto; cursor: help; }
