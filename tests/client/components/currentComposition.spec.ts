@@ -4,7 +4,7 @@ import { describe, test } from 'vitest'
 import { makeCurrentComposition } from '../../../src/client/components/currentComposition'
 import { makeLegend, makeStackedBar } from '../../../src/client/components/stackedBar'
 import type { Headline } from '../../../src/client/headline'
-import { hover, makeKit, mount, query, queryAll, text } from '../helpers/kit'
+import { hover, makeKit, mount, query, queryAll, text, tipRows } from '../helpers/kit'
 
 const kit = makeKit()
 const CurrentComposition = makeCurrentComposition(kit, makeStackedBar(kit), makeLegend(kit))
@@ -33,9 +33,9 @@ describe('CurrentComposition header', () => {
     assert.equal(headroom.style.left, '80%')
     assert.equal(output.style.left, '90%')
     await hover(headroom)
-    assert.equal(query(m.container, '.lc-bar-tip').textContent, 'Compaction headroom 1.0k')
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction headroom', '1.0k', 'Auto-compaction fires at 80% of the window'])
     await hover(output)
-    assert.equal(query(m.container, '.lc-bar-tip').textContent, 'Max output tokens 1.0k')
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Max output tokens', '1.0k', 'This reply\'s output is reserved at the window\'s end'])
     await m.update(h(CurrentComposition, { head: headOf({ window: 10000, pct: 50 }) }))
     assert.equal(query(num, '.lc-overview-pct b').textContent, '50.0%')
     assert.ok(text(num).includes('of context used'))

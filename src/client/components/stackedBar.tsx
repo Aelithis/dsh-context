@@ -3,7 +3,7 @@
  * left to right (stackedBar.css, staggered by the capped per-piece `--lc-i` slots below, so a long DNA
  * band list settles fast); the reserve masks stay unanimated. */
 
-import { useState, type CSSProperties, type ReactElement } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement } from 'react'
 import type { PartsPart } from '../categories'
 import type { ContextReserve } from '../reserve'
 import type { ViewKit } from '../viewkit'
@@ -19,6 +19,15 @@ interface ReserveMask {
   tokens: number
   left: number
   width: number
+}
+
+/** The tooltip's three rows: what the piece is, what it measures, and — only where the bar alone cannot
+ *  say it — one line of explanation. `leftPct` is the piece's center, in shares of the bar's width. */
+interface BarTip {
+  head: string
+  figure: string
+  note?: string
+  leftPct: number
 }
 
 export interface StackedBarProps {
@@ -48,6 +57,9 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
   return function StackedBar(props: StackedBarProps): ReactElement {
     // The reserve-hover key lives here so the single tooltip slot serves both the segments and the masks.
     const [reserveOn, setReserveOn] = useState<ReserveMask['key'] | null>(null)
+    const wrapRef = useRef<HTMLDivElement | null>(null)
+    const tipRef = useRef<HTMLDivElement | null>(null)
+    const [tipShift, setTipShift] = useState(0)
     let total = 0
     for (const p of props.parts) total += p.value
     const scale = props.max !== undefined && props.max > total ? props.max : total
@@ -86,6 +98,9 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
     // to hover is dropped rather than rendered sub-pixel.
     const reserve = props.reserve !== undefined && props.max !== undefined && props.max > 0 ? props.reserve : undefined
     const trackPct = (tokens: number): number => Math.round(Math.max(0, Math.min(100, tokens / scale * 100)) * 10) / 10
+    // The headroom mask's left edge IS the trigger position, so read it off the same projection the masks use
+    // rather than a second ratio — that one is clamped to the window, so no impossible percent reaches the copy.
+    const triggerPct = reserve === undefined ? 0 : trackPct(reserve.threshold)
     const masks: ReserveMask[] = []
     if (reserve !== undefined) {
       const pieces = [
@@ -99,22 +114,27 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
       }
     }
 
-    // The tooltip is DERIVED from the shared hover key, so a segment and its legend chip light the same segment with the same tooltip
-    // (centered by %, no measuring); the wrapper keeps it outside the clipped stack; a hovered reserve mask overrides the slot with its
-    // own type and length.
-    let tip: { text: string; leftPct: number } | null = null
+    // The tooltip is DERIVED from the shared hover key, so a segment and its legend chip light the same segment with the same tooltip;
+    // the wrapper keeps it outside the clipped stack; a hovered reserve mask overrides the slot with its own rows. Every figure NAMES its
+    // denominator — the segments share the USED total, the free track the WINDOW, the masks state only where they sit in the window.
+    let tip: BarTip | null = null
     const hoveredMask = reserveOn === null ? undefined : masks.find(m => m.key === reserveOn)
     if (hoveredMask !== undefined) {
       tip = {
-        text: `${hoveredMask.label} ${fmt(hoveredMask.tokens)}`,
-        leftPct: Math.max(12, Math.min(hoveredMask.left + hoveredMask.width / 2, 88)),
+        head: hoveredMask.label,
+        figure: fmt(hoveredMask.tokens),
+        note: hoveredMask.key === 'headroom'
+          ? t('overview.reserveHeadroomTip', { p: triggerPct })
+          : t('overview.reserveOutputTip'),
+        leftPct: hoveredMask.left + hoveredMask.width / 2,
       }
     } else if (props.hoverKey !== null && props.hoverKey !== undefined) {
       if (props.hoverKey === 'free' && free > 0) {
         const pct = scale > 0 ? free / scale * 100 : 0
         tip = {
-          text: `${t('overview.free')} ${fmt(free)} (${Math.round(pct)}%)`,
-          leftPct: Math.max(12, Math.min((total / scale * 100) + pct / 2, 88)),
+          head: t('overview.free'),
+          figure: `${fmt(free)} · ${Math.round(pct)}% ${t('overview.ofWindow')}`,
+          leftPct: (total / scale * 100) + pct / 2,
         }
       } else {
         let acc = 0
@@ -127,9 +147,9 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
           if (p.key === props.hoverKey) {
             const count = p.raw ?? p.value
             tip = {
-              text: `${p.label ?? catLabel(p.key)} ≈${fmt(count)} (${rawTotal > 0 ? Math.round(count / rawTotal * 100) : 0}%) `
-                + t('overview.ofUsed'),
-              leftPct: Math.max(12, Math.min(acc + widths[i] / 2, 88)),
+              head: p.label ?? catLabel(p.key),
+              figure: `≈${fmt(count)} · ${rawTotal > 0 ? Math.round(count / rawTotal * 100) : 0}% ${t('overview.ofUsed')}`,
+              leftPct: acc + widths[i] / 2,
             }
             break
           }
@@ -138,8 +158,31 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
       }
     }
 
+    // The percentage anchor stays the source of truth; the px shift only fires when the rows would overhang the
+    // bar, so a tip that fits is never displaced. No deps, so every render re-measures — the same-value bail-out
+    // keeps that loopless. Rects, not clientWidth: the latter truncates to a whole pixel, and the residue lands
+    // straight back on the overhang. A pane drag that changes no prop leaves the shift as last measured.
+    useLayoutEffect(() => {
+      /* v8 ignore next -- unreachable: the wrap commits its ref before layout effects run. */
+      const wrapW = wrapRef.current === null ? 0 : wrapRef.current.getBoundingClientRect().width
+      const tipW = tipRef.current === null ? 0 : tipRef.current.getBoundingClientRect().width
+      setTipShift((prev) => {
+        if (tip === null || wrapW <= 0 || tipW <= 0) return prev === 0 ? prev : 0
+        const center = tip.leftPct / 100 * wrapW
+        const leftOver = tipW / 2 - center
+        const rightOver = center + tipW / 2 - wrapW
+        const next = leftOver > 0 ? Math.ceil(leftOver) : rightOver > 0 ? Math.ceil(-rightOver) : 0
+        return next === prev ? prev : next
+      })
+    })
+
+    const shift = tipShift === 0
+      ? null
+      : { transform: `translateX(calc(-50% ${tipShift > 0 ? '+' : '-'} ${Math.abs(tipShift)}px))` }
+    const tipStyle = tip === null ? { left: '50%' } : { left: `${tip.leftPct}%`, ...shift }
+
     return (
-      <div className="lc-stacked-wrap">
+      <div className="lc-stacked-wrap" ref={wrapRef}>
         <div
           className={'lc-stacked' + (hovering ? ' lc-stacked-dim' : '')}
           style={{ height: `${props.height || 14}px` }}
@@ -203,9 +246,19 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
         {props.tip !== false
           ? (
             <div
+              ref={tipRef}
               className={'lc-tip lc-bar-tip' + (tip ? ' lc-bar-tip-on' : '')}
-              style={{ left: tip ? `${tip.leftPct}%` : '50%' }}
-            >{tip ? tip.text : ''}</div>
+              role={tip === null ? undefined : 'tooltip'}
+              style={tipStyle}
+            >
+              {tip === null ? null : (
+                <>
+                  <b className="lc-bar-tip-head">{tip.head}</b>
+                  <span className="lc-bar-tip-fig">{tip.figure}</span>
+                  {tip.note !== undefined ? <span className="lc-bar-tip-note">{tip.note}</span> : null}
+                </>
+              )}
+            </div>
           )
           : null}
       </div>

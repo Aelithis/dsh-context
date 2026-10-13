@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import type { ContextBrowserProps } from '../../../src/client/components/browser'
 import type { ContextHeaders } from '../../../src/shared/types'
-import { click, hover, mount, query, queryAll, surfaceNode, text, unhover, type Mounted } from '../helpers/kit'
+import { click, hover, mount, query, queryAll, surfaceNode, text, tipRows, unhover, type Mounted } from '../helpers/kit'
 import { Browser, catRow, elemRows, kit, props, req, tl, typeToolSearch } from './browserHarness'
 
 describe('ContextBrowser DNA mode and the open-category bar pin', () => {
@@ -91,13 +91,13 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     await hover(bands(m)[3])
     const tip = query(m.container, '.lc-bar-tip')
     assert.ok(tip.className.includes('lc-bar-tip-on'))
-    assert.equal(text(tip), `User Messages · ${kit.fmtTime(2000)} ≈20 (7%) of used context`)
+    assert.deepEqual(tipRows(tip), [`User Messages · ${kit.fmtTime(2000)}`, '≈20 · 7% of used context', null])
     assert.deepEqual(hovers, [], 'DNA hovers stay on the bar — the overview keeps showing the live category composition')
     assert.ok(bands(m)[3].className.includes('lc-stacked-seg-on'))
     assert.ok(query(m.container, '.lc-stacked').className.includes('lc-stacked-dim'))
     // A node without a logged time shows the bare label.
     await hover(bands(m)[5])
-    assert.equal(text(tip), 'Assistant Messages ≈40 (15%) of used context')
+    assert.deepEqual(tipRows(tip), ['Assistant Messages', '≈40 · 15% of used context', null])
     await unhover(query(m.container, '.lc-stacked'))
     assert.ok(!tip.className.includes('lc-bar-tip-on'))
 
@@ -124,11 +124,11 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.equal(bands(m).length, 3)
     const tip = query(m.container, '.lc-bar-tip')
     await hover(bands(m)[0])
-    assert.equal(text(tip), 'Skill · code ≈10 (17%) of used context')
+    assert.deepEqual(tipRows(tip), ['Skill · code', '≈10 · 17% of used context', null])
     await hover(bands(m)[1])
-    assert.equal(text(tip), '? ≈20 (33%) of used context')
+    assert.deepEqual(tipRows(tip), ['?', '≈20 · 33% of used context', null])
     await hover(bands(m)[2])
-    assert.equal(text(tip), 'Context Injection ≈30 (50%) of used context')
+    assert.deepEqual(tipRows(tip), ['Context Injection', '≈30 · 50% of used context', null])
     await m.unmount()
   })
 
@@ -191,7 +191,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.equal(segs[0].style.width, '0.35%')
     assert.ok(Math.abs(parseFloat(segs[1].style.width) - 99.65) < 0.001)
     await hover(segs[0])
-    assert.equal(text(query(m.container, '.lc-bar-tip')), 'User Messages ≈2 (0%) of used context')
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['User Messages', '≈2 · 0% of used context', null])
     // Category mode keeps exact widths (no floor outside DNA mode).
     await click(dnaButton(m))
     assert.deepEqual(bands(m).map(seg => seg.style.width), ['0.2%', '99.8%'])

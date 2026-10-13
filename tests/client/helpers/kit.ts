@@ -101,6 +101,13 @@ export function text(container: HTMLElement): string {
   return container.textContent ?? ''
 }
 
+/** A composition bar's tooltip rows — head, figure, optional note — so specs assert the
+ *  bubble's structure instead of a run-together textContent. */
+export function tipRows(tip: HTMLElement): (string | null)[] {
+  return ['.lc-bar-tip-head', '.lc-bar-tip-fig', '.lc-bar-tip-note']
+    .map(sel => tip.querySelector<HTMLElement>(sel)?.textContent ?? null)
+}
+
 export function query<T extends Element = HTMLElement>(container: ParentNode, selector: string): T {
   const el = container.querySelector<T>(selector)
   if (el === null) throw new Error(`element not found: ${selector}`)
