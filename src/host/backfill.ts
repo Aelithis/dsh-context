@@ -20,6 +20,7 @@
  */
 
 import { asRecord } from './record'
+import { performance } from 'node:perf_hooks'
 import type { Context } from '@deepseek-ai/cordis'
 import { interruptedTurnClosers } from '@deepseek-ai/dsh-session'
 import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
@@ -64,15 +65,39 @@ interface PersistenceLike {
   open(id: string, access: 'read', options?: { signal?: AbortSignal }): Promise<ReadHandleLike>
 }
 
-/** Inter-session pacing: each cold read is a full log decode, and a boot-time host under
- * sustained read pressure stalls its own client handshake. */
-const YIELD_MS = 100
+/** The pacing floor for BOTH granularities (between slices and between sessions): each cold
+ * read is a full log decode, and a boot-time host under sustained read pressure stalls its own
+ * client handshake. The actual rest is proportional to the work just done (at least this
+ * floor), so the pass never exceeds ~50% duty (issue #145). */
+const MIN_REST_MS = 25
 
-/** The sliced fold's granularity and inter-slice pause: at ~13µs/event a slice is a ~25ms
- * synchronous block (measured ≤88ms including the per-slice state re-validation), so even a
- * 30k-event session never lands on the event loop as one uninterruptible second. */
+/** The sliced fold's granularity: at ~13µs/event a slice is a ~25ms synchronous block
+ * (measured ≤88ms including the per-slice state re-validation), so even a 30k-event session
+ * never lands on the event loop as one uninterruptible second. */
 const SLICE_EVENTS = 2_000
-const SLICE_YIELD_MS = 25
+
+/** The pass's sustained-work budget: after this much cumulative fold time the pass takes a
+ * full recovery pause (and says so), then resumes where it stopped — a long corpus fills
+ * progressively instead of holding the host in one crowded window. */
+const ROUND_WORK_BUDGET_MS = 8_000
+const ROUND_PAUSE_MS = 2_000
+
+/** The pacing seam, injectable for tests (mirroring the cold-read gate's `reading`). */
+export interface BackfillPacing {
+  now: () => number
+  sleep: (ms: number) => Promise<void>
+  minRestMs: number
+  workBudgetMs: number
+  roundPauseMs: number
+}
+
+const DEFAULT_PACING: BackfillPacing = {
+  now: () => performance.now(),
+  sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+  minRestMs: MIN_REST_MS,
+  workBudgetMs: ROUND_WORK_BUDGET_MS,
+  roundPauseMs: ROUND_PAUSE_MS,
+}
 
 /** The `name` family dsh raises for a durable log it cannot interpret: the persistence seam
  * translates the format edge's refusal into `SessionFormatUnsupportedError`, so classify by prefix and import no dsh symbol. */
@@ -142,8 +167,12 @@ function isLive(sessions: Record<string, unknown> | null, id: string): boolean {
 }
 
 /** The sliced fold's per-session outcome: the rows landed, the session went live mid-fold
- * (it folds for itself — skip silently), or the pass was aborted mid-fold (stop quietly). */
-type SliceOutcome = 'done' | 'live' | 'aborted'
+ * (it folds for itself — skip silently), or the pass was aborted mid-fold (stop quietly).
+ * `workMs` is the measured slice work, so the session-level accounting never bills it twice. */
+interface SliceOutcome {
+  outcome: 'done' | 'live' | 'aborted'
+  workMs: number
+}
 
 /** One cold fold in event-count slices (issue #145): a monster session's whole-log restore
  * would otherwise land as ONE uninterruptible synchronous block (measured ~1s per 30k events
@@ -159,16 +188,22 @@ async function coldSnapshotSliced(
   sessions: Record<string, unknown> | null,
   log: { header: SessionHeader; inheritedEventCount: unknown; events: readonly SessionEvent[] },
   signal: AbortSignal,
+  rest: (costMs: number) => Promise<void>,
+  now: () => number,
 ): Promise<SliceOutcome> {
   const { header, inheritedEventCount, events } = log
   let rows: unknown = {}
+  let workMs = 0
   for (let end = SLICE_EVENTS; ; end += SLICE_EVENTS) {
     const last = end >= events.length
+    const started = now()
     const restored = asRecord(faces.restore(rows, last ? events : events.slice(0, end), 0, header, inheritedEventCount))
     rows = restored?.checkpoint ?? {}
+    const sliceCost = now() - started
+    workMs += sliceCost
     if (last) break
-    await new Promise(resolve => setTimeout(resolve, SLICE_YIELD_MS))
-    if (signal.aborted) return 'aborted'
+    await rest(sliceCost)
+    if (signal.aborted) return { outcome: 'aborted', workMs }
   }
   let prepared: unknown
   try {
@@ -180,7 +215,7 @@ async function coldSnapshotSliced(
     })
   } catch (error: unknown) {
     // The store rejects an id with a live owner: the session attached mid-fold and now folds for itself.
-    if (isLive(sessions, header.id)) return 'live'
+    if (isLive(sessions, header.id)) return { outcome: 'live', workMs }
     throw error
   }
   // The rows end at the log's last seq, so hydrate installs the cells without refolding.
@@ -192,7 +227,7 @@ async function coldSnapshotSliced(
     // on the next pass, never a wrong row.
     ctx.logger.warn(`dsh-context: projection backfill write-back for "${header.id}" failed (cache stays stale): ${messageOf(error)}`)
   }
-  return 'done'
+  return { outcome: 'done', workMs }
 }
 
 function isUnsupportedFormat(error: unknown): boolean {
@@ -215,7 +250,11 @@ function messageOf(error: unknown): string {
 /** Arm the warm-up behind its trigger route: the route flips `requested` on the page's
  * first open and the cold-path faces compose `launch`; whichever lands second launches the one
  * pass. Returns the deferred injects' disposer (abort on unload). */
-export function watchActivityBackfill(ctx: Context, coldReads: ColdReadGate = makeColdReadGate()): () => void {
+export function watchActivityBackfill(
+  ctx: Context,
+  coldReads: ColdReadGate = makeColdReadGate(),
+  pacing: BackfillPacing = DEFAULT_PACING,
+): () => void {
   let requested = false
   let started = false
   let launch: (() => void) | null = null
@@ -276,18 +315,53 @@ export function watchActivityBackfill(ctx: Context, coldReads: ColdReadGate = ma
       let folded = 0
       let refused = 0
       let paused = false
+      // One rest serves both granularities (between slices and between sessions): the pause is
+      // proportional to the work just done, and a full recovery break follows every workBudgetMs
+      // of cumulative fold time — the pass says when it pauses and resumes on its own. The sleep
+      // wakes early on abort so dispose never waits out a pause.
+      let roundWork = 0
+      const sleep = async (ms: number): Promise<void> => {
+        if (abort.signal.aborted) return
+        // Assigned synchronously by the Promise executor below.
+        let onAbort!: () => void
+        try {
+          await Promise.race([
+            pacing.sleep(ms),
+            new Promise<void>((resolve) => {
+              onAbort = () => { resolve() }
+              abort.signal.addEventListener('abort', onAbort, { once: true })
+            }),
+          ])
+        } finally {
+          abort.signal.removeEventListener('abort', onAbort)
+        }
+      }
+      const rest = async (costMs: number): Promise<void> => {
+        roundWork += costMs
+        if (roundWork >= pacing.workBudgetMs) {
+          roundWork = 0
+          ctx.logger.info(`dsh-context: projection backfill pausing after ${Math.round(pacing.workBudgetMs / 1000)}s of fold work; resuming in ${Math.round(pacing.roundPauseMs / 1000)}s`)
+          await sleep(pacing.roundPauseMs)
+          return
+        }
+        await sleep(Math.max(pacing.minRestMs, costMs))
+      }
       for (const record of listed) {
         if (abort.signal.aborted) return
         const header = headerOf(record)
         if (header === null || typeof header.cwd !== 'string') continue
         if (isLive(sessions, header.id)) continue
         if (servesRows(cache as unknown as ProjectionCacheLike, header)) continue
+        const started = pacing.now()
+        let slicedWorkMs = 0
         try {
           const admitted = await coldReads.admit(async () => {
             const log = await readColdLog(persistence as unknown as PersistenceLike, header.id, abort.signal)
             // The handle's header is authoritative (fixed at open); the listed one was its probe.
             if (sliceFaces !== null && log.events.length > SLICE_EVENTS) {
-              return coldSnapshotSliced(ctx, sliceFaces, sessions, log, abort.signal)
+              const sliced = await coldSnapshotSliced(ctx, sliceFaces, sessions, log, abort.signal, rest, pacing.now)
+              slicedWorkMs = sliced.workMs
+              return sliced.outcome
             }
             ;(cache as unknown as ProjectionCacheLike).coldSnapshot(log.header, log.inheritedEventCount, log.events)
             return 'done' as const
@@ -309,7 +383,9 @@ export function watchActivityBackfill(ctx: Context, coldReads: ColdReadGate = ma
             ctx.logger.warn(`dsh-context: projection backfill skipped "${header.id}" (${messageOf(error)})`)
           }
         }
-        await new Promise(resolve => setTimeout(resolve, YIELD_MS))
+        // Slice work already rested (and was billed) mid-fold; the session-level rest covers the
+        // remainder only — decode, write-back, or the whole single-shot fold.
+        await rest(Math.max(0, pacing.now() - started - slicedWorkMs))
       }
       if (folded > 0) ctx.logger.info(`dsh-context: projection rows backfilled for ${folded} session(s)`)
       if (paused) {
