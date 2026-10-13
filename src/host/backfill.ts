@@ -40,6 +40,18 @@ interface ProjectionCacheLike {
   coldSnapshot(header: SessionHeader, inheritedEventCount: unknown, events: readonly SessionEvent[]): unknown
 }
 
+/** The sliced fold's extra faces (all re-proved at runtime; any absence keeps the
+ * single-shot path). `restore` and `hydrate` ride the registry the plugin already injects;
+ * `prepare` and `write` are the same faces session-query's observation handoff uses. */
+interface SlicedFoldFaces {
+  restore(
+    checkpoint: unknown, events: readonly SessionEvent[], baseSeq: number, header: SessionHeader, inheritedEventCount: unknown,
+  ): unknown
+  hydrate(session: unknown, checkpoint: unknown, events: readonly SessionEvent[], baseSeq: number): unknown
+  prepare(id: string, options: { seed: readonly SessionEvent[]; meta: unknown; inheritedEventCount: unknown; eventState: string }): unknown
+  write(session: unknown): Promise<unknown>
+}
+
 /** One persistence read handle, as consumed. */
 interface ReadHandleLike {
   header: SessionHeader
@@ -55,6 +67,12 @@ interface PersistenceLike {
 /** Inter-session pacing: each cold read is a full log decode, and a boot-time host under
  * sustained read pressure stalls its own client handshake. */
 const YIELD_MS = 100
+
+/** The sliced fold's granularity and inter-slice pause: at ~13µs/event a slice is a ~25ms
+ * synchronous block (measured ≤88ms including the per-slice state re-validation), so even a
+ * 30k-event session never lands on the event loop as one uninterruptible second. */
+const SLICE_EVENTS = 2_000
+const SLICE_YIELD_MS = 25
 
 /** The `name` family dsh raises for a durable log it cannot interpret: the persistence seam
  * translates the format edge's refusal into `SessionFormatUnsupportedError`, so classify by prefix and import no dsh symbol. */
@@ -123,6 +141,60 @@ function isLive(sessions: Record<string, unknown> | null, id: string): boolean {
   }
 }
 
+/** The sliced fold's per-session outcome: the rows landed, the session went live mid-fold
+ * (it folds for itself — skip silently), or the pass was aborted mid-fold (stop quietly). */
+type SliceOutcome = 'done' | 'live' | 'aborted'
+
+/** One cold fold in event-count slices (issue #145): a monster session's whole-log restore
+ * would otherwise land as ONE uninterruptible synchronous block (measured ~1s per 30k events
+ * on a fast host) inside a boot-time window already crowded with a hundred other folds.
+ * Each slice seeds every unit from the previous slice's rows IN MEMORY (the registry's
+ * restore is the cache's own cold-read computation, so the composed result is byte-identical
+ * to one single-shot coldSnapshot), the event loop breathes between slices, and exactly ONE
+ * durable write-back lands at the end — a crash mid-fold leaves no partial rows, the same
+ * failure semantics as the single-shot path. */
+async function coldSnapshotSliced(
+  ctx: Context,
+  faces: SlicedFoldFaces,
+  sessions: Record<string, unknown> | null,
+  log: { header: SessionHeader; inheritedEventCount: unknown; events: readonly SessionEvent[] },
+  signal: AbortSignal,
+): Promise<SliceOutcome> {
+  const { header, inheritedEventCount, events } = log
+  let rows: unknown = {}
+  for (let end = SLICE_EVENTS; ; end += SLICE_EVENTS) {
+    const last = end >= events.length
+    const restored = asRecord(faces.restore(rows, last ? events : events.slice(0, end), 0, header, inheritedEventCount))
+    rows = restored?.checkpoint ?? {}
+    if (last) break
+    await new Promise(resolve => setTimeout(resolve, SLICE_YIELD_MS))
+    if (signal.aborted) return 'aborted'
+  }
+  let prepared: unknown
+  try {
+    prepared = faces.prepare(header.id, {
+      seed: events,
+      meta: structuredClone(header),
+      inheritedEventCount,
+      eventState: 'shared-frozen',
+    })
+  } catch (error: unknown) {
+    // The store rejects an id with a live owner: the session attached mid-fold and now folds for itself.
+    if (isLive(sessions, header.id)) return 'live'
+    throw error
+  }
+  // The rows end at the log's last seq, so hydrate installs the cells without refolding.
+  faces.hydrate(prepared, rows, events, 0)
+  try {
+    await faces.write(prepared)
+  } catch (error: unknown) {
+    // Fail-soft, mirroring the cache's own write-back posture: a lost write costs a refold
+    // on the next pass, never a wrong row.
+    ctx.logger.warn(`dsh-context: projection backfill write-back for "${header.id}" failed (cache stays stale): ${messageOf(error)}`)
+  }
+  return 'done'
+}
+
 function isUnsupportedFormat(error: unknown): boolean {
   try {
     return String(asRecord(error)?.name).startsWith(UNSUPPORTED_FORMAT)
@@ -179,6 +251,24 @@ export function watchActivityBackfill(ctx: Context, coldReads: ColdReadGate = ma
     if (persistence === null || typeof persistence.open !== 'function') return
     const sessions = asRecord(injected.sessions)
 
+    // The sliced fold's faces: the registry the plugin already injects, plus the sessions and
+    // cache write verbs. Any absence keeps every session on the single-shot coldSnapshot path.
+    // Bind at extraction: an unbound hand-off loses `this` on the real faces.
+    const registry = asRecord((ctx as unknown as Record<string, unknown>).sessionProjections)
+    const sliceFaces: SlicedFoldFaces | null = registry !== null
+      && typeof registry.restore === 'function'
+      && typeof registry.hydrate === 'function'
+      && sessions !== null
+      && typeof sessions.prepare === 'function'
+      && typeof cache.write === 'function'
+      ? {
+        restore: (registry.restore as SlicedFoldFaces['restore']).bind(registry),
+        hydrate: (registry.hydrate as SlicedFoldFaces['hydrate']).bind(registry),
+        prepare: (sessions.prepare as SlicedFoldFaces['prepare']).bind(sessions),
+        write: (cache.write as SlicedFoldFaces['write']).bind(cache),
+      }
+      : null
+
     const abort = new AbortController()
     const run = async (): Promise<void> => {
       const listed = await (query as unknown as SessionQueryLike).listSessions(abort.signal)
@@ -196,15 +286,19 @@ export function watchActivityBackfill(ctx: Context, coldReads: ColdReadGate = ma
           const admitted = await coldReads.admit(async () => {
             const log = await readColdLog(persistence as unknown as PersistenceLike, header.id, abort.signal)
             // The handle's header is authoritative (fixed at open); the listed one was its probe.
+            if (sliceFaces !== null && log.events.length > SLICE_EVENTS) {
+              return coldSnapshotSliced(ctx, sliceFaces, sessions, log, abort.signal)
+            }
             ;(cache as unknown as ProjectionCacheLike).coldSnapshot(log.header, log.inheritedEventCount, log.events)
-            return true
+            return 'done' as const
           })
           if (admitted === undefined) {
             // Pressure does not fall within a pacing tick, so re-probing per session only delays the host's own work.
             paused = true
             break
           }
-          folded++
+          if (admitted === 'aborted') return
+          if (admitted === 'done') folded++
         } catch (error: unknown) {
           if (isUnsupportedFormat(error)) {
             // Permanent and source-side: the per-session detail drops to
