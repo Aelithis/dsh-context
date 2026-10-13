@@ -136,9 +136,9 @@ Pick **Live (next request)** or any retained step, and browse what that request 
 
 ![A tool result expanded with Raw/Markdown toggle](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/context-browser-tool-result.png)
 
-- **Image payloads render as cards** — thumbnails with name, dimensions, stored size, and the official DeepSeek image-token estimate (the dsh multimodal pipeline, e.g. `read_image` results and image attachments):
+- **Attachments render as ordered cards** — a message's `image` and `file` blocks sit together in the order the message carries them, one card each: images with a thumbnail plus their dimensions, stored size, and the official DeepSeek image-token estimate; other files with their type glyph, extension, and stored size. One click opens the attachment in dsh's own preview column (markdown, code, PDF, office, and image viewers), under the file's real name:
 
-![An image payload rendered as a thumbnail card](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/context-browser-images.png)
+![Image attachment cards with their dimensions, stored size, and token estimate](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/context-browser-images.png)
 
 - **Diff against the previous turn** — signed delta badges per category (`+N` items, `±Nk` tokens) tell you what a turn added or reclaimed at one glance. Steps older than a compaction are reconstructed from the removed-message archive — and the card says so when a step's makeup is only approximate.
 
