@@ -56,9 +56,21 @@ describe('the attachment block', () => {
     assert.ok(text(imageCard).includes('3462×1211'), 'raw dimensions')
     assert.ok(text(imageCard).includes('1568×1350 · 146.2 kB'), 'sent dimensions and size')
     assert.ok(text(imageCard).includes('Token') && text(imageCard).includes('≈325'))
-    // A file card keeps only its size: the extension badge already names the type.
+    // A file card keeps its size and the floor its handle costs: the extension badge already names the type.
     assert.ok(!text(cards[0]).includes('Type'))
     assert.ok(text(cards[0]).includes('Size') && text(cards[0]).includes('2.6 kB'))
+    assert.ok(text(cards[0]).includes('Token') && text(cards[0]).includes('≥58'), 'the handle floor')
+    assert.ok(
+      text(cards[1]).includes('≥56') && text(cards[2]).includes('≥56'),
+      'a 778 kB docx costs no more than a 47 kB markdown: only the handle travels',
+    )
+    // The two token rows read differently on purpose: a vision price, and a lower bound.
+    const fileTip = queryAll(cards[0], '.lc-att-row').pop()?.getAttribute('title') ?? ''
+    assert.ok(fileTip.includes('lower bound') && fileTip.includes('never its contents'), fileTip)
+    assert.ok(
+      (queryAll(cards[3], '.lc-att-row').pop()?.getAttribute('title') ?? '').includes('image-size conversion'),
+      'the image row keeps the vision calculator as its explanation',
+    )
     assert.ok(text(cards[3]).includes('Type'), 'an image has no badge, so its type keeps the row')
     // Every card invites the same one click.
     assert.ok(queryAll(m.container, '.lc-att-hint').every(hint => text(hint).includes('Click to preview')))
@@ -78,12 +90,14 @@ describe('the attachment block', () => {
     await bare.unmount()
   })
 
-  test('an unnamed file names its kind on the badge, and shows no size row', async () => {
+  test('an unnamed file names its kind on the badge, and shows no size or token row', async () => {
     const m = await mountSection({ attachments: [{ kind: 'file', attachmentId: 'sha256:u' }] })
     const card = query(m.container, '.lc-att-item')
     assert.ok(text(query(card, '.lc-att-name')).includes('File'))
     assert.equal(text(query(card, '.lc-att-ext')), 'File', 'the kind stands in for a missing extension')
     assert.ok(!text(card).includes('Size'))
+    // The handle names the file and its size, so an unproven reference prices nothing.
+    assert.ok(!text(card).includes('Token'))
     await m.unmount()
   })
 

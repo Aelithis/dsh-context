@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { attachmentExtension } from '../../shared/attachment'
 import type { AttachmentRef } from '../../shared/attachment'
+import { estimateFileTokens } from '../../shared/fileTokens'
 import { estimateImageTokens } from '../../shared/imageTokens'
 import { fmtBytes } from '../format'
 import type { AttachmentOpener, ImageLoader, ImageRefLike } from '../services'
@@ -43,6 +44,13 @@ function imageRefOf(ref: AttachmentRef): ImageRefLike {
 /** The name a card shows: the attachment's own, else its kind's label. */
 function nameOf(ref: AttachmentRef, t: ViewKit['t']): string {
   return ref.name ?? t(ref.kind === 'image' ? 'attach.image' : 'attach.file')
+}
+
+/** One labelled figure of a card. */
+interface Fact {
+  label: string
+  value: string
+  tip?: string
 }
 
 /** The type line of an attachment (the harness file card's own rule): the upper-cased extension,
@@ -81,15 +89,22 @@ function useImageSrc(attachment: AttachmentRef, load: ImageLoader | undefined): 
   return state
 }
 
-/** An attachment's facts as label/value rows: an image's dimensions and token estimate, a file's
- * size — the same figures the chat and the harness's own file card show. */
-function factsOf(ref: AttachmentRef, t: ViewKit['t'], fmt: ViewKit['fmt']): Array<{ label: string; value: string; tip?: string }> {
+/** An attachment's facts as label/value rows: an image's dimensions and its vision price, a file's
+ * size and the floor its handle costs — the same figures the chat and the harness's own file card show. */
+function factsOf(ref: AttachmentRef, t: ViewKit['t'], fmt: ViewKit['fmt']): Fact[] {
   const dimsOf = (w: number | undefined, h: number | undefined): string | null =>
     w !== undefined && h !== undefined ? `${w}×${h}` : null
   if (ref.kind !== 'image') {
-    return ref.bytes === undefined ? [] : [{ label: t('attach.size'), value: fmtBytes(ref.bytes) }]
+    const rows: Fact[] = []
+    if (ref.bytes !== undefined) rows.push({ label: t('attach.size'), value: fmtBytes(ref.bytes) })
+    // A lower bound: the handle also names the stored copy's read path, which no log carries.
+    const tokens = estimateFileTokens(ref)
+    if (tokens !== null) {
+      rows.push({ label: t('attach.token'), value: `≥${fmt(tokens)}`, tip: t('attach.fileTokensTip') })
+    }
+    return rows
   }
-  const rows: Array<{ label: string; value: string; tip?: string }> = []
+  const rows: Fact[] = []
   // No byte size is stored for the raw raster — dims only.
   const rawDims = ref.originalDimensions !== undefined
     ? dimsOf(ref.originalDimensions.width, ref.originalDimensions.height)
@@ -105,7 +120,9 @@ function factsOf(ref: AttachmentRef, t: ViewKit['t'], fmt: ViewKit['fmt']): Arra
   const tokens = ref.width !== undefined && ref.height !== undefined
     ? estimateImageTokens(ref.width, ref.height)
     : null
-  if (tokens !== null) rows.push({ label: t('attach.token'), value: `≈${fmt(tokens)}`, tip: t('attach.tokensTip') })
+  if (tokens !== null) {
+    rows.push({ label: t('attach.token'), value: `≈${fmt(tokens)}`, tip: t('attach.imageTokensTip') })
+  }
   return rows
 }
 
