@@ -46,17 +46,17 @@ export interface StackedBarProps {
   /** Render the hover tooltip (default true); a bar that only MIRRORS another card's hover turns it off, so the tooltip
    * floats only over the surface the pointer actually rests on. */
   tip?: boolean
-  /** Optional auto-compaction reserve: the two masks right of the pressure trigger — the compaction
-   * headroom, then the routed output reservation at the window's end (reserve.ts derives them). Laid
-   * out in WINDOW tokens and rendered only when `max` (the window) is positive. */
+  /** Optional auto-compaction reserve (reserve.ts derives the geometry): the two masks tiling the
+   * window's tail — headroom, then the output reservation — plus the trigger's line when it detaches.
+   * Laid out in WINDOW tokens and rendered only when `max` (the window) is positive. */
   reserve?: ContextReserve
 }
 
 export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactElement {
   const { t, fmt, catLabel } = kit
   return function StackedBar(props: StackedBarProps): ReactElement {
-    // The reserve-hover key lives here so the single tooltip slot serves both the segments and the masks.
-    const [reserveOn, setReserveOn] = useState<ReserveMask['key'] | null>(null)
+    // The reserve-hover key lives here so the single tooltip slot serves segments, masks, and the trigger line.
+    const [reserveOn, setReserveOn] = useState<ReserveMask['key'] | 'trigger' | null>(null)
     const wrapRef = useRef<HTMLDivElement | null>(null)
     const tipRef = useRef<HTMLDivElement | null>(null)
     const [tipShift, setTipShift] = useState(0)
@@ -94,37 +94,55 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
 
     // The masks lay out in WINDOW units scaled onto whatever track the bar spans, so they keep the same
     // physical slice with or without a free track (once used exceeds the window, the stripes sit over the
-    // outermost segments). The two tile `[threshold, window]` end to end, and a mask nothing wide enough
-    // to hover is dropped rather than rendered sub-pixel.
-    const reserve = props.reserve !== undefined && props.max !== undefined && props.max > 0 ? props.reserve : undefined
+    // outermost segments). They tile the window's tail at their true sizes — [window − output − headroom,
+    // window] — and a mask nothing wide enough to hover is dropped rather than rendered sub-pixel.
+    const win = props.max !== undefined && props.max > 0 ? props.max : undefined
+    const reserve = win === undefined ? undefined : props.reserve
     const trackPct = (tokens: number): number => Math.round(Math.max(0, Math.min(100, tokens / scale * 100)) * 10) / 10
-    // The headroom mask's left edge IS the trigger position, so read it off the same projection the masks use
-    // rather than a second ratio — that one is clamped to the window, so no impossible percent reaches the copy.
+    // Read the trigger off the same projection the masks use — that one is clamped to the window,
+    // so no impossible percent reaches the copy.
     const triggerPct = reserve === undefined ? 0 : trackPct(reserve.threshold)
     const masks: ReserveMask[] = []
-    if (reserve !== undefined) {
+    let triggerDetached = false
+    if (reserve !== undefined && win !== undefined) {
+      const maskStart = win - reserve.output - reserve.headroom
       const pieces = [
-        { key: 'headroom' as const, label: t('overview.reserveHeadroom'), tokens: reserve.headroom, from: reserve.threshold },
-        { key: 'output' as const, label: t('overview.reserveOutput'), tokens: reserve.output, from: reserve.threshold + reserve.headroom },
+        { key: 'headroom' as const, label: t('overview.reserveHeadroom'), tokens: reserve.headroom, from: maskStart },
+        { key: 'output' as const, label: t('overview.reserveOutput'), tokens: reserve.output, from: win - reserve.output },
       ]
       for (const piece of pieces) {
         const left = trackPct(piece.from)
         const width = trackPct(piece.from + piece.tokens) - left
         if (width > 0) masks.push({ key: piece.key, label: piece.label, tokens: piece.tokens, left, width })
       }
+      triggerDetached = reserve.threshold < maskStart
     }
 
+    // Every reserve piece — masks and the trigger line — shares the one hover key and pointer handling.
+    const enterReserve = (key: ReserveMask['key'] | 'trigger') => (): void => {
+      setReserveOn(key)
+      if (props.onHoverKey !== undefined) props.onHoverKey(null)
+    }
+    const leaveReserve = (): void => { setReserveOn(null) }
+
     // The tooltip is DERIVED from the shared hover key, so a segment and its legend chip light the same segment with the same tooltip;
-    // the wrapper keeps it outside the clipped stack; a hovered reserve mask overrides the slot with its own rows. Every figure NAMES its
-    // denominator — the segments share the USED total, the free track the WINDOW, the masks state only where they sit in the window.
+    // the wrapper keeps it outside the clipped stack; a hovered reserve piece (mask or trigger line) overrides the slot with its own
+    // rows. Every figure NAMES its denominator — the segments share the USED total, the free track and the trigger line the WINDOW.
     let tip: BarTip | null = null
     const hoveredMask = reserveOn === null ? undefined : masks.find(m => m.key === reserveOn)
-    if (hoveredMask !== undefined) {
+    if (reserveOn === 'trigger' && reserve !== undefined && triggerDetached) {
+      tip = {
+        head: t('overview.reserveTrigger'),
+        figure: `${fmt(reserve.threshold)} · ${triggerPct}% ${t('overview.ofWindow')}`,
+        note: t('overview.reserveTriggerTip'),
+        leftPct: triggerPct,
+      }
+    } else if (hoveredMask !== undefined) {
       tip = {
         head: hoveredMask.label,
         figure: fmt(hoveredMask.tokens),
         note: hoveredMask.key === 'headroom'
-          ? t('overview.reserveHeadroomTip', { p: triggerPct })
+          ? (triggerDetached ? t('overview.reserveHeadroomBuffer') : t('overview.reserveHeadroomTip', { p: triggerPct }))
           : t('overview.reserveOutputTip'),
         leftPct: hoveredMask.left + hoveredMask.width / 2,
       }
@@ -225,13 +243,18 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
               key={m.key}
               className={`lc-reserve lc-reserve-${m.key}`}
               style={{ left: `${m.left}%`, width: `${m.width}%` }}
-              onMouseEnter={() => {
-                setReserveOn(m.key)
-                if (props.onHoverKey !== undefined) props.onHoverKey(null)
-              }}
-              onMouseLeave={() => { setReserveOn(null) }}
+              onMouseEnter={enterReserve(m.key)}
+              onMouseLeave={leaveReserve}
             />
           ))}
+          {triggerDetached ? (
+            <div
+              className="lc-trigger"
+              style={{ left: `${triggerPct}%` }}
+              onMouseEnter={enterReserve('trigger')}
+              onMouseLeave={leaveReserve}
+            />
+          ) : null}
           {/* The occupied-region frame: painted last so its border stays above the segments; always mounted (`.lc-occupied-box-on` toggles
               opacity) so it fades out on leave instead of unmounting instantly.
               */}

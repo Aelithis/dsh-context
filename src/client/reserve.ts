@@ -1,7 +1,7 @@
 /**
- * The auto-compaction reserve the Current Context bar masks: the window the session is kept out of
- * once compaction would fire, split into its two parts — the compaction headroom and the routed
- * request's output reservation.
+ * The auto-compaction reserve the Current Context bar masks: the window's tail the session is kept
+ * out of, at its two true sizes — the compaction headroom buffer, then the routed request's output
+ * reservation at the window's end.
  *
  * dsh-compaction-basic prices its pressure trigger as
  * `thresholdTokens = floor(min(contextWindow × thresholdRatio, contextWindow − reservedOutput − headroomTokens))`
@@ -21,9 +21,11 @@ export const COMPACT_HEADROOM_TOKENS = 65_536
 
 /** Where the reserve starts and what it is made of, in WINDOW tokens. */
 export interface ContextReserve {
-  /** Window tokens at which automatic pressure compaction triggers — the masks' left edge. */
+  /** Window tokens at which automatic pressure compaction triggers: the headroom mask's left edge
+   *  when the pressure budget binds, strictly left of the masks when the window fraction does. */
   threshold: number
-  /** Window tokens between the trigger and the output reservation — the compaction-headroom mask. */
+  /** The compaction-headroom mask — always the mirrored policy value, the buffer between the
+   *  pressure budget and the output reservation. */
   headroom: number
   /** The routed request's output reservation at the window's end — the max-output mask. */
   output: number
@@ -31,9 +33,9 @@ export interface ContextReserve {
 
 /** Resolve one window's reserve, or undefined when no positive window is known OR the harness
  *  itself refuses to configure pressure compaction for that route (see the budget check below). The
- *  masks tile `[threshold, window]` end to end; `maxOutputTokens` is untrusted wire input, and
- *  anything but a positive finite cap reserves nothing (dsh's own fallback order: envelope cap,
- *  else zero). */
+ *  masks tile the window's tail `[window − output − headroom, window]` end to end, each at its true
+ *  size; `maxOutputTokens` is untrusted wire input, and anything but a positive finite cap reserves
+ *  nothing (dsh's own fallback order: envelope cap, else zero). */
 export function reserveGeometry(
   window: number | undefined,
   maxOutputTokens: number | undefined,
@@ -50,5 +52,5 @@ export function reserveGeometry(
   const pressureBudget = window - output - COMPACT_HEADROOM_TOKENS
   if (pressureBudget <= 0) return undefined
   const threshold = Math.min(Math.floor(window * COMPACT_THRESHOLD_RATIO), pressureBudget)
-  return { threshold, headroom: window - output - threshold, output }
+  return { threshold, headroom: COMPACT_HEADROOM_TOKENS, output }
 }

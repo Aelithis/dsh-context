@@ -233,7 +233,7 @@ describe('StackedBar hover link', () => {
 describe('StackedBar reserve masks', () => {
   const RESERVE = { threshold: 800, headroom: 100, output: 100 }
 
-  test('the two masks tile the window tail; each hover shows its own figure, trigger note and anchor', async () => {
+  test('a bound pressure budget: the two masks tile the window tail from the trigger, no line', async () => {
     const m = await mount(h(HoverHarness, { parts: [part('user', 100)], max: 1000, reserve: RESERVE }))
     const headroom = query(m.container, '.lc-reserve-headroom')
     assert.equal(headroom.style.left, '80%')
@@ -241,6 +241,8 @@ describe('StackedBar reserve masks', () => {
     const output = query(m.container, '.lc-reserve-output')
     assert.equal(output.style.left, '90%')
     assert.equal(output.style.width, '10%')
+    // The headroom mask's own left edge IS the trigger, so no separate line is drawn.
+    assert.equal(queryAll(m.container, '.lc-trigger').length, 0)
     await hover(headroom)
     const tip = query(m.container, '.lc-bar-tip')
     assert.ok(tip.className.includes('lc-bar-tip-on'))
@@ -258,6 +260,32 @@ describe('StackedBar reserve masks', () => {
     await m.unmount()
   })
 
+  test('a bound window fraction: true-size masks at the window tail, the trigger as its own line', async () => {
+    // threshold 800 sits strictly left of the masks' 840 edge: headroom + output (160) < 20% of the window.
+    const reserve = { threshold: 800, headroom: 60, output: 100 }
+    const m = await mount(h(HoverHarness, { parts: [part('user', 100)], max: 1000, reserve }))
+    const headroom = query(m.container, '.lc-reserve-headroom')
+    assert.equal(headroom.style.left, '84%')
+    assert.equal(headroom.style.width, '6%')
+    const output = query(m.container, '.lc-reserve-output')
+    assert.equal(output.style.left, '90%')
+    assert.equal(output.style.width, '10%')
+    const line = query(m.container, '.lc-trigger')
+    assert.equal(line.style.left, '80%')
+    // The headroom mask describes only itself; the trigger fact belongs to the line.
+    await hover(headroom)
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction headroom', '60', 'Buffer kept free ahead of the output reservation'])
+    await unhover(headroom)
+    await hover(line)
+    const tip = query(m.container, '.lc-bar-tip')
+    assert.deepEqual(tipRows(tip), ['Auto-compaction trigger', '800 · 80% of window', 'Compaction fires when the used tokens reach this line'])
+    assert.equal(tip.style.left, '80%')
+    assert.equal(query(m.container, '.lc-stacked').className, 'lc-stacked') // hoverKey cleared
+    await unhover(line)
+    assert.equal(query(m.container, '.lc-bar-tip').className, 'lc-tip lc-bar-tip')
+    await m.unmount()
+  })
+
   test('a zero-extent mask is dropped; an output-only reserve renders the rightmost mask alone', async () => {
     const m = await mount(h(HoverHarness, {
       parts: [part('user', 100)],
@@ -265,12 +293,14 @@ describe('StackedBar reserve masks', () => {
       reserve: { threshold: 1000, headroom: 0, output: 0 },
     }))
     assert.equal(queryAll(m.container, '.lc-reserve').length, 0)
+    assert.equal(queryAll(m.container, '.lc-trigger').length, 0)
     await m.update(h(HoverHarness, {
       parts: [part('user', 100)],
       max: 1000,
       reserve: { threshold: 900, headroom: 0, output: 100 },
     }))
     assert.equal(queryAll(m.container, '.lc-reserve-headroom').length, 0)
+    assert.equal(queryAll(m.container, '.lc-trigger').length, 0)
     const output = query(m.container, '.lc-reserve-output')
     assert.equal(output.style.left, '90%')
     assert.equal(output.style.width, '10%')
@@ -294,8 +324,10 @@ describe('StackedBar reserve masks', () => {
     const reserve = RESERVE
     const m = await mount(h(StackedBar, { parts: [part('user', 100)], reserve }))
     assert.equal(queryAll(m.container, '.lc-reserve').length, 0)
+    assert.equal(queryAll(m.container, '.lc-trigger').length, 0)
     await m.update(h(StackedBar, { parts: [part('user', 100)], max: 0, reserve }))
     assert.equal(queryAll(m.container, '.lc-reserve').length, 0)
+    assert.equal(queryAll(m.container, '.lc-trigger').length, 0)
     await m.unmount()
   })
 })

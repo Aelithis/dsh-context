@@ -138,16 +138,16 @@ describe('headlineOf reserve', () => {
     assert.deepEqual(h.reserve, { threshold: 678_464, headroom: 65_536, output: 256_000 })
   })
 
-  test('without an output cap only the headroom mask is left (the whole tail up to the ratio)', () => {
+  test('without an output cap only the headroom mask is left (at its true size, the trigger detached)', () => {
     const h = headlineOf(timeline({ contextWindow: 1_000_000 }), null)
-    assert.deepEqual(h.reserve, { threshold: 800_000, headroom: 200_000, output: 0 })
+    assert.deepEqual(h.reserve, { threshold: 800_000, headroom: 65_536, output: 0 })
   })
 
   test('a hostile or non-positive cap reserves nothing; no window yields no reserve at all', () => {
     const hostile = headlineOf(timeline({ contextWindow: 1_000_000, maxOutputTokens: 'junk' as unknown as number }), null)
-    assert.deepEqual(hostile.reserve, { threshold: 800_000, headroom: 200_000, output: 0 })
+    assert.deepEqual(hostile.reserve, { threshold: 800_000, headroom: 65_536, output: 0 })
     const zero = headlineOf(timeline({ contextWindow: 1_000_000, maxOutputTokens: 0 }), null)
-    assert.deepEqual(zero.reserve, { threshold: 800_000, headroom: 200_000, output: 0 })
+    assert.deepEqual(zero.reserve, { threshold: 800_000, headroom: 65_536, output: 0 })
     assert.equal(headlineOf(timeline({ maxOutputTokens: 256_000 }), null).reserve, undefined)
   })
 
