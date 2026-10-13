@@ -98,4 +98,5 @@ Complete ALL of these before ANY commit:
 This repo is indexed by CodeGraph (a `.codegraph/` directory exists at the repo root, if not run `codegraph init` to initialize it).
 - MUST reach for it BEFORE any grep/find or reading files when you need to understand or locate code:
 - **Shell** (always works): ALWAYS run and collect ALL output of `codegraph sync -q && codegraph explore --path /some-path "<symbol names or question>"` without truncating text
+- Queries are fast and cheap — issue several `codegraph explore` calls in one turn, each from a different question or angle, and use them liberally instead of stopping after the first one.
 <!-- CODEGRAPH_END -->
