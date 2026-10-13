@@ -16,7 +16,8 @@
 /** dsh-compaction-basic's default window fraction for pressure (`DEFAULT_THRESHOLD_RATIO`). */
 export const COMPACT_THRESHOLD_RATIO = 0.8
 
-/** dsh-compaction-basic's default pressure headroom beyond the output reservation. */
+/** dsh-compaction-basic's default pressure headroom beyond the output reservation — read from the
+ *  inline `?? 65_536` in that package's `resolveConfig`. */
 export const COMPACT_HEADROOM_TOKENS = 65_536
 
 /** Where the reserve starts and what it is made of, in WINDOW tokens. */
