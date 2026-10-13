@@ -127,24 +127,26 @@ function AttachmentCard(props: {
       data-state={state}
       onClick={props.onOpen}
     >
-      {image
-        ? (
-          <span className="lc-att-thumb">
-            {thumb.src !== null
-              ? <img src={thumb.src} alt={name} />
-              : (
-                <span className={thumb.failed ? 'lc-att-err' : 'lc-att-ph'}>
-                  {thumb.failed ? '⚠' : load === undefined ? '🖼' : t('attach.loading')}
-                </span>
-              )}
-          </span>
-        )
-        : (
-          <span className="lc-att-thumb lc-att-thumb-file">
-            <FileTypeGlyph path={name} size={28} />
-            <span className="lc-att-ext">{typeOf(attachment, t)}</span>
-          </span>
-        )}
+      <span className={'lc-att-thumb' + (image ? '' : ' lc-att-thumb-file')}>
+        {image
+          ? thumb.src !== null
+            ? <img src={thumb.src} alt={name} />
+            : (
+              <span className={thumb.failed ? 'lc-att-err' : 'lc-att-ph'}>
+                {thumb.failed ? '⚠' : load === undefined ? '🖼' : t('attach.loading')}
+              </span>
+            )
+          : (
+            <>
+              <FileTypeGlyph path={name} size={28} />
+              <span className="lc-att-ext">{typeOf(attachment, t)}</span>
+            </>
+          )}
+        {/* The invite rides the thumbnail: the facts below never move, and nothing wraps around it. */}
+        <span className={'lc-att-hint' + (state === 'opening' ? ' lc-att-hint-on' : '')}>
+          {state === 'opening' ? t('attach.loading') : hint}
+        </span>
+      </span>
       <span className="lc-att-meta">
         <span className="lc-att-name" title={name}>{name}</span>
         <span className="lc-att-row"><b className="lc-att-row-label">{t('attach.type')}</b>{typeOf(attachment, t)}</span>
@@ -154,11 +156,6 @@ function AttachmentCard(props: {
           </span>
         ))}
         {state === 'failed' ? <span className="lc-att-fail">{t('attach.unavailable')}</span> : null}
-        {state === 'failed' ? null : (
-          <span className={'lc-att-hint' + (state === 'opening' ? ' lc-att-hint-on' : '')}>
-            {state === 'opening' ? t('attach.loading') : hint}
-          </span>
-        )}
       </span>
     </button>
   )

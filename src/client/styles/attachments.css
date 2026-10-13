@@ -17,9 +17,9 @@
 .lc-att-row-label { display: inline-block; min-width: 3.2em; font-weight: 400; }
 /* A refused open reports on its own card — the click never lands anywhere else. */
 .lc-att-fail { font-size: 11px; color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary)); }
-/* The preview invite is a normal meta row: it fades in on hover/focus, so it never paints over the
-   name and the card never changes height when it appears. */
-.lc-att-hint { font-size: 11px; color: var(--dsw-alias-label-secondary); opacity: 0; transition: opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+/* The preview invite covers the thumbnail on hover/focus: the facts beside it never move, and the
+   label wraps inside the 64px tile instead of widening the card. */
+.lc-att-hint { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 2px; box-sizing: border-box; background: var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.45)); color: var(--dsw-alias-label-primary-foreground, #fff); font-size: 10px; line-height: 1.25; text-align: center; overflow-wrap: anywhere; opacity: 0; transition: opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); pointer-events: none; }
 .lc-att-item:hover .lc-att-hint, .lc-att-item:focus-visible .lc-att-hint, .lc-att-hint-on { opacity: 1; }
 
 /* Under width pressure the two-column grid folds to one column (a thumbnail plus its facts needs ~240px). */
