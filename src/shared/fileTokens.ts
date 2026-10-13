@@ -6,8 +6,7 @@
  * whatever its size. The handle names the file, its byte size, and its digest prefix — the facts a
  * log carries. It also names the stored copy's read path, which is execution-world state no log
  * holds (`llm.fileRequestText` resolves it through the live attachment store and fs mapping), so
- * this prices the pathless arm the harness emits when the copy is unreadable: the FLOOR the
- * path-bearing handle grows from, which is why the card shows it as a lower bound.
+ * this prices the pathless arm the harness emits when the copy is unreadable.
  */
 
 import { estimateTextTokens } from './estimate'

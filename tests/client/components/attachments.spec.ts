@@ -56,17 +56,16 @@ describe('the attachment block', () => {
     assert.ok(text(imageCard).includes('3462×1211'), 'raw dimensions')
     assert.ok(text(imageCard).includes('1568×1350 · 146.2 kB'), 'sent dimensions and size')
     assert.ok(text(imageCard).includes('Token') && text(imageCard).includes('≈325'))
-    // A file card keeps its size and the floor its handle costs: the extension badge already names the type.
+    // A file card keeps its size and what its handle costs: the extension badge already names the type.
     assert.ok(!text(cards[0]).includes('Type'))
     assert.ok(text(cards[0]).includes('Size') && text(cards[0]).includes('2.6 kB'))
-    assert.ok(text(cards[0]).includes('Token') && text(cards[0]).includes('≥58'), 'the handle floor')
+    assert.ok(text(cards[0]).includes('Token') && text(cards[0]).includes('≈58'), 'the handle price')
     assert.ok(
-      text(cards[1]).includes('≥56') && text(cards[2]).includes('≥56'),
+      text(cards[1]).includes('≈56') && text(cards[2]).includes('≈56'),
       'a 778 kB docx costs no more than a 47 kB markdown: only the handle travels',
     )
-    // The two token rows read differently on purpose: a vision price, and a lower bound.
     const fileTip = queryAll(cards[0], '.lc-att-row').pop()?.getAttribute('title') ?? ''
-    assert.ok(fileTip.includes('lower bound') && fileTip.includes('never its contents'), fileTip)
+    assert.ok(fileTip.includes('Estimated') && fileTip.includes('never its contents'), fileTip)
     assert.ok(
       (queryAll(cards[3], '.lc-att-row').pop()?.getAttribute('title') ?? '').includes('image-size conversion'),
       'the image row keeps the vision calculator as its explanation',

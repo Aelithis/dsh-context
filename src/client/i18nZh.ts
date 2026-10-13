@@ -447,7 +447,7 @@ export const DICT_ZH = {
   'attach.sent': '发送',
   'attach.token': 'Token',
   'attach.imageTokensTip': '按 DeepSeek 官方图片尺寸换算（单图上限 384 tokens）估算的 token 消耗',
-  'attach.fileTokensTip': '这是一个下限：模型收到的是一个句柄（文件名、大小、摘要前缀，以及副本的读取路径），不会收到文件内容，所以开销几乎不随文件大小变化',
+  'attach.fileTokensTip': '估算值：模型收到的是一个句柄（文件名、大小、摘要前缀），不会收到文件内容，所以开销几乎不随文件大小变化',
   'ov.title': '上下文洞察',
   'ov.unavailable': '会话列表暂不可用',
   'ov.range.label': '统计范围',

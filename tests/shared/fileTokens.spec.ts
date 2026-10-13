@@ -30,7 +30,7 @@ describe('estimateFileTokens', () => {
     assert.equal(estimateFileTokens(file({ attachmentId: `sha256:${'f'.repeat(64)}` })), 57)
   })
 
-  test('the price is a floor: the arm that names the stored copy costs more', () => {
+  test('the priced arm is the shorter one: the path-bearing arm costs more', () => {
     // The other harness arm appends the copy's read path, which only the live environment resolves.
     const pathArm = ' verbatim read-only copy saved at "/home/u/.dsh/attachments/v1/files/ab/0123456789abcdef'
       + '/notes.md". Read that path with your file tools when its contents are needed; copy it to a'

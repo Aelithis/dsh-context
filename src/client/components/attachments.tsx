@@ -90,17 +90,16 @@ function useImageSrc(attachment: AttachmentRef, load: ImageLoader | undefined): 
 }
 
 /** An attachment's facts as label/value rows: an image's dimensions and its vision price, a file's
- * size and the floor its handle costs — the same figures the chat and the harness's own file card show. */
+ * size and what its handle costs — the same figures the chat and the harness's own file card show. */
 function factsOf(ref: AttachmentRef, t: ViewKit['t'], fmt: ViewKit['fmt']): Fact[] {
   const dimsOf = (w: number | undefined, h: number | undefined): string | null =>
     w !== undefined && h !== undefined ? `${w}×${h}` : null
   if (ref.kind !== 'image') {
     const rows: Fact[] = []
     if (ref.bytes !== undefined) rows.push({ label: t('attach.size'), value: fmtBytes(ref.bytes) })
-    // A lower bound: the handle also names the stored copy's read path, which no log carries.
     const tokens = estimateFileTokens(ref)
     if (tokens !== null) {
-      rows.push({ label: t('attach.token'), value: `≥${fmt(tokens)}`, tip: t('attach.fileTokensTip') })
+      rows.push({ label: t('attach.token'), value: `≈${fmt(tokens)}`, tip: t('attach.fileTokensTip') })
     }
     return rows
   }
