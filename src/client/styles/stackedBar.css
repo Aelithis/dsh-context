@@ -15,10 +15,11 @@
 .lc-stacked-seg-on { filter: brightness(1.18); }
 /* The two auto-compaction reserve masks own the pointer over their own slice so each shows its own explanation. Hue tells
    the two apart (amber = compaction headroom, the deepseek blue = the routed output reservation) and the hatch direction
-   repeats it for color-blind readers: the boundary between them is the window's output reservation edge. */
+   repeats it for color-blind readers. */
 .lc-reserve { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: auto; cursor: help; }
 .lc-reserve-headroom { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dsw-alias-state-warn-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
 .lc-reserve-output { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--dsw-alias-state-business-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
+/* Dashed border, not box-shadow: a shadow cannot dash. */
 .lc-stacked-free-on { border: 2px dashed var(--dsw-alias-label-secondary); border-radius: 3px; }
 .lc-stacked-dim .lc-stacked-seg { opacity: 0.35; }
 .lc-stacked-dim .lc-stacked-seg-on { opacity: 1; }

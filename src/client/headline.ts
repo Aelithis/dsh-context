@@ -13,7 +13,7 @@ export interface Headline {
   /** Composition parts: `value` is the provider-anchored bar width (the ring's fill), `raw` the official
    *  heuristic count the legend and tooltips show. */
   parts: PartsPart[]
-  /** The auto-compaction reserve masks (reserve.ts); absent when no positive window is known. */
+  /** Absent when the window reserves nothing (reserve.ts). */
   reserve?: ContextReserve
 }
 

@@ -37,8 +37,7 @@ export interface TimelineState {
   lastModel?: string
   contextWindow?: number
   /** The newest `request/header` envelope's routed output cap (dsh materializes the adapter default
-   * into it), the reservation auto-compaction prices the window against. Last-wins: a header that
-   * omits the cap clears it, exactly as the backend's own `reservedCompletionTokens` reads it. */
+   * into it). Last-wins: a header omitting the cap clears it. */
   maxOutputTokens?: number
   requests: RequestRecord[]
   /** The number of turn runs in `requests` (a run = consecutive records sharing one `turn`). Maintained

@@ -13,7 +13,6 @@ import type { ViewKit } from '../viewkit'
  * `--lc-i`); the composition bar's few category segments never reach it. */
 const STAGGER_CAP = 8
 
-/** One rendered reserve mask: its track extents, the window tokens it covers, and its tooltip label. */
 interface ReserveMask {
   key: 'headroom' | 'output'
   label: string
@@ -85,10 +84,10 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
     // physical slice with or without a free track (once used exceeds the window, the stripes sit over the
     // outermost segments). The two tile `[threshold, window]` end to end, and a mask nothing wide enough
     // to hover is dropped rather than rendered sub-pixel.
-    const reserve = props.reserve !== undefined && props.max !== undefined && props.max > 0 ? props.reserve : null
+    const reserve = props.reserve !== undefined && props.max !== undefined && props.max > 0 ? props.reserve : undefined
     const trackPct = (tokens: number): number => Math.round(Math.max(0, Math.min(100, tokens / scale * 100)) * 10) / 10
     const masks: ReserveMask[] = []
-    if (reserve !== null) {
+    if (reserve !== undefined) {
       const pieces = [
         { key: 'headroom' as const, label: t('overview.reserveHeadroom'), tokens: reserve.headroom, from: reserve.threshold },
         { key: 'output' as const, label: t('overview.reserveOutput'), tokens: reserve.output, from: reserve.threshold + reserve.headroom },

@@ -29,9 +29,11 @@ export interface ContextReserve {
   output: number
 }
 
-/** Resolve one window's reserve, or undefined when no positive window is known. The masks tile
- *  `[threshold, window]` end to end; `maxOutputTokens` is untrusted wire input, and anything but a
- *  positive finite cap reserves nothing (dsh's own fallback order: envelope cap, else zero). */
+/** Resolve one window's reserve, or undefined when no positive window is known OR the harness
+ *  itself refuses to configure pressure compaction for that route (see the budget check below). The
+ *  masks tile `[threshold, window]` end to end; `maxOutputTokens` is untrusted wire input, and
+ *  anything but a positive finite cap reserves nothing (dsh's own fallback order: envelope cap,
+ *  else zero). */
 export function reserveGeometry(
   window: number | undefined,
   maxOutputTokens: number | undefined,
@@ -41,11 +43,12 @@ export function reserveGeometry(
     maxOutputTokens !== undefined && Number.isFinite(maxOutputTokens) && maxOutputTokens > 0 ? maxOutputTokens : 0,
     window,
   )
-  // dsh clamps its pressure budget the same way: a headroom (or output reservation) wider than what
-  // the window still holds leaves a zero budget rather than a negative one.
-  const threshold = Math.min(
-    Math.floor(window * COMPACT_THRESHOLD_RATIO),
-    window - output - Math.min(COMPACT_HEADROOM_TOKENS, window - output),
-  )
+  // dsh-compaction-basic REFUSES this target at config time when the output reservation plus its
+  // headroom leave no pressure budget (`resolveCompactSpec` throws `TargetPressureConfigError`,
+  // and `compactIfNeeded` then never runs) — it does not clamp. So such a window reserves nothing
+  // and gets no masks, matching the harness rather than implying a trigger at zero.
+  const pressureBudget = window - output - COMPACT_HEADROOM_TOKENS
+  if (pressureBudget <= 0) return undefined
+  const threshold = Math.min(Math.floor(window * COMPACT_THRESHOLD_RATIO), pressureBudget)
   return { threshold, headroom: window - output - threshold, output }
 }

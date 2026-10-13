@@ -37,21 +37,27 @@ describe('reserveGeometry', () => {
   })
 
   test('an unknown, non-positive, or non-finite output cap reserves nothing', () => {
+    // No output reservation, so the ratio binds at 800,000 and the headroom mask is the rest.
+    const expected = { threshold: 800_000, headroom: 200_000, output: 0 }
     for (const cap of [undefined, 0, -8_000, Number.NaN, Number.POSITIVE_INFINITY] as const) {
-      const reserve = reserveGeometry(1_000, cap)
-      assert.deepEqual(reserve, { threshold: 0, headroom: 1_000, output: 0 }, String(cap))
+      assert.deepEqual(reserveGeometry(1_000_000, cap), expected, String(cap))
     }
     // The wire can carry any type: a non-number cap reserves nothing rather than poisoning the math.
-    assert.deepEqual(reserveGeometry(1_000, 'junk' as unknown as number), { threshold: 0, headroom: 1_000, output: 0 })
+    assert.deepEqual(reserveGeometry(1_000_000, 'junk' as unknown as number), expected)
   })
 
-  test('a cap at or past the window reserves the whole window', () => {
-    assert.deepEqual(reserveGeometry(1_000, 1_000), { threshold: 0, headroom: 0, output: 1_000 })
-    assert.deepEqual(reserveGeometry(1_000, 5_000), { threshold: 0, headroom: 0, output: 1_000 })
-  })
-
-  test('a headroom wider than the window still holds reserves it all, with no trigger left', () => {
-    // W − O = 800 < B: dsh's own config error path; the bar stays truthful by reserving what fits.
-    assert.deepEqual(reserveGeometry(1_000, 200), { threshold: 0, headroom: 800, output: 200 })
+  test('a window too small to hold the headroom reserves nothing, as dsh refuses that route', () => {
+    // W − O − headroom ≤ 0: `resolveCompactSpec` throws TargetPressureConfigError and pressure
+    // compaction never runs, so painting a trigger would be a lie — the masks stay off.
+    assert.equal(reserveGeometry(65_536, 0), undefined) // exactly the boundary
+    assert.equal(reserveGeometry(65_535, 0), undefined)
+    // A window too small even to hold the output reservation.
+    assert.equal(reserveGeometry(1_000, 200), undefined)
+    assert.equal(reserveGeometry(1_000, 1_000), undefined)
+    assert.equal(reserveGeometry(1_000, 5_000), undefined)
+    // One token of budget survives, so the masks come back — the headroom is exactly dsh's default.
+    const tight = reserveGeometry(65_537, 0)
+    assert.deepEqual(tight, { threshold: 1, headroom: COMPACT_HEADROOM_TOKENS, output: 0 })
+    assert.ok(tiles(tight!, 65_537))
   })
 })

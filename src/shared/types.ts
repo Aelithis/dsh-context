@@ -194,10 +194,8 @@ export interface Snapshot {
   model?: string
   provider?: string
   contextWindow?: number
-  /** The newest request envelope's routed output cap: the window tokens the provider charges the
-   * response to, which dsh's auto-compaction reserves before pricing its pressure trigger. Absent =
-   * the log carried no cap yet (or the row folded before the field existed); the client then leaves
-   * the output mask off (see client/reserve.ts). */
+  /** The newest request envelope's routed output cap, which auto-compaction reserves before pricing
+   * its pressure trigger. Absent = no cap in the log (or a row folded before the field existed). */
   maxOutputTokens?: number
   current: {
     system: number
