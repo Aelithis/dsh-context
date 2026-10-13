@@ -70,7 +70,7 @@ Complete ALL of these before ANY commit:
 
 ## Compatibility - Important!
 - MUST install and work correctly on every supported `@deepseek-ai/dsh` release, with no regressions in runtime dependencies, message parsing, or any user-visible behavior.
-- **`docs/compatibility.md` is the single source of truth** — supported releases, durable-log generations, fold-by-shape and optional-seam rules, parsing resilience for untrusted log/projection data, low-level parity with the harness's own metering, and the baseline gates. Read it BEFORE any compatibility-relevant change, and keep it current whenever the code or the supported set changes.
+- **`docs/compatibility.md` is the single source of truth** — supported set, admission gates, fold rules, metering parity, client seams, projection-cache protocol, packaging pins, and the verification gates. Read it BEFORE any compatibility-relevant change, and keep it current whenever the code or the supported set changes. Keep it minimal — less is always better: record only decisions and declared limitations that no other artifact carries, with evidence pointers into the dsh source tree; never narrate what code, tests, or git history already say.
 - Consider updating dependencies to the latest version where possible — deepseek-harness evolves rapidly.
 
 ## I18n
