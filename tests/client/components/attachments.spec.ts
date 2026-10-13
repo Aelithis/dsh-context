@@ -56,9 +56,10 @@ describe('the attachment block', () => {
     assert.ok(text(imageCard).includes('3462×1211'), 'raw dimensions')
     assert.ok(text(imageCard).includes('1568×1350 · 146.2 kB'), 'sent dimensions and size')
     assert.ok(text(imageCard).includes('Token') && text(imageCard).includes('≈325'))
-    // File cards carry type and size instead.
-    assert.ok(text(cards[0]).includes('Type') && text(cards[0]).includes('Size'))
-    assert.ok(text(cards[0]).includes('2.6 kB'))
+    // A file card keeps only its size: the extension badge already names the type.
+    assert.ok(!text(cards[0]).includes('Type'))
+    assert.ok(text(cards[0]).includes('Size') && text(cards[0]).includes('2.6 kB'))
+    assert.ok(text(cards[3]).includes('Type'), 'an image has no badge, so its type keeps the row')
     // Every card invites the same one click.
     assert.ok(queryAll(m.container, '.lc-att-hint').every(hint => text(hint).includes('Click to preview')))
     await m.unmount()
@@ -77,7 +78,7 @@ describe('the attachment block', () => {
     await bare.unmount()
   })
 
-  test('an unnamed file falls back to its kind for type, and shows no size row', async () => {
+  test('an unnamed file names its kind on the badge, and shows no size row', async () => {
     const m = await mountSection({ attachments: [{ kind: 'file', attachmentId: 'sha256:u' }] })
     const card = query(m.container, '.lc-att-item')
     assert.ok(text(query(card, '.lc-att-name')).includes('File'))
@@ -89,6 +90,23 @@ describe('the attachment block', () => {
   test('an image without sent bytes still shows its dimensions', async () => {
     const m = await mountSection({ attachments: [{ kind: 'image', attachmentId: 'sha256:i2', name: 'x.png', width: 10, height: 20 }] })
     assert.ok(text(query(m.container, '.lc-att-item')).includes('10×20'))
+    await m.unmount()
+  })
+
+  test('a row re-render never re-reads the bytes (the reference is re-proven each render)', async () => {
+    let reads = 0
+    const counting: ImageLoader = async (att) => {
+      reads += 1
+      return 'blob:' + att.attachmentId
+    }
+    const m = await mountSection({ load: counting, attachments: [{ kind: 'image', attachmentId: 'sha256:i1', name: 'a.png', width: 4, height: 4 }] })
+    await flush()
+    assert.equal(reads, 1)
+    // The same id re-proven into a NEW object (the fold's shape) must not trigger another read.
+    await m.update(h(Attachments, { attachments: [{ kind: 'image', attachmentId: 'sha256:i1', name: 'a.png', width: 4, height: 4 }], load: counting }))
+    await flush()
+    assert.equal(reads, 1)
+    assert.ok(query<HTMLImageElement>(m.container, '.lc-att-thumb img').src.includes('blob:sha256:i1'))
     await m.unmount()
   })
 

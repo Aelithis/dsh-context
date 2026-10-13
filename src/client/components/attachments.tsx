@@ -7,7 +7,7 @@
  * leaves a note on that card alone.
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { attachmentExtension } from '../../shared/attachment'
 import type { AttachmentRef } from '../../shared/attachment'
 import { estimateImageTokens } from '../../shared/imageTokens'
@@ -60,6 +60,11 @@ function useImageSrc(attachment: AttachmentRef, load: ImageLoader | undefined): 
   failed: boolean
 } {
   const [state, setState] = useState<{ src: string | null; failed: boolean }>({ src: null, failed: false })
+  // The reference is re-proven from the log on every render, so the read keys off the id and reads
+  // the current reference through a latest-ref: a row re-render must not re-read the bytes.
+  const latest = useRef(attachment)
+  latest.current = attachment
+  const id = attachment.attachmentId
   useEffect(() => {
     if (load === undefined) {
       setState({ src: null, failed: false })
@@ -67,12 +72,12 @@ function useImageSrc(attachment: AttachmentRef, load: ImageLoader | undefined): 
     }
     let live = true
     setState({ src: null, failed: false })
-    void load(imageRefOf(attachment)).then(
+    void load(imageRefOf(latest.current)).then(
       (url) => { if (live) setState({ src: url, failed: false }) },
       () => { if (live) setState({ src: null, failed: true }) },
     )
     return () => { live = false }
-  }, [attachment, load])
+  }, [id, load])
   return state
 }
 
@@ -125,6 +130,7 @@ function AttachmentCard(props: {
         + (state === 'failed' ? ' lc-att-item-failed' : '')}
       title={name + ' · ' + hint}
       data-state={state}
+      aria-busy={state === 'opening'}
       onClick={props.onOpen}
     >
       <span className={'lc-att-thumb' + (image ? '' : ' lc-att-thumb-file')}>
@@ -142,14 +148,18 @@ function AttachmentCard(props: {
               <span className="lc-att-ext">{typeOf(attachment, t)}</span>
             </>
           )}
-        {/* The invite rides the thumbnail: the facts below never move, and nothing wraps around it. */}
+        {/* The invite rides the thumbnail as a chip over a soft scrim: the facts beside it never move,
+            and the glyph or thumbnail stays readable through it. */}
         <span className={'lc-att-hint' + (state === 'opening' ? ' lc-att-hint-on' : '')}>
-          {state === 'opening' ? t('attach.loading') : hint}
+          <span className="lc-att-hint-label">{state === 'opening' ? t('attach.loading') : hint}</span>
         </span>
       </span>
       <span className="lc-att-meta">
         <span className="lc-att-name" title={name}>{name}</span>
-        <span className="lc-att-row"><b className="lc-att-row-label">{t('attach.type')}</b>{typeOf(attachment, t)}</span>
+        {/* An image has no extension badge on its tile, so its type keeps the row; a file's badge says it. */}
+        {image ? (
+          <span className="lc-att-row"><b className="lc-att-row-label">{t('attach.type')}</b>{typeOf(attachment, t)}</span>
+        ) : null}
         {factsOf(attachment, t, fmt).map(r => (
           <span key={r.label} className="lc-att-row" title={r.tip}>
             <b className="lc-att-row-label">{r.label}</b>{r.value}
