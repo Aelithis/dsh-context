@@ -33,7 +33,7 @@ describe('CurrentComposition header', () => {
     assert.equal(headroom.style.left, '80%')
     assert.equal(output.style.left, '90%')
     await hover(headroom)
-    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction Headroom', '1.0k', 'Auto-compaction fires at 80% of the window'])
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction Headroom', '1.0k', 'Auto-compaction is expected to fire at 80% of the window'])
     await hover(output)
     assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '1.0k', 'The model\'s maximum output tokens'])
     await m.update(h(CurrentComposition, { head: headOf({ window: 10000, pct: 50 }) }))

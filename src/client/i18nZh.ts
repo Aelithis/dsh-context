@@ -18,7 +18,7 @@ export const DICT_ZH = {
   'overview.ofWindow': '占窗口',
   'overview.reserveHeadroom': '压缩预留空间',
   'overview.reserveOutput': '模型最大输出预留',
-  'overview.reserveHeadroomTip': '自动压缩在窗口的 {p}% 处触发',
+  'overview.reserveHeadroomTip': '自动压缩预计在窗口的 {p}% 处触发',
   'overview.reserveHeadroomBuffer': '在输出预留之前留出的缓冲',
   'overview.reserveOutputTip': '模型最大输出 token 数',
   'overview.reserveTrigger': '自动压缩触发线',

@@ -21,7 +21,7 @@ export const DICT_EN = {
   'overview.ofWindow': 'of window',
   'overview.reserveHeadroom': 'Compaction Headroom',
   'overview.reserveOutput': 'LLM Output Reservation',
-  'overview.reserveHeadroomTip': 'Auto-compaction fires at {p}% of the window',
+  'overview.reserveHeadroomTip': 'Auto-compaction is expected to fire at {p}% of the window',
   'overview.reserveHeadroomBuffer': 'Buffer kept free ahead of the output reservation',
   'overview.reserveOutputTip': 'The model\'s maximum output tokens',
   'overview.reserveTrigger': 'Auto-compaction trigger',

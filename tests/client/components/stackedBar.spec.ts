@@ -246,7 +246,7 @@ describe('StackedBar reserve masks', () => {
     await hover(headroom)
     const tip = query(m.container, '.lc-bar-tip')
     assert.ok(tip.className.includes('lc-bar-tip-on'))
-    assert.deepEqual(tipRows(tip), ['Compaction Headroom', '100', 'Auto-compaction fires at 80% of the window'])
+    assert.deepEqual(tipRows(tip), ['Compaction Headroom', '100', 'Auto-compaction is expected to fire at 80% of the window'])
     assert.equal(tip.style.left, '85%')
     assert.equal(query(m.container, '.lc-stacked').className, 'lc-stacked') // hoverKey cleared
     await unhover(headroom)
