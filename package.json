@@ -41,6 +41,7 @@
     "build": "tsdown",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "check": "bash scripts/check.sh",
     "watch": "bash scripts/watch.sh",
     "web": "bash scripts/web.sh",
     "register": "bash scripts/register.sh",
