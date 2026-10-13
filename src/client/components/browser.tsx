@@ -14,10 +14,11 @@ import { makeDetailNote } from './detailNote'
 import { makeNodeText } from './nodes'
 import { turnStepsOf } from './trendChart'
 import { fetchMissNote, useFetchOnMiss } from './fetchOnMiss'
-import { imageRefOf, makeImageCard } from './images'
+import { attachmentsIn } from '../../shared/attachment'
+import { makeAttachmentSection } from './attachments'
 import { makeRichText } from './richText'
 import type { StackedBarProps } from './stackedBar'
-import type { ImageLoader } from '../services'
+import type { AttachmentOpener, ImageLoader } from '../services'
 import { TextSection, schemaTextOf, RowToolbar, ToolSchema, toolErrOf } from './browserToolCard'
 import { NodeContent, byCatOf, nodeNameOf, msgKindsOf, reasoningTextOf, ROW_KINDS } from './browserNodes'
 import type { RowKind } from './browserNodes'
@@ -47,6 +48,8 @@ export interface ContextBrowserProps {
   onHoverKey?: (key: string | null) => void
   onOpenCat?: (cat: string | null) => void
   loadImage?: ImageLoader
+  /** On-click opener of one attachment's preview (attachmentSource.ts); absent = metadata only. */
+  openAttachment?: AttachmentOpener
   detailState?: DetailState
   onDetailRetry?: () => void
 }
@@ -96,7 +99,7 @@ export function makeContextBrowser(
   const DetailNote = makeDetailNote(kit)
   const nodeText = makeNodeText(kit)
   const rich = makeRichText(kit)
-  const ImageCard = makeImageCard(kit)
+  const AttachmentSection = makeAttachmentSection(kit)
   const lineLabel = (n: number): string => t(n === 1 ? 'block.line' : 'block.lines', { n })
 
   return function ContextBrowser(props: ContextBrowserProps): ReactElement {
@@ -526,11 +529,9 @@ export function makeContextBrowser(
             preview = blockSummaryOf(conv) ?? preview
           }
         } else if (n.cat === 'user') {
-          const imgCount = conv !== undefined && Array.isArray(conv.content)
-            ? conv.content.filter(b => imageRefOf(b) !== null).length
-            : 0
-          if (imgCount > 0 && openElem !== `n${n.seq}`) {
-            tag = t('attach.image') + (imgCount > 1 ? ' ×' + String(imgCount) : '')
+          const attCount = attachmentsIn(conv?.content).length
+          if (attCount > 0 && openElem !== `n${n.seq}`) {
+            tag = t('attach.title') + (attCount > 1 ? ' ×' + String(attCount) : '')
           }
         } else {
           tag = t('form.' + (n.form || 'context'))
@@ -592,14 +593,13 @@ export function makeContextBrowser(
               node={n}
               conv={conv}
               rich={rich}
-              img={{ Card: ImageCard, load: props.loadImage }}
+              att={{ Section: AttachmentSection, load: props.loadImage, open: props.openAttachment }}
               labels={{
                 thinking: t('block.thinking'),
                 answer: t('block.answer'),
                 content: t('block.content'),
                 result: t('block.result'),
                 summary: t('block.summary'),
-                images: t('attach.images'),
                 other: t('attach.other'),
                 lines: lineLabel,
                 callState: (err: boolean, exit: number | null) => (

@@ -10,6 +10,7 @@ import { makeContentFetcher, makeHeaderFetcher, useHistoryFace } from '../histor
 import { useContextSession } from '../sessionData'
 import { makeDetailNote } from './detailNote'
 import { canOpenPathsOf, openPathVia, openResourceVia, workspaceOf } from '../services'
+import { makeAttachmentOpener } from '../attachmentSource'
 import { activityOf, activityOfOps, locateStepOf, previewAddressOf } from '../fileActivity'
 import type { FileEntry, FileOp } from '../fileActivity'
 import type { ContextSettings } from '../settings'
@@ -339,6 +340,10 @@ export function makeContextView(
         },
       [previewOpener, sessionKey, workspace],
     )
+    const openAttachment = useMemo(
+      () => makeAttachmentOpener(ctx, typeof sessionId === 'string' ? sessionId : undefined, workspace),
+      [ctx, sessionId, workspace],
+    )
     const locateFileOp = useCallback((op: FileOp): void => {
       // A nested Code-Mode op has no surface row of its own — it reveals on its parent run_code result.
       const seq = op.parent ?? op.seq
@@ -540,6 +545,7 @@ export function makeContextView(
         nodeFocus={nodeFocus}
         onNodeFocusHandled={clearNodeFocus}
         loadImage={loadImage}
+        openAttachment={openAttachment}
         detailState={source.detailState}
         onDetailRetry={source.retryDetail}
         catFocus={catFocus}

@@ -8,6 +8,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { ComponentType } from 'react'
+import type { AttachmentRef } from '../shared/attachment'
 import { estimateSystemTokens } from '../shared/estimate'
 import type { ActivityDay, ContextActivity, ContextBreakdown, ContextHeaders, ContextPressure, ContextTimeline, CostModelUsage, HeaderEpochContent, SystemPromptNode, TimingTotals, TokenUsage, ToolTimingTotals } from '../shared/types'
 
@@ -137,6 +138,13 @@ export function imageLoaderOf(
   } catch { /* absent or hostile service — metadata-only cards */ }
   return undefined
 }
+
+/** The named host path of one session-cited attachment (the plugin's own location route);
+ * null resolves the browser's unavailable note. */
+export type AttachmentLocator = (attachment: AttachmentRef) => Promise<string | null>
+
+/** On-click opener of one attachment's preview; false = nothing took it. */
+export type AttachmentOpener = (attachment: AttachmentRef) => Promise<boolean>
 
 /** The `useChat` seat. The selector must return a reference-stable slice: a fresh object re-renders the view on every event. */
 export type UseChatLike = <T>(selector: (snapshot: unknown) => T) => T

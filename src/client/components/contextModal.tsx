@@ -2,12 +2,13 @@
  * current composition and the shared browser. */
 
 import { createElement as h, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { makeAttachmentOpener } from '../attachmentSource'
 import { measureDock } from '../dockMeasure'
 import { headlineOf } from '../headline'
 import { modalStoreOf, takePendingConsume } from '../modalStore'
 import type { ClientCtx, SessionStandardProps, SessionsFace } from '../services'
 import type { ContextSettings } from '../settings'
-import { contextBreakdownOf, contextPressureOf, conversationNodesOf, headersOf, imageLoaderOf, projectionOf } from '../services'
+import { contextBreakdownOf, contextPressureOf, conversationNodesOf, headersOf, imageLoaderOf, projectionOf, workspaceOf } from '../services'
 import { makeContentFetcher, makeHeaderFetcher, useHistoryFace } from '../historyPage'
 import { useTimelineSource } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
@@ -52,6 +53,10 @@ export function makeContextModal(
     const backdropRef = useRef<HTMLDivElement | null>(null)
     const loadImage = useMemo(
       () => imageLoaderOf(ctx, sessionId !== '' ? sessionId : undefined),
+      [ctx, sessionId],
+    )
+    const openAttachment = useMemo(
+      () => makeAttachmentOpener(ctx, sessionId !== '' ? sessionId : undefined, workspaceOf(ctx, sessionId !== '' ? sessionId : undefined)),
       [ctx, sessionId],
     )
 
@@ -131,6 +136,7 @@ export function makeContextModal(
                 fetchContent={fetchContent}
                 fetchHeader={fetchHeader}
                 loadImage={loadImage}
+                openAttachment={openAttachment}
                 hoverKey={hoverCat}
                 onHoverKey={setHoverCat}
                 detailState={source.detailState}
