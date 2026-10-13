@@ -252,7 +252,7 @@ describe('StackedBar reserve masks', () => {
     await unhover(headroom)
     assert.equal(query(m.container, '.lc-bar-tip').className, 'lc-tip lc-bar-tip')
     await hover(output)
-    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '100', 'This reply\'s output is reserved at the window\'s end'])
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '100', 'The model\'s maximum output tokens'])
     assert.equal(query(m.container, '.lc-bar-tip').style.left, '95%')
     // Stack-level mouseleave also clears an active mask hover.
     await unhover(query(m.container, '.lc-stacked'))

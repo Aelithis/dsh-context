@@ -35,7 +35,7 @@ describe('CurrentComposition header', () => {
     await hover(headroom)
     assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['Compaction Headroom', '1.0k', 'Auto-compaction fires at 80% of the window'])
     await hover(output)
-    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '1.0k', 'This reply\'s output is reserved at the window\'s end'])
+    assert.deepEqual(tipRows(query(m.container, '.lc-bar-tip')), ['LLM Output Reservation', '1.0k', 'The model\'s maximum output tokens'])
     await m.update(h(CurrentComposition, { head: headOf({ window: 10000, pct: 50 }) }))
     assert.equal(query(num, '.lc-overview-pct b').textContent, '50.0%')
     assert.ok(text(num).includes('of context used'))

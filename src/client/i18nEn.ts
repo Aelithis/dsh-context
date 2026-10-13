@@ -23,7 +23,7 @@ export const DICT_EN = {
   'overview.reserveOutput': 'LLM Output Reservation',
   'overview.reserveHeadroomTip': 'Auto-compaction fires at {p}% of the window',
   'overview.reserveHeadroomBuffer': 'Buffer kept free ahead of the output reservation',
-  'overview.reserveOutputTip': 'This reply\'s output is reserved at the window\'s end',
+  'overview.reserveOutputTip': 'The model\'s maximum output tokens',
   'overview.reserveTrigger': 'Auto-compaction trigger',
   'overview.reserveTriggerTip': 'Compaction fires when the used tokens reach this line',
   'stats.title': 'Context Stats',
