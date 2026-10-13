@@ -37,6 +37,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Typecheck
+        run: pnpm run typecheck
+
       # The `compat` vitest project inside `pnpm test` boots the BUILT plugin
       # against the REAL harness sources at every supported baseline tag
       # (tests/baselines.ts is the source of truth — keep this fetch list in
@@ -53,8 +56,8 @@ jobs:
             refs/tags/dsh-v0.1.7-rc.2:refs/tags/dsh-v0.1.7-rc.2 \
             refs/tags/dsh-v0.2.0-rc.2:refs/tags/dsh-v0.2.0-rc.2
 
-      # One run covers everything: typecheck, all three vitest projects (host
-      # and client against src, compat against the BUILT plugin at each
-      # baseline tag), and the per-file coverage thresholds.
+      # `pnpm test` is the vitest run only: all three projects (host and client
+      # against src, compat against the BUILT plugin at each baseline tag) plus
+      # the per-file coverage thresholds. Typecheck is its own step above.
       - name: Test
         run: DSH_REPO="$PWD/.tmp/dsh-repo" pnpm test
