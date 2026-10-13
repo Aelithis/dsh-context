@@ -189,6 +189,19 @@ export interface Baseline {
     loaderVolatileFile: string
     loaderVolatileNeedle: string
   }
+  /** The sliced cold fold's optional faces (src/host/backfill.ts, issue #145):
+   * `sessionProjections.restore`/`hydrate`, `sessions.prepare`, and
+   * `sessionProjectionCache.write` — any absence keeps the single-shot
+   * coldSnapshot path, so the probes pin presence-as-declared: a removal
+   * names the seam instead of silently degrading the pass back to whole-log blocks. */
+  backfillFold: {
+    /** The registry source declaring `restore` and `hydrate`. */
+    registryFile: string
+    /** The session store source declaring `prepare`. */
+    storeFile: string
+    /** The projection-cache source declaring `write` and `coldSnapshot`. */
+    cacheFile: string
+  }
 }
 
 /** One support-matrix entry. Every supported line is the V4 generation, so
@@ -303,6 +316,11 @@ function baseline(id: BaselineId, tag: string, session: string): Baseline {
       orderAnchors: ['HARNESS_IDENTITY', 'DEPLOYMENT_PERSONA_SUFFIX'],
       loaderVolatileFile: 'vendor/loader/src/config/entry.ts',
       loaderVolatileNeedle: 'updateVolatile(ref, source)',
+    },
+    backfillFold: {
+      registryFile: 'packages/session/session-projection/src/index.ts',
+      storeFile: 'packages/core/session/src/index.ts',
+      cacheFile: 'packages/session/session-projection-cache/src/index.ts',
     },
   }
 }
