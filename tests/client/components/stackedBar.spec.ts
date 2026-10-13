@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { makeLegend, makeStackedBar } from '../../../src/client/components/stackedBar'
 import type { PartsPart } from '../../../src/client/categories'
+import type { ContextReserve } from '../../../src/client/reserve'
 import { click, hover, makeKit, mount, query, queryAll, unhover } from '../helpers/kit'
 
 const kit = makeKit()
@@ -14,7 +15,7 @@ function part(key: string, value: number, raw?: number): PartsPart {
 }
 
 /** A parent that really holds the hover key, so hovering re-renders the bar. */
-function HoverHarness(props: { parts: PartsPart[]; max?: number; minBand?: number; reserve?: { ratio: number; label: string } }) {
+function HoverHarness(props: { parts: PartsPart[]; max?: number; minBand?: number; reserve?: ContextReserve }) {
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   return h(StackedBar, { parts: props.parts, max: props.max, minBand: props.minBand, hoverKey, onHoverKey: setHoverKey, reserve: props.reserve })
 }
@@ -78,19 +79,19 @@ describe('StackedBar layout', () => {
 })
 
 describe('StackedBar entrance grow', () => {
-  test('segments and the free track carry the grow-in stagger slots in layout order; the reserve band stays unanimated', async () => {
+  test('segments and the free track carry the grow-in stagger slots in layout order; the reserve masks stay unanimated', async () => {
     const m = await mount(h(StackedBar, {
       parts: [part('system', 700), part('user', 300)],
       max: 2000,
-      reserve: { ratio: 0.8, label: 'headroom' },
+      reserve: { threshold: 1400, headroom: 300, output: 300 },
     }))
     const slot = (el: Element): string => (el as HTMLElement).style.getPropertyValue('--lc-i')
     const segs = queryAll(m.container, '.lc-stacked-seg')
     assert.equal(slot(segs[0]), '0')
     assert.equal(slot(segs[1]), '1')
-    // The free track opens right after the last occupied segment; the reserve band carries no slot.
+    // The free track opens right after the last occupied segment; the masks carry no slot.
     assert.equal(slot(query(m.container, '.lc-stacked-free')), '2')
-    assert.equal(slot(query(m.container, '.lc-reserve')), '')
+    for (const mask of queryAll(m.container, '.lc-reserve')) assert.equal(slot(mask), '')
     await m.unmount()
   })
 
@@ -195,34 +196,68 @@ describe('StackedBar hover link', () => {
   })
 })
 
-describe('StackedBar reserve band', () => {
-  test('rendered over the rightmost window slice; hover shows its label and yields the hover link', async () => {
-    const m = await mount(h(HoverHarness, {
-      parts: [part('user', 100)],
-      max: 1000,
-      reserve: { ratio: 0.8, label: 'reserved headroom' },
-    }))
-    const band = query(m.container, '.lc-reserve')
-    assert.equal(band.style.left, '80%')
-    assert.equal(band.style.width, '20%')
-    await hover(band)
+describe('StackedBar reserve masks', () => {
+  const RESERVE = { threshold: 800, headroom: 100, output: 100 }
+
+  test('the two masks tile the window tail; each hover shows its own type and length and yields the hover link', async () => {
+    const m = await mount(h(HoverHarness, { parts: [part('user', 100)], max: 1000, reserve: RESERVE }))
+    const headroom = query(m.container, '.lc-reserve-headroom')
+    assert.equal(headroom.style.left, '80%')
+    assert.equal(headroom.style.width, '10%')
+    const output = query(m.container, '.lc-reserve-output')
+    assert.equal(output.style.left, '90%')
+    assert.equal(output.style.width, '10%')
+    await hover(headroom)
     const tip = query(m.container, '.lc-bar-tip')
     assert.ok(tip.className.includes('lc-bar-tip-on'))
-    assert.equal(tip.textContent, 'reserved headroom')
-    assert.equal(tip.style.left, '88%') // clamped: 80 + 20/2 = 90 → 88
+    assert.equal(tip.textContent, 'Compaction headroom 100')
+    assert.equal(tip.style.left, '85%')
     assert.equal(query(m.container, '.lc-stacked').className, 'lc-stacked') // hoverKey cleared
-    await unhover(band)
+    await unhover(headroom)
     assert.equal(query(m.container, '.lc-bar-tip').className, 'lc-tip lc-bar-tip')
-    // Stack-level mouseleave also clears an active reserve hover.
-    await hover(band)
-    assert.ok(query(m.container, '.lc-bar-tip').className.includes('lc-bar-tip-on'))
+    await hover(output)
+    assert.equal(query(m.container, '.lc-bar-tip').textContent, 'Max output tokens 100')
+    assert.equal(query(m.container, '.lc-bar-tip').style.left, '88%') // clamped: 90 + 5 = 95 → 88
+    // Stack-level mouseleave also clears an active mask hover.
     await unhover(query(m.container, '.lc-stacked'))
     assert.equal(query(m.container, '.lc-bar-tip').className, 'lc-tip lc-bar-tip')
     await m.unmount()
   })
 
+  test('a zero-extent mask is dropped; an output-only reserve renders the rightmost mask alone', async () => {
+    const m = await mount(h(HoverHarness, {
+      parts: [part('user', 100)],
+      max: 1000,
+      reserve: { threshold: 1000, headroom: 0, output: 0 },
+    }))
+    assert.equal(queryAll(m.container, '.lc-reserve').length, 0)
+    await m.update(h(HoverHarness, {
+      parts: [part('user', 100)],
+      max: 1000,
+      reserve: { threshold: 900, headroom: 0, output: 100 },
+    }))
+    assert.equal(queryAll(m.container, '.lc-reserve-headroom').length, 0)
+    const output = query(m.container, '.lc-reserve-output')
+    assert.equal(output.style.left, '90%')
+    assert.equal(output.style.width, '10%')
+    await m.unmount()
+  })
+
+  test('a used region past the window rescales the masks with the track', async () => {
+    const m = await mount(h(HoverHarness, {
+      parts: [part('user', 2000)],
+      max: 1000,
+      reserve: RESERVE,
+    }))
+    // scale = the occupied total: the window tail now occupies the bar's second half.
+    assert.equal(query(m.container, '.lc-reserve-headroom').style.left, '40%')
+    assert.equal(query(m.container, '.lc-reserve-headroom').style.width, '5%')
+    assert.equal(query(m.container, '.lc-reserve-output').style.left, '45%')
+    await m.unmount()
+  })
+
   test('not rendered without a positive window, even when configured', async () => {
-    const reserve = { ratio: 0.8, label: 'reserved headroom' }
+    const reserve = RESERVE
     const m = await mount(h(StackedBar, { parts: [part('user', 100)], reserve }))
     assert.equal(queryAll(m.container, '.lc-reserve').length, 0)
     await m.update(h(StackedBar, { parts: [part('user', 100)], max: 0, reserve }))

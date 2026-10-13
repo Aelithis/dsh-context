@@ -16,9 +16,9 @@ function headOf(over: Partial<Headline> = {}): Headline {
 }
 
 describe('CurrentComposition header', () => {
-  test('windowed head: tokens/window figure, used percentage, reserve band, subtitle', async () => {
+  test('windowed head: tokens/window figure, used percentage, reserve masks, subtitle', async () => {
     const m = await mount(h(CurrentComposition, {
-      head: headOf({ window: 10000, pct: 50.4 }),
+      head: headOf({ window: 10000, pct: 50.4, reserve: { threshold: 8000, headroom: 1000, output: 1000 } }),
       subtitle: 'deepseek-v4-flash',
     }))
     assert.ok(text(m.container).includes('Current Context'))
@@ -27,15 +27,18 @@ describe('CurrentComposition header', () => {
     assert.ok(text(num).includes('5.0k / 10.0k tokens'))
     // The reading keeps one decimal, a whole tenth included (headline.ts).
     assert.equal(query(num, '.lc-overview-pct b').textContent, '50.4%')
+    // The two masks split the reserve: the compaction headroom, then the output reservation.
+    const headroom = query(m.container, '.lc-reserve-headroom')
+    const output = query(m.container, '.lc-reserve-output')
+    assert.equal(headroom.style.left, '80%')
+    assert.equal(output.style.left, '90%')
+    await hover(headroom)
+    assert.equal(query(m.container, '.lc-bar-tip').textContent, 'Compaction headroom 1.0k')
+    await hover(output)
+    assert.equal(query(m.container, '.lc-bar-tip').textContent, 'Max output tokens 1.0k')
     await m.update(h(CurrentComposition, { head: headOf({ window: 10000, pct: 50 }) }))
     assert.equal(query(num, '.lc-overview-pct b').textContent, '50.0%')
     assert.ok(text(num).includes('of context used'))
-    // The reserve band mirrors the 80% auto-compaction threshold.
-    const band = query(m.container, '.lc-reserve')
-    await hover(band)
-    const tip = query(m.container, '.lc-bar-tip')
-    assert.ok(tip.textContent!.includes('Auto-compaction reserve'))
-    assert.ok(tip.textContent!.includes('80%'))
     await m.unmount()
   })
 

@@ -103,7 +103,7 @@ The **Context Stats** card's Agent Network cell (the billed tokens and estimated
 
 ![Current Context card](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/current-context.png)
 
-A six-color stacked bar against the model's full window (hatching = free headroom): system prompt, tool schemas, user messages, injected context, assistant replies, tool results — each with its ≈token figure and share. When a conversation starts degrading, this is where you see *which part* is responsible.
+A six-color stacked bar against the model's full window (the two hatched masks at the end = auto-compaction's reserve: its headroom, then the request's reserved output window): system prompt, tool schemas, user messages, injected context, assistant replies, tool results — each with its ≈token figure and share. When a conversation starts degrading, this is where you see *which part* is responsible.
 
 ### 📈 Context Trend — how the context grew and evolved by turn or steps
 

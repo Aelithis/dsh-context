@@ -305,6 +305,9 @@ export function timelineOf(value: unknown): ContextTimeline | null {
     ...(typeof data.model === 'string' ? { model: data.model } : {}),
     ...(typeof data.provider === 'string' ? { provider: data.provider } : {}),
     ...(typeof data.contextWindow === 'number' ? { contextWindow: data.contextWindow } : {}),
+    ...(typeof data.maxOutputTokens === 'number' && Number.isFinite(data.maxOutputTokens) && data.maxOutputTokens > 0
+      ? { maxOutputTokens: data.maxOutputTokens }
+      : {}),
     current: {
       system: numOf(safeCurrent.system),
       tools: numOf(safeCurrent.tools),

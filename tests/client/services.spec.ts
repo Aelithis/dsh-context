@@ -170,16 +170,24 @@ describe('timelineOf', () => {
   })
 
   test('model/provider/contextWindow: wrong-typed dropped, right-typed kept', () => {
-    const kept = timelineOf({ current: 1, model: 'm', provider: 'p', contextWindow: 100 })
+    const kept = timelineOf({ current: 1, model: 'm', provider: 'p', contextWindow: 100, maxOutputTokens: 256000 })
     assert.ok(kept !== null)
     assert.equal(kept.model, 'm')
     assert.equal(kept.provider, 'p')
     assert.equal(kept.contextWindow, 100)
+    assert.equal(kept.maxOutputTokens, 256000)
     const dropped = timelineOf({ current: 1, model: 5, provider: {}, contextWindow: 'x' })
     assert.ok(dropped !== null)
     assert.ok(!('model' in dropped))
     assert.ok(!('provider' in dropped))
     assert.ok(!('contextWindow' in dropped))
+    // The output cap is re-proved like every other scalar: a hostile, non-finite, or non-positive one
+    // drops whole (reserve.ts reserves nothing without it) instead of reaching the mask math.
+    for (const maxOutputTokens of ['256000', Number.NaN, Number.POSITIVE_INFINITY, 0, -1]) {
+      const capped = timelineOf({ current: 1, maxOutputTokens })
+      assert.ok(capped !== null)
+      assert.ok(!('maxOutputTokens' in capped), String(maxOutputTokens))
+    }
   })
 
   test('images/toolCalls/humanInputs/surfaceFloor/archiveFloor are kept only when numbers', () => {

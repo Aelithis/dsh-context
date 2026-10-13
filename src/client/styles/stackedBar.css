@@ -9,12 +9,16 @@
 .lc-stacked-seg-pick { cursor: pointer; }
 .lc-stacked-seg { transition: filter var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 .lc-stacked-free { box-sizing: border-box; transition: box-shadow var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
-/* Entrance grow: transform, not width, so the layout never thrashes; runs once on mount, so live hover and width updates never replay it. The reserve band stays unanimated — as an overlay its growth would smear the stripes. */
+/* Entrance grow: transform, not width, so the layout never thrashes; runs once on mount, so live hover and width updates never replay it. The reserve masks stay unanimated — as overlays their growth would smear the stripes. */
 .lc-stacked-seg, .lc-stacked-free { transform-origin: 0 50%; }
 /* The sweep rides `animate-lc-stacked-in`, staggered by each element's `--lc-i` and disabled under `motion-reduce`. */
 .lc-stacked-seg-on { filter: brightness(1.18); }
-/* Dashed border, not box-shadow: a shadow cannot dash. The reserve band owns the pointer so its own hover explanation shows. */
-.lc-reserve { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: auto; cursor: help; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dsw-alias-state-warn-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
+/* The two auto-compaction reserve masks own the pointer over their own slice so each shows its own explanation. Hue tells
+   the two apart (amber = compaction headroom, the deepseek blue = the routed output reservation) and the hatch direction
+   repeats it for color-blind readers: the boundary between them is the window's output reservation edge. */
+.lc-reserve { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: auto; cursor: help; }
+.lc-reserve-headroom { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--dsw-alias-state-warn-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
+.lc-reserve-output { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--dsw-alias-state-business-primary) 24%, transparent) 0 5px, transparent 5px 10px); }
 .lc-stacked-free-on { border: 2px dashed var(--dsw-alias-label-secondary); border-radius: 3px; }
 .lc-stacked-dim .lc-stacked-seg { opacity: 0.35; }
 .lc-stacked-dim .lc-stacked-seg-on { opacity: 1; }
