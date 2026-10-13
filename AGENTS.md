@@ -41,15 +41,18 @@ Complete ALL of these before ANY commit:
 - Review the full diff independently: every change necessary, correct, and not over-engineered.
 - Clean up generated temporary files and temporary or unhelpful comments.
 - Load the [code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) skill if available, run it to review all the changes, and independently verify or follow each of its suggestions when its multi-axis analysis done.
-- Run `pnpm run lint:fix && pnpm run test && pnpm run build` as a single command and capture the FULL output.
-  - Example for per-file 100% coverage output:
-    ```
-    % Coverage report from v8
-    -------------------------|---------|----------|---------|---------|-------------------
-    File                     | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
-    -------------------------|---------|----------|---------|---------|-------------------
-    -------------------------|---------|----------|---------|---------|-------------------
-    ```
+- Run the following commands concurrently for maximum efficiency
+  - First, run `pnpm run lint` to fix all lint errors.
+  - Second, run `pnpm run typecheck` to fix all type errors.
+  - Third, run `pnpm run coverage` to run and ensure 100% per-file coverage. Please capture the ALL content of the full output without truncation or tailing.
+    - Example for per-file 100% coverage output:
+      ```
+      % Coverage report from v8
+      -------------------------|---------|----------|---------|---------|-------------------
+      File                     | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+      -------------------------|---------|----------|---------|---------|-------------------
+      -------------------------|---------|----------|---------|---------|-------------------
+      ```
 
 ## Layout & responsive
 

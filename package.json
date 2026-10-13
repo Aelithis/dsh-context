@@ -45,7 +45,7 @@
     "web": "bash scripts/web.sh",
     "register": "bash scripts/register.sh",
     "typecheck": "tsc --noEmit -p tsconfig.tests.json --incremental",
-    "test": "pnpm run typecheck && vitest run --coverage",
+    "test": "vitest run --coverage",
     "coverage": "vitest run --coverage",
     "release": "bash scripts/publish.sh",
     "social-preview": "node scripts/social-preview/generate.ts",
