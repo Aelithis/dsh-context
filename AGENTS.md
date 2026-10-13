@@ -59,11 +59,11 @@ Complete ALL of these before ANY commit:
 - Verify layout changes visually before shipping: a spread of widths from desktop down to phone (~390px), in both locales (English labels are the truncation stress case), on a long session, including the `/context` modal.
 
 ## Build & run
-- Run `pnpm run build` after code changes applied.
-- Run `pnpm run watch` to keep the local plugin hot-reloaded on dsh while developing in the browser.
-- The dsh web server may already be running at `http://127.0.0.1:3080/`.
-- Run `pnpm run web` to restart it (kills the running `dsh web` first, then starts `dsh web --no-open`).
-- If the browser hits an auth-token issue, kill the dsh process and restart with `dsh web --no-open`, then open the printed `http://127.0.0.1:3080/?token=XXXXXXXXX` URL.
+- **Build**: run `pnpm run build` after applying code changes.
+- **Watch**: run `pnpm run watch` to hot-reload the local plugin in dsh while developing in the browser.
+- **Web server**: it may already be running at `http://127.0.0.1:3080/`. To restart, run `pnpm run web` (kills the running `dsh web`, then starts `dsh web --no-open`).
+- **Tokenized URL**: always open the full URL printed at startup, `http://127.0.0.1:3080/?token=XXXXXXXXX`. Save it to `.tmp/dsh-web-url.txt` and read it from there for later browser runs; each restart prints a new token and the old URL stops working, so overwrite the file every time.
+- **Auth-token errors**: kill the dsh process, restart with `dsh web --no-open`, and open the newly printed tokenized URL.
 
 ## Compatibility - Important!
 - MUST install and work correctly on every supported `@deepseek-ai/dsh` release, with no regressions in runtime dependencies, message parsing, or any user-visible behavior.
