@@ -29,7 +29,7 @@ import { openSessionVia, type ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
 import type { FleetDetail } from '../../shared/types'
 import { useFleetModel } from '../fleetModel'
-import type { FleetTeam } from '../fleetTeam'
+import { teammateNameOf, type FleetTeam } from '../fleetTeam'
 import type { AgentForest, AgentNode, AgentSelfStats } from '../agentTree'
 import {
   barSegments,
@@ -266,6 +266,7 @@ export function makeAgentGraph(
                       onKeyOpen={keyOpen(node.id)}
                       book={book}
                       currency={currency}
+                      memberName={teammateNameOf(team, node)}
                       t={t}
                       fmt={fmt}
                     />
@@ -316,6 +317,8 @@ interface CardProps {
   /** The price book and display currency for the cost estimate (null book → no estimate shown). */
   book: ModelBook | null
   currency: CostCurrency
+  /** The roster name when the node belongs to the team (undefined family outsiders and the self card). */
+  memberName?: string
   t: ViewKit['t']
   fmt: ViewKit['fmt']
 }
@@ -366,7 +369,16 @@ function AgentCard(props: CardProps): ReactElement {
         {node.running || node.completed
           ? <StateDot state={node.running ? 'ongoing' : 'done'} size={11} className="lc-agent-state" />
           : null}
-        <div className="lc-agent-label">{node.label}</div>
+        <div className="lc-agent-label">
+          {props.memberName === undefined
+            ? node.label
+            : (
+              <>
+                <b className="lc-agent-member">{props.memberName}</b>
+                <span className="lc-agent-duty" title={node.label}>{node.label}</span>
+              </>
+            )}
+        </div>
         {/* The badge sits OUTSIDE the clamped label: an inline badge would be clipped away
             whenever a long title claims both lines. The lc-agent-self-badge class carries no
             rule of its own — it stays as the specs' anchor for the self marker. */}

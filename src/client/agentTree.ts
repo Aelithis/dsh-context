@@ -87,8 +87,9 @@ export interface AgentForest {
 export const AGENT_TREE_LIMIT = 40
 
 /** Fixed card height — mirrored by `.lc-agent-card`'s `height` in agentGraph.css, so a link's
- * exit point (card bottom) and entry point (card top) always land on the card's edge. */
-export const AGENT_CARD_H = 100
+ * exit point (card bottom) and entry point (card top) always land on the card's edge. Three
+ * head lines: a teammate's roster name + 2-line duty, or a plain title. */
+export const AGENT_CARD_H = 116
 /** Horizontal cell pitch adapts to the stage width between these bounds; each node owns one
  * cell and the card fills it minus a 12px gutter, so a card never clips a neighbor or the stage edge.
  * Every card shares one pitch — the graph reads as a grid, and a card never claims extra room. */

@@ -21,12 +21,12 @@
 .lc-agent-card {
   position: absolute;
   /* Mirrors AGENT_CARD_H in agentTree.ts: the layout lands link endpoints on the card's edges. */
-  height: 100px;
+  height: 116px;
   padding: 7px 9px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  /* Worst-case content (2-line title + metric + bar + meta) totals ~103px; clip the stray pixel
+  /* Worst-case content (3-line head + metric + bar + meta) totals ~115px; clip the stray pixel
      rather than bleed onto the link channel. */
   overflow: hidden;
   /* Nested on the lc-card's layer-1 surface: one step up + the l2 border (the inspector's own recipe). */
@@ -53,9 +53,13 @@
 .lc-agent-card-head { display: flex; align-items: flex-start; gap: 6px; }
 /* The harness's own StateDot (the header popup's glyph), nudged onto the title's first line. */
 .lc-agent-state { margin-top: 2px; }
-/* Fixed two-line title box: every card's metric and bar sit at the same height,
-   whether the title wraps or not. */
-.lc-agent-label { flex: 1; min-width: 0; height: 30px; font-size: 11.5px; font-weight: 650; line-height: 1.3; color: var(--dsw-alias-label-primary); overflow-wrap: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* Fixed three-line title box: a teammate's head is the roster name + a 2-line duty, a plain
+   title keeps up to 3 lines — every card's metric and bar sit at the same height. */
+.lc-agent-label { flex: 1; min-width: 0; height: 45px; font-size: 11.5px; font-weight: 650; line-height: 1.3; color: var(--dsw-alias-label-primary); overflow-wrap: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+/* A teammate card's head: the roster name in the label's own weight, the duty in the light
+   secondary tone under it (the member cards' desc idiom), wrapping inside the fixed 3-line box. */
+.lc-agent-member { font-weight: 650; }
+.lc-agent-duty { display: block; font-weight: 400; color: var(--dsw-alias-label-secondary); }
 .lc-agent-metric { display: flex; align-items: baseline; gap: 6px; margin-top: 5px; }
 .lc-agent-tokens { font-size: 13px; color: var(--dsw-alias-label-primary); font-variant-numeric: tabular-nums; }
 .lc-agent-pct { flex: none; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }

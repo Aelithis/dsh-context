@@ -526,6 +526,24 @@ describe('AgentGraph — the Fleet seat', () => {
     await m2.unmount()
   })
 
+  test('a teammate card leads with the roster name and carries the duty in a light line', async () => {
+    const face = new FakeSessions(family())
+    const View = makeView(face)
+    const team = { ...TEAM, members: [...TEAM.members, { id: 'worker', name: 'architect', role: 'teammate' as const, phase: 'active' as const }] }
+    const m = await mount(h(View, { sessionId: 'root', self: selfStats(), team, inspector: false }))
+
+    const worker = query(m.container, '[data-agent="worker"]')
+    assert.equal(text(query(worker, '.lc-agent-member')), 'architect')
+    assert.equal(text(query(worker, '.lc-agent-duty')), 'worker-bee')
+    // The self card and family outsiders keep the plain title head.
+    const self = query(m.container, '.lc-agent-card.lc-agent-self')
+    assert.equal(queryAll(self, '.lc-agent-duty').length, 0)
+    const done = query(m.container, '[data-agent="done"]')
+    assert.equal(text(query(done, '.lc-agent-label')), 'done')
+    assert.equal(queryAll(done, '.lc-agent-duty').length, 0)
+    await m.unmount()
+  })
+
   test('select mode: a card click highlights instead of jumping', async () => {
     const face = new FakeSessions(family())
     const View = makeView(face)

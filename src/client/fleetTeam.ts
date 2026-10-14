@@ -116,6 +116,14 @@ export function teamMemberOf(team: FleetTeam | null, sessionId: string): FleetTe
   return null
 }
 
+/** The name a graph card leads with for one node: teammates only — the lead's card keeps the
+ * session's own title, the current session's card is the self card, outsiders keep their prompt. */
+export function teammateNameOf(team: FleetTeam | null, node: AgentNode): string | undefined {
+  if (node.isCurrent) return undefined
+  const member = teamMemberOf(team, node.id)
+  return member !== null && member.role === 'teammate' ? member.name : undefined
+}
+
 /** A member's id off their roster NAME — the task board's ownership join key. */
 export function memberIdByName(team: FleetTeam | null, name: string | undefined): string | undefined {
   if (team === null || name === undefined) return undefined
