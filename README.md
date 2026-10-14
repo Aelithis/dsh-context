@@ -117,6 +117,7 @@ One stacked bar per model request — finer than per-message — so you watch th
 
 ![Context Trend in Delta mode](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/history-delta.png)
 
+- **Overview** — one toggle squashes the whole session (steps or turns) into the pane's width as a continuous stacked ribbon: every compaction drop and composition shift at a glance, no sideways scrolling, nothing extra to load. Flags mark the quartiles only; hover to scrub, click to pin (exclusive with DNA mode and Adaptive).
 - **Hover & pin** — scrub for an instant tooltip; click to pin the full breakdown, with provider-reported **Actual Prompt / Output / Cache** next to the estimates.
 - **Live linkage** — hovering a bar previews that step's assembled context in the Context browser beside the chart; leaving the chart returns to your own pick.
 
