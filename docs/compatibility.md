@@ -6,7 +6,7 @@ The rules dsh-context must hold on every supported `@deepseek-ai/dsh` release, a
 
 **Law.** Record only what no other artifact carries; delete what code, tests, or git history already say. Verify against the dsh sources before acting — source wins over this page. Less is ALWAYS better.
 
-Last verified: **2026-10-13** (dsh-context `0.69.1`, dsh `0.2.0-rc.2`).
+Last verified: **2026-10-14** (dsh-context `0.70.0`, dsh `0.2.0-rc.2` npm install and `0.2.1-alpha.3` tree).
 
 ## 1 · Supported set
 
@@ -69,12 +69,13 @@ Last verified: **2026-10-13** (dsh-context `0.69.1`, dsh `0.2.0-rc.2`).
 1. **Every capability rides an OPTIONAL seam** — deferred `ctx.inject` (never a hard `inject`), the face re-proved before use, the registration guarded, the module declared in `dsh.client.inject`. No service → no capability: no pending fiber, no throw. Per-line faces are pinned in `tests/baselines.ts` and probed by §8's matrix.
 2. **Mount at most once per page** (issue #137) — the client-plugin runner force-assigns a fresh shadowing priority to every registration, so the slot registry's same-priority duplicate guard never fires across a double mount. Read the raw ledger; mount nothing when `context-jump` is already seated; the read fails open. (dsh: `packages/client/ui-renderer/src/client/registry.ts` `SlotRegistry.entries`; probe `ledger`)
 3. **Session jump uses the sidebar's own verb**, `uiWorkspace.openSession(SessionTarget)` — never the sessions service's `open(id)`, removed by the `0.1.6` selection refactor (issue #90). (dsh: `packages/client/ui-workspace/src/client/navigation.ts`; probe `sessionNav`)
+4. **The member card's open prefers the right Sidebar's subagent chat**, addressed by the row's own direct parent — a face that is absent or leaves the address unclaimed keeps rule 3's whole-view jump. (dsh: `packages/client/ui-subagent/src/client/sidebar-chat/index.tsx`, `packages/client/ui-sidebar-right/src/client/service.ts`)
 
 **Boundary**
 
-4. **Re-prove everything at the boundary** — collections re-proven, scalars zeroed, whole-value absence stays `null` (the loading screen); structural narrowing over blind casts; skip elements that fail the shape instead of throwing. (`src/client/timelineSource.ts`)
-5. **Isolate per-item work over hostile objects**; every async read resolves to data or a retryable failure note — never an eternal spinner. (`src/client/timelineSource.ts`)
-6. **A pushed revision decrease resets the detail ledger** — stale reads never merge into the new head. (`src/client/timelineSource.ts`)
+5. **Re-prove everything at the boundary** — collections re-proven, scalars zeroed, whole-value absence stays `null` (the loading screen); structural narrowing over blind casts; skip elements that fail the shape instead of throwing. (`src/client/timelineSource.ts`)
+6. **Isolate per-item work over hostile objects**; every async read resolves to data or a retryable failure note — never an eternal spinner. (`src/client/timelineSource.ts`)
+7. **A pushed revision decrease resets the detail ledger** — stale reads never merge into the new head. (`src/client/timelineSource.ts`)
 
 - **Limitation — complete prompt sections:** a deployment registering a `complete` system-prompt section keeps ONLY that section (registry design); `promptPrefix`/`promptSuffix` are dropped there. (dsh: `packages/core/system-prompt`)
 

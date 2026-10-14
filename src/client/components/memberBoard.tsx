@@ -269,7 +269,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       <button
                         type="button"
                         className="lc-inspector-btn lc-member-open"
-                        title={t('fleet.open')}
+                        title={t('fleet.openSidebar')}
                         onClick={(ev) => {
                           ev.stopPropagation()
                           props.onOpen(member.id)
@@ -349,7 +349,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                     <button
                       type="button"
                       className="lc-inspector-btn lc-member-open"
-                      title={t('fleet.open')}
+                      title={t('fleet.openSidebar')}
                       onClick={(ev) => {
                         ev.stopPropagation()
                         props.onOpen(node.id)

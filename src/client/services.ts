@@ -81,11 +81,20 @@ export interface SidebarTabsFace {
   register(definition: SidebarTabDefinitionLike): () => void
 }
 
+/** The opener's placement options the Sidebar face accepts (the harness's
+ * `SidebarRightOpenResourceOptions`): the opening type's name, and whether to
+ * claim a fresh pane instead of the resource's open occurrence. */
+export interface SidebarResourceOpenOptions {
+  kind?: string
+  preferNewPane?: boolean
+}
+
 /** The right Sidebar's navigation face (`ctx.sidebarRight`): `openResource`
- * claims a `dsh-resource://file/…` address through the shipped preview type.
- * The caller falls back to the system opener when it is absent or refuses. */
+ * claims a `dsh-resource://…` address — the shipped preview type for files,
+ * the shipped subagent type for a chat. The caller falls back to its other
+ * opener when the face is absent or refuses. */
 export interface SidebarResourceFace {
-  openResource(address: string): void
+  openResource(address: string, options?: SidebarResourceOpenOptions): void
 }
 
 /** A finalized chat node: it carries the source surface event's `seq`, so the
@@ -761,7 +770,7 @@ export function openPathVia(ctx: ClientCtx): ((path: string) => void) | undefine
  * — the caller keeps its system-open degradation. `openResource` throws for an
  * unclaimed address or with no session surface, so the caller learns whether
  * the address was taken. The face is re-proved per open: a service can land or be revoked across an HMR reload. */
-export function openResourceVia(ctx: ClientCtx): ((address: string) => boolean) | undefined {
+export function openResourceVia(ctx: ClientCtx): ((address: string, options?: SidebarResourceOpenOptions) => boolean) | undefined {
   // The untrusted face is re-proved as a record with a callable `openResource`.
   const faceOf = (): SidebarResourceFace | undefined => {
     try {
@@ -774,11 +783,11 @@ export function openResourceVia(ctx: ClientCtx): ((address: string) => boolean) 
     }
   }
   if (faceOf() === undefined) return undefined
-  return (address: string): boolean => {
+  return (address: string, options?: SidebarResourceOpenOptions): boolean => {
     const face = faceOf()
     if (face === undefined) return false
     try {
-      face.openResource(address)
+      face.openResource(address, options)
       return true
     } catch {
       // No preview type claims it, or no session surface is mounted.
@@ -796,6 +805,37 @@ export function openSessionVia(ctx: ClientCtx, id: string): void {
     const open = workspace?.openSession
     if (typeof open === 'function') open.call(workspace, id)
   } catch { /* absent or hostile face — the jump is best-effort */ }
+}
+
+/** The right Sidebar's subagent-chat resource address — the shipped subagent
+ * catalog's canonical spelling for its "open in sidebar" verb, replicated
+ * verbatim (the host publishes no helper): its parser accepts only this form. */
+export function subagentChatAddressOf(address: { parentSessionId: string; childSessionId: string; mode: string }): string {
+  const query = new URLSearchParams({ parent: address.parentSessionId, mode: address.mode })
+  return `dsh-resource://subagentchat/session/${encodeURIComponent(address.childSessionId)}?${query}`
+}
+
+/** One subagent session's aside address as a family row supplies it: the direct
+ * parent is the row's own edge, and a row without its subagent projection rides
+ * the harness's own `unknown` mode. */
+export interface SubagentAddressLike {
+  parentSessionId?: string
+  childSessionId: string
+  mode?: 'one-shot' | 'continuable' | 'unknown'
+}
+
+/** Open one subagent session in the right Sidebar's chat presentation — the
+ * shipped catalog's aside verb (kind `subagentchat`, a new pane). False when
+ * the parent edge is unknown, the column absent, or the address unclaimed:
+ * the caller keeps its whole-view jump. */
+export function openChildAsideVia(ctx: ClientCtx, address: SubagentAddressLike): boolean {
+  const { parentSessionId, childSessionId, mode } = address
+  if (parentSessionId === undefined) return false
+  const open = openResourceVia(ctx)
+  return open !== undefined && open(
+    subagentChatAddressOf({ parentSessionId, childSessionId, mode: mode ?? 'unknown' }),
+    { kind: 'subagentchat', preferNewPane: true },
+  )
 }
 
 /** On-demand content for one surface-node seq: `null` when the durable log lacks the seq, rejects on transport failure. */

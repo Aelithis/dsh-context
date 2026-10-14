@@ -99,6 +99,28 @@ describe('FleetView — the panels over one family', () => {
     ctx.dispose()
   })
 
+  test('the other-agents card open button prefers the right Sidebar\'s subagent chat', async () => {
+    stubFleetRoute()
+    const opened: { address: string; options: unknown }[] = []
+    const ctx = new TestClientCtx({
+      services: {
+        sessions: familySessions(),
+        sidebarRight: { openResource: (address: string, options?: unknown) => { opened.push({ address, options }) } },
+      },
+    })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+    const cards = queryAll(m.container, '.lc-member-card')
+    await click(query(cards[cards.length - 1], '.lc-member-open'))
+    // The aside resource is addressed by the node's own direct parent and subagent mode.
+    assert.deepEqual(opened, [{
+      address: 'dsh-resource://subagentchat/session/w2?parent=root&mode=one-shot',
+      options: { kind: 'subagentchat', preferNewPane: true },
+    }])
+    await m.unmount()
+    ctx.dispose()
+  })
+
   test('overview strip, team chip, members board, task board, and comms all render off the one derivation', async () => {
     stubFleetRoute()
     const ctx = new TestClientCtx({ services: { sessions: familySessions() } })

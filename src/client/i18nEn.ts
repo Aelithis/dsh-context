@@ -237,6 +237,7 @@ export const DICT_EN = {
   'fleet.teamChip': 'team · {m} members · {n} tasks',
   'fleet.unpin': 'Unpin',
   'fleet.open': 'Open session',
+  'fleet.openSidebar': 'Open in sidebar',
   'fleet.membership': 'Team membership',
   'fleet.role.lead': 'lead',
   'fleet.role.teammate': 'teammate',

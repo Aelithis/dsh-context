@@ -235,6 +235,7 @@ export const DICT_ZH = {
   'fleet.teamChip': '团队 · {m} 成员 · {n} 任务',
   'fleet.unpin': '取消固定',
   'fleet.open': '打开会话',
+  'fleet.openSidebar': '在侧边栏打开',
   'fleet.membership': '团队身份',
   'fleet.role.lead': '主导',
   'fleet.role.teammate': '成员',

@@ -17,7 +17,7 @@ import { useFleetDetails, useFleetModel } from '../fleetModel'
 import { teamMemberOf, teamOf } from '../fleetTeam'
 import { useModelPrices } from '../modelPrices'
 import type { ClientCtx, SessionStandardProps } from '../services'
-import { openSessionVia, projectionOf, unsupportedOf } from '../services'
+import { openChildAsideVia, openSessionVia, projectionOf, unsupportedOf } from '../services'
 import { useContextSession } from '../sessionData'
 import type { ViewKit } from '../viewkit'
 import type { FleetDetail } from '../../shared/types'
@@ -127,7 +127,18 @@ export function makeFleetView(
       return member?.name ?? id
     }
 
+    /** A member card's open: the right Sidebar's subagent chat (the header catalog's own
+     * aside verb), addressed by the node's direct parent; a column that cannot take the
+     * resource, or a node without its parent edge, keeps the whole-view jump. */
     const open = (id: string): void => {
+      const node = byId.get(id)
+      /* v8 ignore next 5 -- defensive arms: the opener only fires from a family card on a
+         session-scoped tab, so a family node always carries its direct parent edge. */
+      if (openChildAsideVia(ctx, {
+        childSessionId: id,
+        parentSessionId: node?.parentId,
+        mode: node?.identity?.mode,
+      })) return
       openSessionVia(ctx, id)
     }
 
