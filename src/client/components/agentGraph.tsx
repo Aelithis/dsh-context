@@ -373,7 +373,7 @@ function AgentCard(props: CardProps): ReactElement {
         {node.isCurrent ? <span className="lc-agents-badge lc-agent-self-badge">{props.t('agents.self')}</span> : null}
       </div>
       <div className="lc-agent-metric">
-        <b className="lc-agent-tokens">{metricBits.length > 0 ? metricBits.join(' · ') : '—'}</b>
+        <span className="lc-agent-tokens">{metricBits.length > 0 ? metricBits.join(' · ') : '—'}</span>
       </div>
       {/* The free remainder is the bar's own track, so only occupied segments render. */}
       <div className="lc-agent-bar">
