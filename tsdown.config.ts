@@ -213,6 +213,8 @@ export default defineConfig([
     target: 'es2024',
     fixedExtension: false,
     minify: true,
+    // Local diagnosis only: the npm package never ships a .map (the `files` allowlist), so this stays a repo artifact.
+    sourcemap: true,
     // The host half's Config/projection types are the integration contract other plugins compile against.
     dts: true,
     clean: true,
