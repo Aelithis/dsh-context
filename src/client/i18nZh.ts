@@ -281,6 +281,8 @@ export const DICT_ZH = {
   'fleet.tasks.dependsOn': '依赖',
   'fleet.tasks.noMatch': '没有匹配的任务',
   'fleet.tasks.reply': '最终回报',
+  'fleet.tasks.replyFull': '全文加载中…',
+  'fleet.tasks.replyExcerpt': '仅摘录 — 全文暂不可用',
   'fleet.tasks.desc': '任务描述',
   'fleet.tasks.agent': '智能体',
   'fleet.tasks.noTeam': '暂无任务 — 团队任务与子 Agent 委派会在这里出现',

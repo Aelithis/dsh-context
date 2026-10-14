@@ -192,6 +192,8 @@ export function makeFleetView(
         team={team}
         forest={forest}
         detailOf={id => details.landed.get(id)}
+        fullOf={id => ({ detail: details.fullLanded.get(id) ?? null, pending: details.fullPending.has(id) })}
+        onOpenOwner={(id) => { details.requestFull(id) }}
         ownerFilter={ownerFilter}
         onOwnerFilter={setOwnerFilter}
         focusTaskId={focusTaskId}

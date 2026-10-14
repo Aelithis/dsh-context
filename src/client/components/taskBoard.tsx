@@ -29,6 +29,12 @@ export interface TaskBoardProps {
   forest: AgentForest | null
   /** Landed details keyed by session id — a delegation's briefing prompt and the final report-back ride them. */
   detailOf: (id: string) => { detail: FleetDetail | null } | undefined
+  /** The opened card's full read keyed by owner session id (unclipped report-back and brief);
+   * the entry always answers — no full read yet means `{ detail: null, pending: false }`, and the
+   * excerpt detailOf serves renders until it lands. */
+  fullOf: (id: string) => { detail: FleetDetail | null; pending: boolean }
+  /** A row unfold asks for the owner's full read (one per session per mount). */
+  onOpenOwner: (id: string) => void
   /** The picked owner narrowing the board: a membership NAME, or a subagent's session id. */
   ownerFilter: string | null
   onOwnerFilter: (key: string | null) => void
@@ -254,13 +260,20 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
 
   const visibleCount = groups.reduce((n, group) => n + group.rows.length, 0)
 
-  const toggleOpen = (id: string): void => {
+  const toggleOpen = (row: WorkRow): void => {
+    const opening = !openTasks.has(row.key)
     setOpenTasks((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (opening) next.add(row.key)
+      else next.delete(row.key)
       return next
     })
+    // An unfold asks for the owner's full read (the unclipped report-back); the fold-back
+    // never re-asking is the ledger's dedupe, not ours.
+    if (opening) {
+      const ownerId = ownerSessionId(row)
+      if (ownerId !== undefined) props.onOpenOwner(ownerId)
+    }
   }
 
   const flashTask = (id: string): void => {
@@ -290,7 +303,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
   const rowClick = (row: WorkRow) => (ev: MouseEvent) => {
     const target = ev.target as HTMLElement
     if (target.closest('button') !== null || target.closest('a') !== null) return
-    toggleOpen(row.key)
+    toggleOpen(row)
   }
 
   /** Keyboard mirrors the pick — on the ROW itself only: Enter on a nested button must keep
@@ -299,23 +312,36 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     if (ev.target !== ev.currentTarget) return
     if (ev.key !== 'Enter' && ev.key !== ' ') return
     ev.preventDefault()
-    toggleOpen(row.key)
+    toggleOpen(row)
   }
 
   /** The opened card's boxed sections: the brief, the agent, and the final report-back — the
-   * owner's (or the subagent's) own latest words for the work. */
+   * owner's (or the subagent's) own latest words for the work. The excerpt renders first; the
+   * full read replaces it on landing, and the section meta carries the load/unavailable state
+   * instead of the clock then. */
   const renderOpenSections = (row: WorkRow, hue: string, desc: string | undefined): ReactElement => {
     const ownerId = ownerSessionId(row)
-    const reply = ownerId !== undefined ? props.detailOf(ownerId)?.detail?.lastReply : undefined
-    const replyStamp = reply !== undefined ? <span className="lc-ts-card-meta">{fmtTime(reply.time)}</span> : undefined
+    const detail = ownerId !== undefined ? props.detailOf(ownerId)?.detail : undefined
+    const reply = detail?.lastReply
+    const full = ownerId !== undefined ? props.fullOf(ownerId) : undefined
+    const landed = full?.pending === true ? undefined : full?.detail ?? undefined
+    const shown = landed?.lastReply ?? reply
+    const stillExcerpt = landed?.lastReply === undefined && shown !== undefined
+    const replyMeta = full?.pending === true ? (
+      <span className="lc-ts-card-meta">{t('fleet.tasks.replyFull')}</span>
+    ) : stillExcerpt && detail?.truncated === true ? (
+      <span className="lc-ts-card-meta">{t('fleet.tasks.replyExcerpt')}</span>
+    ) : shown !== undefined ? (
+      <span className="lc-ts-card-meta">{fmtTime(shown.time)}</span>
+    ) : undefined
     return (
       <>
         {desc !== undefined && desc !== '' ? (
           <TaskTextSection label={t('fleet.tasks.desc')} text={desc} rich={rich} />
         ) : null}
         {renderAgentBox(row, hue)}
-        {reply !== undefined ? (
-          <TaskTextSection label={t('fleet.tasks.reply')} text={reply.text} rich={rich} meta={replyStamp} />
+        {shown !== undefined ? (
+          <TaskTextSection label={t('fleet.tasks.reply')} text={shown.text} rich={rich} meta={replyMeta} />
         ) : null}
       </>
     )
@@ -356,7 +382,10 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     const bits = runMetaOf(node, t, fmt)
     // The delegation's briefing prompt is the task's description; the opened row adds the
     // subagent's final report-back. Both render as Markdown, clamped to two lines when closed.
+    // The opened brief prefers the full read's unclipped prompt — the excerpt clamps at 1600.
     const prompt = props.detailOf(node.id)?.detail?.initialPrompt
+    const fullBrief = props.fullOf(node.id)
+    const brief = !fullBrief.pending ? fullBrief.detail?.initialPrompt ?? prompt : prompt
     const open = openTasks.has(row.key)
     return (
       <li
@@ -383,7 +412,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           <span className="lc-agents-badge">{t(`fleet.task.${row.status}`)}</span>
         </div>
         {open ? (
-          renderOpenSections(row, hue, prompt)
+          renderOpenSections(row, hue, brief)
         ) : prompt !== undefined && prompt !== '' ? (
           <div className="lc-team-task-desc">
             <MarkdownBody rich={rich} text={prompt} />

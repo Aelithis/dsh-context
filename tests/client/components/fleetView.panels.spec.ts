@@ -427,4 +427,71 @@ describe('FleetView — the panels over one family', () => {
     await m.unmount()
     ctx.dispose()
   })
+
+  test("a task card's report-back: the excerpt boards first, then the full read replaces it", async () => {
+    // Fresh session ids: the page-scope read ledger carries no settled line for them (it outlives
+    // the mounts in this file), so this test's stub owns the full protocol.
+    const team = {
+      members: [
+        { id: 'rq-root', name: 'lead', role: 'lead', phase: 'active' },
+        { id: 'rq-w1', name: 'worker-bee', role: 'teammate', phase: 'active' },
+      ],
+      tasks: [
+        { id: 'task-1', revision: 1, subject: 'schema parsing', description: 'Parse it.', status: 'in_progress', ownerName: 'worker-bee', blockedBy: [], writeScopes: ['src/'], ready: false, writeScopeWarnings: [] },
+      ],
+    }
+    const snapshot = {
+      byId: {
+        'rq-root': { displayTitle: 'Main Agent', running: true, updatedAt: 10, projectionValues: { agentTeam: team } },
+        'rq-w1': {
+          parentId: 'rq-root', origin: 'subagent', running: true, updatedAt: 8,
+          projectionValues: { subagent: { mode: 'continuable', label: 'worker-bee' }, subagentTiming: { settledMs: 42000 } },
+        },
+      },
+    }
+    // The full read stays in flight until released, so the waiting state is observable.
+    const fulls: Array<(value: unknown) => void> = []
+    vi.stubGlobal('fetch', (_url: unknown, init: { body: string }) => {
+      const body = JSON.parse(init.body) as { sessionId: string; full?: boolean }
+      if (body.full === true) {
+        return new Promise((resolve) => { fulls.push(resolve) })
+      }
+      const value = body.sessionId === 'rq-w1'
+        ? { lastReply: { time: 1_700_000_000_000, text: '13 of 15 c…' }, messages: [], truncated: true }
+        : { messages: [], truncated: false }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, value }) } as Response)
+    })
+    const ctx = new TestClientCtx({
+      services: {
+        sessions: { list: { getSnapshot: (): unknown => snapshot, subscribe: (): (() => void) => () => {} } },
+      },
+    })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'rq-root', useProjection: projectionsFor(richTimeline()) }))
+
+    // The excerpt lands within the scan; opening the row asks for the owner's full read.
+    await until(() => text(m.container).includes('13 of 15 c…'), 'the excerpt never landed')
+    await click(query(m.container, '[data-task="task-1"]'))
+    const card = queryAll(m.container, '[data-task="task-1"] .lc-ts-card').at(-1)!
+    assert.ok(text(card).includes('13 of 15 c…'), 'the excerpt boards while waiting')
+    assert.ok(text(card).includes(DICT_EN['fleet.tasks.replyFull']))
+    assert.equal(fulls.length, 1, 'one whole-log read for the owner, not per render')
+
+    fulls[0]!({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        value: { lastReply: { time: 1_700_000_000_000, text: '13 of 15 cases, fully reported.' }, messages: [], truncated: false },
+      }),
+    })
+    await until(() => text(m.container).includes('13 of 15 cases, fully reported.'), 'the full read never replaced the excerpt')
+    assert.ok(!text(m.container).includes(DICT_EN['fleet.tasks.replyFull']), 'the note yields once full')
+
+    // A fold-back and re-unfold never re-ask: the ledger keyed once per session per mount.
+    await click(query(m.container, '[data-task="task-1"]'))
+    await click(query(m.container, '[data-task="task-1"]'))
+    await until(() => fulls.length === 1 && text(m.container).includes('fully reported.'), 're-unfolding lost the full text')
+    await m.unmount()
+    ctx.dispose()
+  })
 })

@@ -283,6 +283,8 @@ export const DICT_EN = {
   'fleet.tasks.dependsOn': 'depends on',
   'fleet.tasks.noMatch': 'No matching tasks',
   'fleet.tasks.reply': 'Final reply',
+  'fleet.tasks.replyFull': 'loading full text…',
+  'fleet.tasks.replyExcerpt': 'excerpts only — full text unavailable',
   'fleet.tasks.desc': 'Task brief',
   'fleet.tasks.agent': 'Agent',
   'fleet.tasks.noTeam': 'No tasks yet — team tasks and subagent delegations land here',

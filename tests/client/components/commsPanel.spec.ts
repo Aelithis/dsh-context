@@ -38,9 +38,12 @@ const COMMS: CommsRow[] = [
 function detailsOf(over: Partial<FleetDetailState> = {}): FleetDetailState {
   return {
     landed: new Map(),
+    fullLanded: new Map(),
     pending: new Set(),
+    fullPending: new Set(),
     scanned: new Set(),
     request: vi.fn(),
+    requestFull: vi.fn(),
     scan: vi.fn(),
     refresh: vi.fn(),
     ...over,

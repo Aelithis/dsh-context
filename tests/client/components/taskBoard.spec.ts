@@ -70,6 +70,8 @@ function propsOf(over: Partial<TaskBoardProps> = {}): TaskBoardProps {
     team: teamOf(),
     forest: FOREST,
     detailOf: () => undefined,
+    fullOf: () => ({ detail: null, pending: false }),
+    onOpenOwner: () => {},
     ownerFilter: null,
     onOwnerFilter: () => {},
     focusTaskId: null,
@@ -344,6 +346,102 @@ describe('TaskBoard — the team task DAG', () => {
     const unowned = await mount(h(TaskBoard, propsOf({ team: bare })))
     assert.ok(text(unowned.container).includes(DICT_EN['fleet.taskUnowned']))
     await unowned.unmount()
+  })
+})
+
+describe("TaskBoard — the opened card's full read", () => {
+  test("an unfold asks for the owner's full read once; the fold-back does not", async () => {
+    const opened: string[] = []
+    const m = await mount(h(TaskBoard, propsOf({ onOpenOwner: id => { opened.push(id) } })))
+    const row = query(m.container, '[data-task="s2"]')
+    await click(row)
+    assert.deepEqual([...opened], ['s2'])
+    // A second pick folds the card back without re-asking.
+    await click(row)
+    assert.deepEqual([...opened], ['s2'])
+    // An unowned team row has no report-back to read.
+    await click(query(m.container, '[data-task="task-4"]'))
+    assert.deepEqual([...opened], ['s2'])
+    await m.unmount()
+  })
+
+  test('the opened card renders the excerpt first, then the full report-back in place', async () => {
+    const excerpt = { detail: { lastReply: { time: 1_700_000_000_000, text: '13 of 15 cases…' }, messages: [], truncated: true } }
+    const fullDetail = { lastReply: { time: 1_700_000_000_000, text: '13 of 15 cases, all four quadrants covered.' }, messages: [], truncated: false }
+    // Pending: the excerpt stands under the loading note.
+    const pending = await mount(h(TaskBoard, propsOf({
+      detailOf: () => excerpt,
+      fullOf: () => ({ detail: null, pending: true }),
+      onOpenOwner: () => {},
+    })))
+    await click(query(pending.container, '[data-task="s2"]'))
+    const card = queryAll(pending.container, '[data-task="s2"] .lc-ts-card').at(-1)!
+    assert.ok(text(card).includes('13 of 15 cases…'), 'the excerpt boards while waiting')
+    assert.ok(text(card).includes(DICT_EN['fleet.tasks.replyFull']))
+    await pending.unmount()
+
+    // Landed: the full text replaces the excerpt and the note yields to the clock.
+    const landed = await mount(h(TaskBoard, propsOf({
+      detailOf: () => excerpt,
+      fullOf: () => ({ detail: fullDetail, pending: false }),
+      onOpenOwner: () => {},
+    })))
+    await click(query(landed.container, '[data-task="s2"]'))
+    const done = query(landed.container, '[data-task="s2"]')
+    assert.ok(text(done).includes('13 of 15 cases, all four quadrants covered.'))
+    assert.ok(!text(done).includes(DICT_EN['fleet.tasks.replyFull']))
+    assert.ok(/\d{1,2}:\d{2}:\d{2}/.test(text(done)), 'the clock is back on a landed read')
+    await landed.unmount()
+  })
+
+  test('a failed full read keeps the excerpt under the unavailable note', async () => {
+    const excerpt = { detail: { lastReply: { time: 1_700_000_000_000, text: 'cut…' }, messages: [], truncated: true } }
+    const m = await mount(h(TaskBoard, propsOf({
+      detailOf: () => excerpt,
+      fullOf: () => ({ detail: null, pending: false }),
+      onOpenOwner: () => {},
+    })))
+    await click(query(m.container, '[data-task="s2"]'))
+    const card = queryAll(m.container, '[data-task="s2"] .lc-ts-card').at(-1)!
+    assert.ok(text(card).includes('cut…'))
+    assert.ok(text(card).includes(DICT_EN['fleet.tasks.replyExcerpt']))
+    await m.unmount()
+
+    // A short, uncut excerpt with no full read yet shows no state note at all.
+    const small = { detail: { lastReply: { time: 1_700_000_000_000, text: 'done' }, messages: [], truncated: false } }
+    const plain = await mount(h(TaskBoard, propsOf({ detailOf: () => small, fullOf: () => ({ detail: null, pending: false }) })))
+    await click(query(plain.container, '[data-task="s2"]'))
+    const bare = query(plain.container, '[data-task="s2"]')
+    assert.ok(text(bare).includes('done'))
+    await plain.unmount()
+  })
+
+  test('the delegation brief upgrades to the full read once it lands', async () => {
+    const clipped = { detail: { initialPrompt: 'brief within 1600…', lastReply: { time: 1_700_000_000_000, text: 'ok' }, messages: [], truncated: true } }
+    const fullDetail = { initialPrompt: 'the whole briefing prompt, unwound.', messages: [], truncated: false }
+    // Pending: the opened brief keeps the excerpt prompt.
+    const waits = await mount(h(TaskBoard, propsOf({
+      detailOf: () => clipped,
+      fullOf: () => ({ detail: null, pending: true }),
+    })))
+    const row = query(waits.container, '[data-task="s1"]')
+    await click(row)
+    assert.ok(text(row).includes('brief within 1600…'), 'the opened brief keeps the excerpt while waiting')
+    await waits.unmount()
+
+    // Landed: the opened brief shows the whole prompt; a folded row still clamps the excerpt.
+    const landed = await mount(h(TaskBoard, propsOf({
+      detailOf: () => clipped,
+      fullOf: () => ({ detail: fullDetail, pending: false }),
+    })))
+    const open = query(landed.container, '[data-task="s1"]')
+    await click(open)
+    const boxes = queryAll(open, '.lc-ts-card')
+    assert.ok(text(boxes[0]).includes('the whole briefing prompt, unwound.'))
+    assert.ok(!text(boxes[0]).includes('brief within 1600…'), 'the excerpt brief gives way')
+    await click(open)
+    assert.ok(text(open).includes('brief within 1600…'), 'the folded row still clamps the excerpt brief')
+    await landed.unmount()
   })
 })
 
