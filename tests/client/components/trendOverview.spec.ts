@@ -215,33 +215,41 @@ describe('TrendOverview flags and markers', () => {
     return out
   }
 
-  test('plants poles at the record quartiles only (step granularity)', async () => {
+  test('plants poles at the record quartiles and the full span (step granularity)', async () => {
     const m = await mount(h(TrendOverview, propsOf(steps(47))))
     const flags = queryAll(m.container, '.lc-step-flag')
-    assert.equal(flags.length, 3)
+    assert.equal(flags.length, 4)
     const idx = [12, 23, 35]
-    flags.forEach((f, i) => assert.ok(Math.abs(parseFloat(f.style.left) - idx[i] / 46 * 100) < 1e-9, f.style.left))
-    assert.deepEqual(flags.map(f => query(f, '.lc-step-flag-label').textContent), ['13', '24', '36'])
+    flags.slice(0, 3).forEach((f, i) => assert.ok(Math.abs(parseFloat(f.style.left) - idx[i] / 46 * 100) < 1e-9, f.style.left))
+    // The full-span pole hugs inside the pane's right edge (left 100% falls wholly past the scroller's clip).
+    assert.equal(flags[3].style.left, 'calc(100% - 1px)')
+    assert.deepEqual(flags.map(f => query(f, '.lc-step-flag-label').textContent), ['13', '24', '36', '47'])
     await m.unmount()
   })
 
-  test('quartiles that collapse onto the edge records drop their poles entirely', async () => {
-    // Two records: every quartile rounds onto an endpoint, and the edges answer for themselves.
+  test('short logs keep the collapsed-at-start pole out but keep the full-span pole', async () => {
+    // Two records: the mid quartiles collapse; only the full-span pole survives, at the right edge.
     const two = await mount(h(TrendOverview, propsOf(steps(2))))
-    assert.equal(queryAll(two.container, '.lc-step-flag').length, 0)
-    await two.unmount()
-    // Three records: only the ½ pole survives on the interior.
-    const three = await mount(h(TrendOverview, propsOf(steps(3))))
-    const flag = query(three.container, '.lc-step-flag')
+    const flag = query(two.container, '.lc-step-flag')
     assert.equal(query(flag, '.lc-step-flag-label').textContent, '2')
-    assert.equal(flag.style.left, '50%')
+    assert.equal(flag.style.left, 'calc(100% - 1px)')
+    await two.unmount()
+    // Three records: the interior ½ pole and the full-span pole.
+    const three = await mount(h(TrendOverview, propsOf(steps(3))))
+    const flags = queryAll(three.container, '.lc-step-flag')
+    assert.deepEqual(flags.map(f => query(f, '.lc-step-flag-label').textContent), ['2', '3'])
+    assert.equal(flags[0].style.left, '50%')
     await three.unmount()
+    // The sole record IS both edges: no pole (its label would hang past the left clip).
+    const one = await mount(h(TrendOverview, propsOf([req(1, { turn: 1, step: 0 })])))
+    assert.equal(queryAll(one.container, '.lc-step-flag').length, 0)
+    await one.unmount()
   })
 
-  test('turn granularity skips the poles and labels the strip quartiles by width (grow weight)', async () => {
+  test('turn granularity skips the poles and labels the strip quartiles plus the full span (by width)', async () => {
     const m = await mount(h(TrendOverview, propsOf(steps(10, 2), { granularity: 'turn' })))
     assert.equal(queryAll(m.container, '.lc-step-flag').length, 0)
-    assert.deepEqual(queryAll(m.container, '.lc-turn-label').map(l => l.textContent), ['2', '3', '4'])
+    assert.deepEqual(queryAll(m.container, '.lc-turn-label').map(l => l.textContent), ['2', '3', '4', '5'])
     const blocks = queryAll(m.container, '.lc-turn')
     assert.equal(blocks.length, 5)
     assert.equal(blocks[0].style.flexGrow, '2')

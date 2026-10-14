@@ -36,8 +36,9 @@ export interface TrendOverviewProps {
   onPickTurn: (turn: number) => void
 }
 
-/** The x flags sit on the three quartiles only: the log's ends read from the pane and the detail panel. */
-const FLAG_FRACS: readonly number[] = [0.25, 0.5, 0.75]
+/** The x flags sit on the three quartiles plus the full span: the log's start reads from the pane edge, so only
+ * the collapsed-at-the-start pole is unshowable. */
+const FLAG_FRACS: readonly number[] = [0.25, 0.5, 0.75, 1]
 
 const CHART_H = 112
 
@@ -208,12 +209,11 @@ export function makeTrendOverview(kit: ViewKit): (props: TrendOverviewProps) => 
       grp.count++
       grp.span += req.stepCount ?? 1
     }
-    // Quartile-only flags, deduped and kept only INSIDE the record list: a collapse onto the sole or edge record
-    // (short logs) adds nothing the pane edges don't already answer, and a left-edge pole's label would hang past
-    // the scroller's edge. Step granularity poles the record list (turn bars skip it — the strip numbers that
-    // grid); the strip labels its quartile groups in both.
+    // Quartile + full-span flags, deduped (see FLAG_FRACS for the collapsed-at-start rule). Step granularity poles
+    // the record list (turn bars skip it — the strip numbers that grid); the strip labels its width quartiles
+    // plus the full-span group in both.
     const flagSteps = props.granularity === 'step'
-      ? [...new Set(FLAG_FRACS.map(q => Math.round(q * (n - 1))))].filter(idx => idx > 0 && idx < n - 1)
+      ? [...new Set(FLAG_FRACS.map(q => Math.round(q * (n - 1))))].filter(idx => idx > 0)
       : []
     const flagGroups = wideQuartiles(groups)
     // A delta quarter mark yields entirely when its 11px label box would overlap the zero label — the bars' check
@@ -382,7 +382,14 @@ export function makeTrendOverview(kit: ViewKit): (props: TrendOverviewProps) => 
                   )
                 })}
                 {flagSteps.map(idx => (
-                  <span key={`flag-${idx}`} className="lc-step-flag" style={{ left: `${idx / u * 100}%` }} aria-hidden="true">
+                  <span
+                    key={`flag-${idx}`}
+                    className="lc-step-flag"
+                    // The full-span pole hugs inside the pane's right edge: at left 100% the 1px pole falls wholly
+                    // past the scroller's clip, so it insets by its own width while the label still reads leftward.
+                    style={{ left: idx === n - 1 ? 'calc(100% - 1px)' : `${idx / u * 100}%` }}
+                    aria-hidden="true"
+                  >
                     <span className="lc-step-flag-label">{idx + 1}</span>
                   </span>
                 ))}
