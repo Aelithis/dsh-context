@@ -11,7 +11,7 @@
 import { useMemo, useState, type CSSProperties, type ReactElement } from 'react'
 import { IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
-import { familyHue, fmtDurationCompact, pressureColorOf } from '../agentTree'
+import { familyHue, fmtDurationCompact } from '../agentTree'
 import { familyOthersOf, tasksOfOwner, type FleetTeam } from '../fleetTeam'
 import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
 import type { ViewKit } from '../viewkit'
@@ -46,7 +46,7 @@ export function memberStyle(hue: string): CSSProperties {
 }
 
 /** The run's activity figures a surface carries: consumption, duration, then steps — with the
- * occupancy figure beside them. */
+ * occupancy figure beside them for the task rows that show it. */
 export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): { bits: string[]; pct: number | null } {
   const bits: string[] = []
   if (node.head !== null && node.head.tokens > 0) bits.push(fmt(node.head.tokens))
@@ -57,12 +57,11 @@ export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt'])
 
 /** The run's activity line above a card's foot — the graph cards' own meta readout. */
 function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
-  const { bits, pct } = runMetaOf(node, t, fmt)
-  if (bits.length === 0 && pct === null) return null
+  const { bits } = runMetaOf(node, t, fmt)
+  if (bits.length === 0) return null
   return (
     <div className="lc-member-meta">
       <span className="lc-member-meta-text">{bits.join(' · ')}</span>
-      {pct !== null ? <span className="lc-member-meta-pct" style={{ color: pressureColorOf(pct) }}>{pct}%</span> : null}
     </div>
   )
 }
