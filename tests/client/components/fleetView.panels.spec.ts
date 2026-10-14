@@ -142,8 +142,6 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(board).includes(DICT_EN['fleet.board.others']))
     assert.equal(queryAll(board, '.lc-member-card').length, 4)
     assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
-    // The task board's completion bar: team task-1 in flight, the w2 delegation settled.
-    assert.ok(text(query(m.container, '.lc-tasks-progress')).includes('1/2 done'))
     // The comms panel opens collapsed.
     assert.ok(text(query(m.container, '.lc-comms')).includes('Scan 3 sessions'))
     // The network card stands alone: the boards beside it carry the agent detail.

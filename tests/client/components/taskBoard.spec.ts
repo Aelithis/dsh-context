@@ -104,7 +104,6 @@ describe('TaskBoard — the owner-grouped board', () => {
     const scout = query(m.container, '[data-task="s1"]')
     assert.ok(text(scout).includes('in progress'))
     assert.ok(text(scout).includes('800 · 42s · 5 steps'))
-    assert.ok(text(scout).includes('80%'))
     assert.ok(query(scout, '.lc-team-task-subject').className.includes('lc-team-task-subject-clamp'))
     assert.ok(query(scout, '.lc-team-task-head .lc-member-icon') !== null, 'the row wears the agent hue')
     // The settled delegation reads done; the idler reads pending without a meta line.
@@ -349,25 +348,6 @@ describe('TaskBoard — the team task DAG', () => {
 })
 
 describe('TaskBoard — the toolbar and guidance states', () => {
-  test('the head carries the completion bar over every row', async () => {
-    const m = await mount(h(TaskBoard, propsOf()))
-    const progress = query(m.container, '.lc-tasks-progress')
-    // Team task-1 plus the settled s2 are done, of eight rows.
-    assert.ok(text(progress).includes('2/8 done'))
-    assert.ok(text(progress).includes('2 in progress'))
-    assert.equal(query(progress, '.lc-tasks-progress-track i')?.style.width, '25%')
-    await m.unmount()
-
-    // No in-flight work: the active count drops out of the text.
-    const calm = teamOf()
-    calm.tasks[1] = { ...calm.tasks[1], status: 'completed' }
-    const calmForest: AgentForest = { ...FOREST, nodes: [FOREST.nodes[0], { ...FOREST.nodes[1], running: false, completed: true }, FOREST.nodes[2], FOREST.nodes[3]] }
-    const m2 = await mount(h(TaskBoard, propsOf({ team: calm, forest: calmForest })))
-    assert.ok(text(query(m2.container, '.lc-tasks-progress')).includes('4/8 done'))
-    assert.ok(!text(query(m2.container, '.lc-tasks-progress')).includes('in progress'))
-    await m2.unmount()
-  })
-
   test('the status filter counts and narrows across both kinds', async () => {
     const m = await mount(h(TaskBoard, propsOf()))
     const filters = queryAll(m.container, '.lc-fleet-filters .lc-gran-btn')
@@ -401,12 +381,10 @@ describe('TaskBoard — the toolbar and guidance states', () => {
     const m = await mount(h(TaskBoard, propsOf({ team: null, forest: { nodes: [nodeOf('root', { isCurrent: true, depth: 0 })], edges: [], overflow: 0, solo: true } })))
     assert.ok(text(m.container).includes(DICT_EN['fleet.tasks.noTeam']))
     assert.equal(queryAll(m.container, '.lc-team-task').length, 0)
-    assert.equal(queryAll(m.container, '.lc-tasks-progress').length, 0)
     await m.unmount()
 
     const empty = await mount(h(TaskBoard, propsOf({ team: teamOf({ tasks: [] }), forest: null })))
     assert.ok(text(empty.container).includes(DICT_EN['fleet.team.empty']))
-    assert.equal(queryAll(empty.container, '.lc-tasks-progress').length, 0, 'no bar without tasks')
     await empty.unmount()
   })
 })

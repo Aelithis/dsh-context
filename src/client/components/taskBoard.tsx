@@ -13,7 +13,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactElement } from 'react'
 import { IconChecklistOutlineRegular, IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
-import { familyHue, pressureColorOf } from '../agentTree'
+import { familyHue } from '../agentTree'
 import { fmtTime } from '../format'
 import { familyOthersOf, memberIdByName, type FleetTeam, type FleetTeamTask } from '../fleetTeam'
 import type { FleetDetail } from '../../shared/types'
@@ -252,8 +252,6 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     return out
   }, [team, agentNodes, ownerVisible, needle, status, props.ownerFilter])
 
-  const doneCount = rows.filter(row => row.status === 'completed').length
-  const activeCount = rows.filter(row => row.status === 'in_progress').length
   const visibleCount = groups.reduce((n, group) => n + group.rows.length, 0)
 
   const toggleOpen = (id: string): void => {
@@ -355,7 +353,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
 
   const renderAgentRow = (row: WorkRow, hue: string): ReactElement => {
     const node = row.node as AgentNode
-    const { bits, pct } = runMetaOf(node, t, fmt)
+    const bits = runMetaOf(node, t, fmt)
     // The delegation's briefing prompt is the task's description; the opened row adds the
     // subagent's final report-back. Both render as Markdown, clamped to two lines when closed.
     const prompt = props.detailOf(node.id)?.detail?.initialPrompt
@@ -391,10 +389,9 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
             <MarkdownBody rich={rich} text={prompt} />
           </div>
         ) : null}
-        {bits.length > 0 || pct !== null ? (
+        {bits.length > 0 ? (
           <div className="lc-team-task-run">
             <span className="lc-team-task-run-text" title={bits.join(' · ')}>{bits.join(' · ')}</span>
-            {pct !== null ? <span className="lc-team-task-run-pct" style={{ color: pressureColorOf(pct) }}>{pct}%</span> : null}
           </div>
         ) : null}
       </li>
@@ -535,18 +532,6 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
           </button>
         ) : null}
       </div>
-
-      {rows.length > 0 ? (
-        <div className="lc-tasks-progress">
-          <span className="lc-tasks-progress-track">
-            <i style={{ width: `${Math.round((doneCount / rows.length) * 100)}%` }} />
-          </span>
-          <span className="lc-tasks-progress-text">
-            {t('fleet.tasks.progress', { done: doneCount, total: rows.length })}
-            {activeCount > 0 ? ` · ${t('fleet.tasks.active', { n: activeCount })}` : ''}
-          </span>
-        </div>
-      ) : null}
 
       {showToolbar ? (
         <div className="lc-fleet-toolbar">

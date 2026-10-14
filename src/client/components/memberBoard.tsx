@@ -47,19 +47,18 @@ export function memberStyle(hue: string): CSSProperties {
   return { '--lc-member-hue': hue } as CSSProperties
 }
 
-/** The run's activity figures a surface carries: consumption, duration, then steps — with the
- * occupancy figure beside them for the task rows that show it. */
-export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): { bits: string[]; pct: number | null } {
+/** The run's activity figures a surface carries: consumption, duration, then steps. */
+export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): string[] {
   const bits: string[] = []
   if (node.head !== null && node.head.tokens > 0) bits.push(fmt(node.head.tokens))
   if (node.durationMs !== null) bits.push(fmtDurationCompact(node.durationMs))
   if (node.requests > 0) bits.push(t('agents.steps', { n: node.requests }))
-  return { bits, pct: node.head !== null ? node.head.pct : null }
+  return bits
 }
 
 /** The run's activity line above a card's foot — the graph cards' own meta readout. */
 function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
-  const { bits } = runMetaOf(node, t, fmt)
+  const bits = runMetaOf(node, t, fmt)
   if (bits.length === 0) return null
   return (
     <div className="lc-member-meta">

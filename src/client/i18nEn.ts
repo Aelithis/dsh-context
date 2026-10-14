@@ -285,8 +285,6 @@ export const DICT_EN = {
   'fleet.tasks.reply': 'Final reply',
   'fleet.tasks.desc': 'Task brief',
   'fleet.tasks.agent': 'Agent',
-  'fleet.tasks.progress': '{done}/{total} done',
-  'fleet.tasks.active': '{n} in progress',
   'fleet.tasks.noTeam': 'No tasks yet — team tasks and subagent delegations land here',
   'fleet.taskCol.pending': 'Pending',
   'fleet.taskCol.in_progress': 'In progress',

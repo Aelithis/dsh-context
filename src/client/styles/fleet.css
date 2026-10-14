@@ -17,12 +17,9 @@
 .lc-summary-progress-label { color: var(--dsw-alias-label-primary); font-weight: 600; }
 .lc-summary-progress-n { font-weight: 600; }
 
-/* The shared progress track: the strip's wide variant and the task board's header line. */
+/* The overview strip's progress track. */
 .lc-tasks-progress-track { display: inline-block; width: 140px; height: 6px; border-radius: 4px; overflow: hidden; background: color-mix(in srgb, var(--dsw-alias-label-secondary) 16%, transparent); }
 .lc-tasks-progress-track i { display: block; height: 100%; border-radius: 4px; background: var(--dsw-alias-brand-primary, var(--color-blue-500)); transition: width var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
-.lc-tasks-progress { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.lc-tasks-progress .lc-tasks-progress-track { flex: 1; }
-.lc-tasks-progress-text { flex: none; font-size: 11px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
 
 /* Section heads inside the members board (team cards / other agents). */
 .lc-board-section-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; color: var(--dsw-alias-label-secondary); margin: 10px 0 6px; padding-bottom: 4px; border-bottom: 1px dashed var(--dsw-alias-border-l2); }
@@ -92,8 +89,7 @@
 /* The task card folds at a default height and grows with the network card beside it: the cap is
    the larger of its own default and the graph's measured natural height minus the members card
    and its 7px bottom margin (--lc-*-h, measured by fleetView's observer), so the two columns'
-   bottom edges keep meeting. The toolbar and progress pin while the rows fold into their own
-   scroll region. */
+   bottom edges keep meeting. The toolbar pins while the rows fold into their own scroll region. */
 .lc-tasks { position: relative; display: flex; flex-direction: column; overflow: hidden; max-height: max(560px, calc(var(--lc-graph-h, 0px) - var(--lc-members-h, 0px) - 7px)); }
 .lc-tasks-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 /* The task rows are opaque cards, so the cut-off hint is a sticky overlay fade at the region's
@@ -146,10 +142,9 @@
 
 /* A subagent's prompt title runs long: the head label ellipsizes rather than wrapping the band. */
 .lc-tasks-group-head .lc-team-task-owner { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
-/* A delegation row's live readout: the run's figures left, the occupancy figure right. */
-.lc-team-task-run { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 10.5px; line-height: 1.3; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); font-variant-numeric: tabular-nums; }
+/* A delegation row's live readout: the run's figures. */
+.lc-team-task-run { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; font-size: 10.5px; line-height: 1.3; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); font-variant-numeric: tabular-nums; }
 .lc-team-task-run-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lc-team-task-run-pct { flex: none; font-weight: 600; }
 
 /* ---- Comms timeline ---- */
 /* The comms card folds at its own static cap: the toolbar pins, the rows scroll under the same

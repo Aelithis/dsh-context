@@ -283,8 +283,6 @@ export const DICT_ZH = {
   'fleet.tasks.reply': '最终回报',
   'fleet.tasks.desc': '任务描述',
   'fleet.tasks.agent': '智能体',
-  'fleet.tasks.progress': '已完成 {done}/{total}',
-  'fleet.tasks.active': '{n} 进行中',
   'fleet.tasks.noTeam': '暂无任务 — 团队任务与子 Agent 委派会在这里出现',
   'fleet.taskCol.pending': '待处理',
   'fleet.taskCol.in_progress': '进行中',
