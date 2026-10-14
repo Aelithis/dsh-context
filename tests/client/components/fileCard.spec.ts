@@ -128,10 +128,10 @@ describe('FileCard — header, rows, and filters', () => {
     const dirRow = rows.find(r => r.title === '/src/')
     assert.ok(dirRow !== undefined)
     assert.ok(dirRow.querySelector('.lc-fa-path b')?.textContent === 'src')
-    // The extension-less row relativizes with no workspace known: a './' dir span.
+    // The extension-less row relativizes with no workspace known: the dropped './' leaves no dir span.
     const solo = rows.find(r => r.title === 'solo.md')
     assert.ok(solo !== undefined)
-    assert.ok(solo.querySelector('.lc-fa-path em')?.textContent === './')
+    assert.ok(solo.querySelector('.lc-fa-path em') === null)
     assert.ok(solo.querySelector('.lc-fa-path b')?.textContent === 'solo.md')
     assert.ok(text(solo).includes('+5') && !text(solo).includes('−'))
     // solo.md's only op is timeless: the row drops its time cell.
@@ -450,25 +450,24 @@ describe('FileCard — workspace display and system open', () => {
 
   const baseOf = (row: HTMLElement): HTMLElement => query(row, '.lc-fa-path b')
 
-  test('workspace paths display ./-relative; pattern rows and outside paths stay verbatim', async () => {
+  test('workspace and relative paths display bare-relative; pattern rows and outside paths stay verbatim', async () => {
     const m = await mount(h(FileCard, { activity: workspaceActivity(), scope: 'live', workspace: '/repo' }))
-    // Inside the workspace: './'-relative dir + base.
+    // Inside the workspace: bare-relative dir + base, no './' prefix.
     const a = rowOf(m.container, '/repo/src/a.ts')
-    assert.ok(a.querySelector('.lc-fa-path em')?.textContent === './src/')
+    assert.ok(a.querySelector('.lc-fa-path em')?.textContent === 'src/')
     assert.ok(baseOf(a).textContent === 'a.ts')
     // An absolute path outside the workspace keeps its verbatim form.
     const hosts = rowOf(m.container, '/etc/hosts')
     assert.ok(hosts.querySelector('.lc-fa-path em')?.textContent === '/etc/')
-    // A bare-relative path displays './'-prefixed.
     const rel = rowOf(m.container, 'rel/b.md')
-    assert.ok(rel.querySelector('.lc-fa-path em')?.textContent === './rel/')
+    assert.ok(rel.querySelector('.lc-fa-path em')?.textContent === 'rel/')
     // A pattern-as-target search row shows the pattern, never relativized.
     const pat = rowOf(m.container, 'needle')
     assert.equal(pat.querySelector('.lc-fa-path em'), null)
     assert.ok(baseOf(pat).textContent === 'needle')
-    // A './'-prefixed path keeps its form.
+    // A './'-prefixed path drops the prefix.
     const dot = rowOf(m.container, './dot/c.ts')
-    assert.ok(dot.querySelector('.lc-fa-path em')?.textContent === './dot/')
+    assert.ok(dot.querySelector('.lc-fa-path em')?.textContent === 'dot/')
     await m.unmount()
   })
 

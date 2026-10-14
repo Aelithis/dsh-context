@@ -188,16 +188,23 @@ export function previewAddressOf(
   }
 }
 
-/** The row's display path: inside the workspace (or already workspace-relative)
- * it shortens to a './'-prefixed relative; other forms stay verbatim. */
+/** The display form of a relative remainder: its repeating leading `./` drops;
+ * a raw all-`./` degenerate leaves nothing to show, so it displays as itself. */
+function bareOf(remainder: string): string {
+  const bare = remainder.replace(/^(?:\.\/)+/, '')
+  return bare !== '' ? bare : remainder
+}
+
+/** The row's display path: inside the workspace it shortens to the bare workspace-relative
+ * form, and other forms stay verbatim. */
 export function displayPathOf(path: string, workspace: string | undefined): string {
   const root = workspace !== undefined && workspace.length > 1 ? workspace.replace(/\/+$/, '') : undefined
   if (root !== undefined) {
-    if (path === root) return './'
-    if (path.startsWith(root + '/')) return './' + path.slice(root.length + 1)
+    if (path === root || path === root + '/') return './'
+    if (path.startsWith(root + '/')) return bareOf(path.slice(root.length + 1))
   }
-  if (path.startsWith('/') || DRIVE_PATH.test(path) || path.startsWith('.')) return path
-  return './' + path
+  if (path.startsWith('/') || DRIVE_PATH.test(path)) return path
+  return bareOf(path)
 }
 
 /** Fold op records into per-file activity: scope-filtered, aggregated per path, ops newest first. */

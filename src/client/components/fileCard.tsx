@@ -53,7 +53,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
     const [openPath, setOpenPath] = useState<string | null>(null)
 
     const q = query.trim().toLowerCase()
-    // Display form of an entry's path: './'-relative inside the workspace, verbatim outside — except search rows,
+    // Display form of an entry's path: bare workspace-relative inside the workspace, verbatim outside — except search rows,
     // whose "path" is a pattern.
     const displayOf = (e: FileEntry): string => (e.pattern === true ? e.path : displayPathOf(e.path, props.workspace))
     // Count sort magnitude: the selected kind's own ops under a kind chip, else the file's overall op count.
