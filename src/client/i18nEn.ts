@@ -115,6 +115,8 @@ export const DICT_EN = {
   'trend.adaptiveHint': 'Rescale bar heights to the visible range, following the scroll',
   'trend.duration': 'Duration',
   'trend.durationTip': 'Overlay each step’s active time (step start to end — model and tool calls, excluding waits for your decisions or answers) as a curve over the bars, read off the quartile axis on the chart’s right; turn granularity sums a turn’s steps',
+  'trend.overview': 'Overview',
+  'trend.overviewTip': 'Fit every retained step/turn across the pane’s visible width: no horizontal scrolling, nothing extra to load; flags mark the quartiles only. Hover to read, click to pin; exclusive with DNA mode and Adaptive',
   'trend.dna': 'DNA Mode',
   'trend.dnaTip': 'Draw each bar as that request’s context fingerprint — one band per item in the order the model reads it; with Delta, each band shows that item’s change against the previous bar. Hover for the item, click to reveal it in the Context browser, and every bar lights the same item’s lifetime',
   'trend.dnaItem': '{label}: {n}',

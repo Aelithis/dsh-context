@@ -32,6 +32,7 @@ import { makeStatsTiming } from './statsTiming'
 import { makeStatsTokens } from './statsTokens'
 import { makeLegend, makeStackedBar } from './stackedBar'
 import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
+import { makeTrendOverview } from './trendOverview'
 import { assemble } from '../assemble'
 import { trendBandsOf } from '../dna'
 
@@ -93,6 +94,7 @@ export function makeContextView(
   const Legend = makeLegend(kit)
   const CurrentComposition = makeCurrentComposition(kit, StackedBar, Legend)
   const TrendChart = makeTrendChart(kit)
+  const TrendOverview = makeTrendOverview(kit)
   const RequestDetail = makeRequestDetail(kit, StackedBar)
   const EventList = makeEventList(kit)
   const FileCard = makeFileCard(kit, settings)
@@ -123,6 +125,10 @@ export function makeContextView(
     // DNA mode: per-item fingerprints of each request's context (dna.ts).
     const [dna, setDna] = useState(false)
     const [adaptive, setAdaptive] = useState(false)
+    // The overview face: the whole retained log as one continuous ribbon (trendOverview.tsx). Exclusive with DNA
+    // mode (per-bar fingerprints are illegible at ribbon scale) and Adaptive (the whole log IS the visible
+    // window): activating one clears the others.
+    const [overview, setOverview] = useState(false)
     const [durationCurve, setDurationCurve] = useState(() => settings.defaultDurationCurve() === 'show')
     const [focusTurn, setFocusTurn] = useState<number | null>(null)
     const [jumpSeq, setJumpSeq] = useState<number | null>(null)
@@ -432,6 +438,27 @@ export function makeContextView(
         onHoverKey={setHoverCat}
       />
     )
+    // Both trend faces share the records + hover/select flow; only the overview's turn click pins instead of
+    // scroll-centering (there is no scroll), and the bar chart carries DNA/adaptive extras. The `key` stays out —
+    // a spread carrying it trips React's spread-key warning — and rides the faces explicitly for the per-session
+    // remount that re-anchors at the newest bars instead of inheriting stale scroll state.
+    const trendBase = {
+      // ALL retained requests (bounded by the host's maxKeptTurns/maxRequestSteps config): earlier
+      // turns/steps stay reachable via scroll or the fit width.
+      requests: displayRequests,
+      markers,
+      selectedSeq: pinnedReq ? pinnedReq.seq : null,
+      hoveredSeq,
+      activeTurn,
+      granularity,
+      mode: trendMode,
+      hoverCat: trendHoverCat,
+      focusCat,
+      durationCurve,
+      onSelect: setSelectedSeq,
+      onHover: setHoveredSeq,
+      onHoverTurn: setHoverTurn,
+    }
     const trendCard = (
       <div className="lc-card">
         <div className="lc-card-title">
@@ -441,13 +468,21 @@ export function makeContextView(
               type="button"
               className={'lc-gran-btn' + (dna ? ' lc-gran-on' : '')}
               title={t('trend.dnaTip')}
-              onClick={() => { setDna(v => !v) }}
+              onClick={() => {
+                const on = !dna
+                setDna(on)
+                if (on) setOverview(false)
+              }}
             >{t('trend.dna')}</button>
             <button
               type="button"
               className={'lc-gran-btn' + (adaptive ? ' lc-gran-on' : '')}
               title={t('trend.adaptiveHint')}
-              onClick={() => { setAdaptive(on => !on) }}
+              onClick={() => {
+                const on = !adaptive
+                setAdaptive(on)
+                if (on) setOverview(false)
+              }}
             >{t('trend.adaptive')}</button>
             <button
               type="button"
@@ -455,6 +490,16 @@ export function makeContextView(
               title={t('trend.durationTip')}
               onClick={() => { setDurationCurve(on => !on) }}
             >{t('trend.duration')}</button>
+            <button
+              type="button"
+              className={'lc-gran-btn' + (overview ? ' lc-gran-on' : '')}
+              title={t('trend.overviewTip')}
+              onClick={() => {
+                const on = !overview
+                setOverview(on)
+                if (on) { setDna(false); setAdaptive(false) }
+              }}
+            >{t('trend.overview')}</button>
           </span>
           <div className="lc-trend-ctl">
             <div className="lc-gran">
@@ -488,31 +533,34 @@ export function makeContextView(
             </TrendReserved>)
           : (
             <div>
-              <TrendChart
-                // Remount per session: re-anchors at the newest bars instead of inheriting stale scroll state.
-                key={sessionId}
-                // ALL retained requests (bounded by the host's maxKeptTurns/maxRequestSteps config): earlier turns/steps
-                // stay reachable via scroll.
-                requests={displayRequests}
-                markers={markers}
-                selectedSeq={pinnedReq ? pinnedReq.seq : null}
-                hoveredSeq={hoveredSeq}
-                activeTurn={activeTurn}
-                granularity={granularity}
-                mode={trendMode}
-                focusTurn={focusTurn}
-                hoverCat={trendHoverCat}
-                focusCat={focusCat}
-                adaptive={adaptive}
-                durationCurve={durationCurve}
-                dna={dnaBands}
-                onPickBand={revealBand}
-                onSelect={setSelectedSeq}
-                onHover={setHoveredSeq}
-                onHoverTurn={setHoverTurn}
-                onPickTurn={(turn) => { setGranularity('turn'); setFocusTurn(turn) }}
-                onFocusTurnHandled={() => { setFocusTurn(null) }}
-              />
+              {overview
+                ? (
+                  <TrendOverview
+                    key={sessionId}
+                    {...trendBase}
+                    onPickTurn={(turn) => {
+                      setGranularity('turn')
+                      // No scroll to center: pin the turn's closing record — the same seq its aggregate keeps.
+                      let seq: number | null = null
+                      for (const req of displayRequests) if ((req.turn ?? 0) === turn) seq = req.seq
+                      /* v8 ignore next 1 -- the clicked block always has records (blocks walk the same list),
+                         so the pinned seq is never null. */
+                      if (seq !== null) setSelectedSeq(seq)
+                    }}
+                  />
+                )
+                : (
+                  <TrendChart
+                    key={sessionId}
+                    {...trendBase}
+                    focusTurn={focusTurn}
+                    adaptive={adaptive}
+                    dna={dnaBands}
+                    onPickBand={revealBand}
+                    onPickTurn={(turn) => { setGranularity('turn'); setFocusTurn(turn) }}
+                    onFocusTurnHandled={() => { setFocusTurn(null) }}
+                  />
+                )}
               <RequestDetail
                 request={activeReq}
                 // Delta mode pairs the detail with the SAME previous record the chart diffs against (first bar: null).
