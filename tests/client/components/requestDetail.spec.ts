@@ -23,6 +23,13 @@ function req(over: Partial<RequestRecord>): RequestRecord {
 /** Full-category fixture so every row renders a non-zero figure. */
 const FULL = { system: 100, tools: 200, user: 300, inject: 50, assistant: 400, tool: 250, total: 1300 }
 
+/** A detail row's anatomy — dot, label, figure, share — by each child's base class (a delta row's figure adds a
+ *  sign modifier). Pinned structurally, so reintroducing a per-row mini bar fails here in either mode, instead of
+ *  passing an absence check on a deleted class. */
+const ROW_ANATOMY = ['', 'lc-detail-label', 'lc-detail-num', 'lc-detail-pct']
+const anatomy = (container: HTMLElement): string[][] =>
+  queryAll(container, '.lc-detail-row').map(r => Array.from(r.children).map(el => el.className.split(' ')[0]))
+
 describe('RequestDetail header', () => {
   test('null request renders nothing', async () => {
     const m = await mount(h(RequestDetail, { request: null }))
@@ -51,7 +58,7 @@ describe('RequestDetail header', () => {
     assert.ok(text(rows[0]).includes('≈100'))
     const pcts = queryAll(m.container, '.lc-detail-pct').map(el => text(el))
     assert.ok(pcts.some(p => p.endsWith('%')), 'percentages rendered when total > 0')
-    assert.equal(queryAll(m.container, '.lc-bar-track').length, 0, 'a row carries figures only, no mini bar')
+    assert.deepEqual(anatomy(m.container), Array.from({ length: 7 }, () => ROW_ANATOMY))
     await m.unmount()
   })
 
@@ -156,7 +163,7 @@ describe('RequestDetail delta mode', () => {
     assert.ok(nums[2].className.includes('lc-detail-num-down'))
     assert.ok(!nums[1].className.includes('lc-detail-num-up'), 'zero delta is neutral')
     assert.ok(queryAll(m.container, '.lc-detail-pct').every(el => text(el) === ''), 'no percentages in delta mode')
-    assert.equal(queryAll(m.container, '.lc-bar-track').length, 0, 'no mini bar in either mode')
+    assert.deepEqual(anatomy(m.container), Array.from({ length: 7 }, () => ROW_ANATOMY), 'delta rows carry no diverging bar')
     await m.unmount()
   })
 
