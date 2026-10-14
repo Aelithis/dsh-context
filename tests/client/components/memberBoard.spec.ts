@@ -311,6 +311,19 @@ describe('MemberBoard — the other-agents cards', () => {
     await m2.unmount()
   })
 
+  test('the controlled hover lifts the matching card in either section', async () => {
+    const m = await mount(h(MemberBoard, propsOf({ hoverId: 'w2' })))
+    const cards = queryAll(m.container, '.lc-member-card')
+    assert.equal(cards.filter(c => c.className.includes('lc-member-hover')).length, 1)
+    assert.ok(cards[2].className.includes('lc-member-hover'), 'the roster card lifts')
+    await m.update(h(MemberBoard, propsOf({ hoverId: 's1' })))
+    assert.ok(otherCards(m.container)[0].className.includes('lc-member-hover'), 'the other-agents card lifts')
+    assert.ok(!queryAll(m.container, '.lc-member-card')[2].className.includes('lc-member-hover'))
+    await m.update(h(MemberBoard, propsOf({})))
+    assert.equal(queryAll(m.container, '.lc-member-card').filter(c => c.className.includes('lc-member-hover')).length, 0)
+    await m.unmount()
+  })
+
   test('the toolbar searches, filters by status, and sorts — across both sections', async () => {
     const m = await mount(h(MemberBoard, propsOf()))
     // Status filter: running keeps the running members' cards and the running subagent's card.

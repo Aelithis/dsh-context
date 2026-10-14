@@ -43,7 +43,8 @@
     box-shadow var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out),
     transform var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out);
 }
-.lc-member-card:hover { transform: translateY(-1px); box-shadow: 0 2px 10px color-mix(in srgb, var(--color-neutral-500) 18%, transparent); }
+/* The controlled hover (the graph's linked hover) shares the card's own hover lift. */
+.lc-member-card:hover, .lc-member-hover { transform: translateY(-1px); box-shadow: 0 2px 10px color-mix(in srgb, var(--color-neutral-500) 18%, transparent); }
 .lc-member-card:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, var(--color-blue-500)); outline-offset: 1px; }
 .lc-member-pinned { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 30%, transparent); }
 .lc-member-failed { opacity: 0.7; }

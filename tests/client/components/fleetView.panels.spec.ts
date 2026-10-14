@@ -139,6 +139,9 @@ describe('FleetView — the panels over one family', () => {
     const card = queryAll(m.container, '.lc-member-card')[1]
     await hover(card)
     assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-hover'))
+    // The lift interlocks both ways: pointing at the graph card lifts its member card.
+    await hover(query(m.container, '[data-agent="w1"]'))
+    assert.ok(queryAll(m.container, '.lc-member-card')[1].className.includes('lc-member-hover'))
     await click(card)
     // The pin survives the hover leaving, and the graph card rings.
     await hover(queryAll(m.container, '.lc-member-card')[0])

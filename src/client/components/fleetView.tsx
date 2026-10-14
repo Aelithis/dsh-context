@@ -203,6 +203,7 @@ export function makeFleetView(
             leadDetail={leadDetail}
             detailOf={id => details.landed.get(id)}
             pinnedId={pinnedId}
+            hoverId={hoverId}
             onPin={select}
             onHover={setHoverId}
             onOpen={open}

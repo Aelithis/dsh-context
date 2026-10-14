@@ -25,6 +25,8 @@ export interface MemberBoardProps {
   /** Landed details keyed by session id (latest replies ride them). */
   detailOf: (id: string) => { detail: FleetDetail | null } | undefined
   pinnedId: string | null
+  /** Controlled hover (the graph's or task rows' hovered agent lifts its member card too). */
+  hoverId?: string | null
   /** The card pick (click/keyboard) — reported raw; the parent owns the toggle and the
    * task-board narrowing (the graph's select semantics). */
   onPin: (id: string) => void
@@ -203,6 +205,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                   className={
                     'lc-member-card'
                       + (props.pinnedId === member.id ? ' lc-member-pinned' : '')
+                      + (props.hoverId === member.id ? ' lc-member-hover' : '')
                       + (member.phase === 'failed' ? ' lc-member-failed' : '')
                   }
                   style={memberStyle(member.role === 'lead' ? BRAND_HUE : familyHue(team.members.indexOf(member)))}
@@ -302,7 +305,11 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
               return (
                 <div
                   key={node.id}
-                  className={'lc-member-card' + (props.pinnedId === node.id ? ' lc-member-pinned' : '')}
+                  className={
+                    'lc-member-card'
+                      + (props.pinnedId === node.id ? ' lc-member-pinned' : '')
+                      + (props.hoverId === node.id ? ' lc-member-hover' : '')
+                  }
                   style={memberStyle(familyHue(node.family))}
                   role="button"
                   tabIndex={0}

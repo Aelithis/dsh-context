@@ -340,8 +340,8 @@ function AgentCard(props: CardProps): ReactElement {
   const selectable = props.onSelect !== undefined
   const cls = 'lc-agent-card animate-lc-agent-in motion-reduce:animate-none'
     + (node.isCurrent ? ' lc-agent-self' : '')
-    // lc-agent-hover carries no rule of its own — the hover/focus wash rides
-    // :hover/:focus-visible; the class stays as the specs' state anchor.
+    // lc-agent-hover shares the card's own :hover rule, so the boards' linked hover
+    // lifts the card exactly like pointing at it (and stays the specs' state anchor).
     + (props.hovered ? ' lc-agent-hover' : '')
     + (props.pinned ? ' lc-agent-pinned' : '')
     + (selectable || !node.isCurrent ? ' lc-agent-clickable' : '')

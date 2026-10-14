@@ -39,7 +39,8 @@
     transform var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out);
 }
 .lc-agent-clickable { cursor: pointer; }
-.lc-agent-card:hover, .lc-agent-card:focus-visible {
+/* The controlled hover (the boards' linked hover) shares the card's own hover lift. */
+.lc-agent-card:hover, .lc-agent-card:focus-visible, .lc-agent-hover {
   border-color: var(--dsw-alias-label-tertiary, var(--dsw-alias-border-l2));
   box-shadow: 0 2px 10px color-mix(in srgb, var(--color-neutral-500) 22%, transparent);
   transform: translateY(-2px);
