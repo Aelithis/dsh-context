@@ -207,12 +207,8 @@ export function makeRequestDetail(
     const prev = props.prev ?? null
     const deltas = CATS.map(c => delta ? (req[c.key] || 0) - (prev !== null ? prev[c.key] || 0 : 0) : 0)
     let net = 0
-    let maxAbs = 0
     if (delta) {
-      for (const d of deltas) {
-        net += d
-        if (Math.abs(d) > maxAbs) maxAbs = Math.abs(d)
-      }
+      for (const d of deltas) net += d
     }
     const parts = delta
       ? CATS.map((c, i) => ({ key: c.key, color: c.color, value: Math.abs(deltas[i]) }))
@@ -255,28 +251,10 @@ export function makeRequestDetail(
         <div className="lc-detail-rows">
           {CATS.map((c, i) => {
             const v = delta ? deltas[i] : req[c.key] || 0
-            const mag = Math.abs(v)
             return (
               <div key={c.key} className={'lc-detail-row' + (props.hoverKey === c.key ? ' lc-detail-row-on' : '')}>
                 <i style={{ background: c.color }} />
                 <span className="lc-detail-label">{catLabel(c.key)}</span>
-                <span className="lc-bar-track">
-                  {delta ? (
-                    <>
-                      {/* Mini diverging bar echoing the chart: zero at the middle, growth fills right,
-                          shrinkage fills left, one shared scale across the rows. */}
-                      <span className="lc-bar-zero" />
-                      {v !== 0 ? (
-                        <span
-                          className={'lc-bar-fill ' + (v > 0 ? 'lc-bar-fill-up' : 'lc-bar-fill-down')}
-                          style={{ width: `${mag / maxAbs * 50}%`, background: c.color }}
-                        />
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="lc-bar-fill" style={{ width: `${req.total > 0 ? v / req.total * 100 : 0}%`, background: c.color }} />
-                  )}
-                </span>
                 {delta ? (
                   <span className={'lc-detail-num' + (v > 0 ? ' lc-detail-num-up' : v < 0 ? ' lc-detail-num-down' : '')}>
                     {(v > 0 ? '+' : '') + fmt(v)}

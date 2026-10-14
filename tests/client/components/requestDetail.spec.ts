@@ -51,9 +51,7 @@ describe('RequestDetail header', () => {
     assert.ok(text(rows[0]).includes('≈100'))
     const pcts = queryAll(m.container, '.lc-detail-pct').map(el => text(el))
     assert.ok(pcts.some(p => p.endsWith('%')), 'percentages rendered when total > 0')
-    const fills = queryAll<HTMLElement>(m.container, '.lc-bar-fill')
-    assert.equal(fills.length, 7, 'one fill per row in cumulative mode')
-    assert.ok(fills[0].style.width !== '0%', 'non-zero categories fill the track')
+    assert.equal(queryAll(m.container, '.lc-bar-track').length, 0, 'a row carries figures only, no mini bar')
     await m.unmount()
   })
 
@@ -139,7 +137,7 @@ describe('RequestDetail header', () => {
 })
 
 describe('RequestDetail delta mode', () => {
-  test('signed deltas vs the previous record: net chip, diverging rows, no usage chips', async () => {
+  test('signed deltas vs the previous record: net chip, signed rows, no usage chips', async () => {
     const request = req({ system: 150, tools: 200, user: 250, inject: 0, assistant: 300, tool: 350, total: 1250, prompt: 900 })
     const prev = req({ ...FULL, inject: 0 })
     const m = await mount(h(RequestDetail, { request, prev }))
@@ -151,15 +149,6 @@ describe('RequestDetail delta mode', () => {
     assert.ok(text(metric).includes('Δ 0'))
     assert.ok(!metric.className.includes('lc-detail-metric-up'))
     assert.ok(!metric.className.includes('lc-detail-metric-down'))
-    const zeros = queryAll(m.container, '.lc-bar-zero')
-    assert.equal(zeros.length, 7, 'every delta row carries the zero line')
-    const upFills = queryAll(m.container, '.lc-bar-fill-up')
-    const downFills = queryAll(m.container, '.lc-bar-fill-down')
-    assert.equal(upFills.length, 2, 'system +50, tool +100')
-    assert.equal(downFills.length, 2, 'user -50, assistant -100')
-    // maxAbs = 100 (assistant/tool): tool fills the full half-track, system half of it.
-    assert.equal((upFills[1] as HTMLElement).style.width, '50%')
-    assert.equal((upFills[0] as HTMLElement).style.width, '25%')
     const nums = queryAll(m.container, '.lc-detail-num')
     assert.ok(text(nums[0]).includes('+50'))
     assert.ok(nums[0].className.includes('lc-detail-num-up'))
@@ -167,6 +156,7 @@ describe('RequestDetail delta mode', () => {
     assert.ok(nums[2].className.includes('lc-detail-num-down'))
     assert.ok(!nums[1].className.includes('lc-detail-num-up'), 'zero delta is neutral')
     assert.ok(queryAll(m.container, '.lc-detail-pct').every(el => text(el) === ''), 'no percentages in delta mode')
+    assert.equal(queryAll(m.container, '.lc-bar-track').length, 0, 'no mini bar in either mode')
     await m.unmount()
   })
 
@@ -175,7 +165,8 @@ describe('RequestDetail delta mode', () => {
     const metric = query(m.container, '.lc-detail-metric')
     assert.ok(metric.className.includes('lc-detail-metric-up'))
     assert.ok(text(metric).includes('Δ +1.3k'))
-    assert.equal(queryAll(m.container, '.lc-bar-fill-down').length, 0)
+    assert.equal(queryAll(m.container, '.lc-detail-num-down').length, 0)
+    assert.equal(queryAll(m.container, '.lc-detail-num-up').length, 6, 'every non-zero category reads up')
     await m.unmount()
 
     const m2 = await mount(h(RequestDetail, {
@@ -185,18 +176,18 @@ describe('RequestDetail delta mode', () => {
     const metric2 = query(m2.container, '.lc-detail-metric')
     assert.ok(metric2.className.includes('lc-detail-metric-down'))
     assert.ok(text(metric2).includes('Δ -1.3k'))
-    assert.equal(queryAll(m2.container, '.lc-bar-fill-up').length, 0)
-    assert.equal(queryAll(m2.container, '.lc-bar-fill-down').length, 6)
+    assert.equal(queryAll(m2.container, '.lc-detail-num-up').length, 0)
+    assert.equal(queryAll(m2.container, '.lc-detail-num-down').length, 6)
     await m2.unmount()
   })
 
-  test('cumulative rows with a zero total render zero-width fills and no percentages', async () => {
+  test('cumulative rows with a zero total render zero figures and no percentages', async () => {
     const m = await mount(h(RequestDetail, {
       request: req({ system: 0, tools: 0, user: 0, inject: 0, assistant: 0, tool: 0, total: 0 }),
     }))
-    for (const fill of queryAll<HTMLElement>(m.container, '.lc-bar-fill')) {
-      assert.equal(fill.style.width, '0%')
-    }
+    const figs = queryAll(m.container, '.lc-detail-num').map(el => text(el))
+    assert.equal(figs.length, 7)
+    assert.ok(figs.every(f => f === '≈0'))
     assert.ok(queryAll(m.container, '.lc-detail-pct').every(el => text(el) === ''))
     await m.unmount()
   })

@@ -71,7 +71,6 @@ function TrendReserved(props: { children: ReactNode; catLabel: (cat: Category | 
             <div key={c.key} className="lc-detail-row">
               <i style={{ background: c.color }} />
               <span className="lc-detail-label">{props.catLabel(c.key)}</span>
-              <span className="lc-bar-track" />
               <span className="lc-detail-num" />
               <span className="lc-detail-pct" />
             </div>
