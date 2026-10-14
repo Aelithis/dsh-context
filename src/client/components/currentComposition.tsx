@@ -1,14 +1,9 @@
 import { type ReactElement } from 'react'
-import type { PartsPart } from '../categories'
 import type { Headline } from '../headline'
 import type { ViewKit } from '../viewkit'
-import type { StackedBarProps } from './stackedBar'
+import type { StackedBarProps, LegendProps } from './stackedBar'
 
-type LegendFn = (props: {
-  parts: PartsPart[]
-  hoverKey?: string | null
-  onHoverKey?: (key: string | null) => void
-}) => ReactElement
+type LegendFn = (props: LegendProps) => ReactElement
 
 export interface CurrentCompositionProps {
   head: Headline

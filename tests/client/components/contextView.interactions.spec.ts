@@ -142,7 +142,7 @@ describe('ContextView — interactions', () => {
     const detailBar = query(m.container, '.lc-detail .lc-stacked')
     assert.ok(detailBar.className.includes('lc-stacked-dim'))
     assert.ok(queryAll(detailBar, '.lc-stacked-seg-on').length === 1)
-    assert.ok(queryAll(m.container, '.lc-detail-row-on').length === 1, 'the matching detail row lights too')
+    assert.ok(queryAll(m.container, '.lc-detail .lc-chip-on').length === 1, 'the matching detail chip lights too')
 
     await unhover(toolsRow)
     assert.equal(query(m.container, '.lc-chart').hasAttribute('data-catdim'), false)
@@ -153,6 +153,20 @@ describe('ContextView — interactions', () => {
     assert.equal(query(m.container, '.lc-chart').hasAttribute('data-catdim'), false)
     assert.ok(!query(m.container, '.lc-detail .lc-stacked').className.includes('lc-stacked-dim'))
     await unhover(query(m.container, '.lc-stacked-free'))
+    await m.unmount()
+  })
+
+  test('trend panel chip hover feeds the shared category state back to the composition legend', async () => {
+    const m = await mountRich('sv-link-chip')
+    // The panel's chips are hover SOURCES, exactly as the composition legend's are; "tools" is the second chip.
+    const chip = queryAll(m.container, '.lc-detail .lc-legend .lc-chip')[1]
+    await hover(chip)
+    assert.equal(query(m.container, '.lc-chart').getAttribute('data-catdim'), 'tools')
+    const comp = queryAll(m.container, '.lc-card').find(c => text(c).includes(DICT_EN['overview.title']))
+    assert.ok(comp !== undefined)
+    assert.equal(queryAll(comp, '.lc-legend .lc-chip-on').length, 1, 'the composition legend chip lights with it')
+    await unhover(chip)
+    assert.equal(query(m.container, '.lc-chart').hasAttribute('data-catdim'), false)
     await m.unmount()
   })
 

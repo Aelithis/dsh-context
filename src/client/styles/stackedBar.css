@@ -38,8 +38,11 @@
 .lc-chip { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--dsw-alias-label-primary); padding: 1px 6px; border-radius: 6px; cursor: pointer; transition: background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 .lc-chip-label { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lc-chip-nums { margin-left: auto; flex: none; display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
-.lc-chip i, .lc-detail-row i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.lc-chip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
 .lc-chip i { transition: box-shadow var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 .lc-chip em { font-style: normal; color: var(--dsw-alias-label-secondary); }
+/* Signed figures (the trend panel's Delta mode): the sign semantics mirror the harness diff blocks. */
+.lc-chip-nums-up { color: var(--dsw-alias-state-success-primary); }
+.lc-chip-nums-down { color: var(--dsw-alias-state-error-primary); }
 .lc-chip-on { font-weight: 600; background: var(--dsw-alias-interactive-bg-hover); }
 .lc-chip-on i { box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary); }

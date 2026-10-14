@@ -289,17 +289,19 @@ export function makeStackedBar(kit: ViewKit): (props: StackedBarProps) => ReactE
   }
 }
 
-export function makeLegend(kit: ViewKit): (props: {
+/** The category chips' interface, shared by the composition card's legend and the trend panel. */
+export interface LegendProps {
   parts: PartsPart[]
   hoverKey?: string | null
   onHoverKey?: (key: string | null) => void
-}) => ReactElement {
+  /** Signed figures (the trend panel's Delta mode): the count prints with its sign and the sign's color,
+   *  and the share drops out — a signed change has no share of the used total. */
+  delta?: boolean
+}
+
+export function makeLegend(kit: ViewKit): (props: LegendProps) => ReactElement {
   const { t, fmt, catLabel } = kit
-  return function Legend(props: {
-    parts: PartsPart[]
-    hoverKey?: string | null
-    onHoverKey?: (key: string | null) => void
-  }): ReactElement {
+  return function Legend(props: LegendProps): ReactElement {
     let total = 0
     for (const p of props.parts) total += p.raw ?? p.value
     return (
@@ -307,19 +309,20 @@ export function makeLegend(kit: ViewKit): (props: {
         {props.parts.map((p) => {
           const count = p.raw ?? p.value
           const on = props.hoverKey !== undefined && props.hoverKey === p.key
+          const sign = props.delta === true && count !== 0 ? ' lc-chip-nums-' + (count > 0 ? 'up' : 'down') : ''
           return (
             <span
               key={p.key}
               className={'lc-chip' + (on ? ' lc-chip-on' : '')}
-              title={t('overview.ofUsed')}
+              title={props.delta === true ? undefined : t('overview.ofUsed')}
               onMouseEnter={() => { if (props.onHoverKey !== undefined) props.onHoverKey(p.key) }}
               onMouseLeave={() => { if (props.onHoverKey !== undefined) props.onHoverKey(null) }}
             >
               <i style={{ background: p.color }} />
               <span className="lc-chip-label">{catLabel(p.key)}</span>
-              <span className="lc-chip-nums">
-                {'≈' + fmt(count)}
-                {total > 0 ? <em>{`${Math.round(count / total * 100)}%`}</em> : null}
+              <span className={'lc-chip-nums' + sign}>
+                {props.delta === true ? (count > 0 ? '+' : '') + fmt(count) : '≈' + fmt(count)}
+                {props.delta !== true && total > 0 ? <em>{`${Math.round(count / total * 100)}%`}</em> : null}
               </span>
             </span>
           )

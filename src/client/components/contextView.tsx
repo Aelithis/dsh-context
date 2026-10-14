@@ -66,14 +66,13 @@ function TrendReserved(props: { children: ReactNode; catLabel: (cat: Category | 
         <div className="lc-detail-head" />
         <div className="lc-brief" />
         <div className="lc-stacked-wrap"><div className="lc-stacked" /></div>
-        <div className="lc-detail-rows">
+        <div className="lc-legend">
           {CATS.map(c => (
-            <div key={c.key} className="lc-detail-row">
+            <span key={c.key} className="lc-chip">
               <i style={{ background: c.color }} />
-              <span className="lc-detail-label">{props.catLabel(c.key)}</span>
-              <span className="lc-detail-num" />
-              <span className="lc-detail-pct" />
-            </div>
+              <span className="lc-chip-label">{props.catLabel(c.key)}</span>
+              <span className="lc-chip-nums" />
+            </span>
           ))}
         </div>
       </div>
@@ -94,7 +93,7 @@ export function makeContextView(
   const CurrentComposition = makeCurrentComposition(kit, StackedBar, Legend)
   const TrendChart = makeTrendChart(kit)
   const TrendOverview = makeTrendOverview(kit)
-  const RequestDetail = makeRequestDetail(kit, StackedBar)
+  const RequestDetail = makeRequestDetail(kit, StackedBar, Legend)
   const EventList = makeEventList(kit)
   const FileCard = makeFileCard(kit, settings)
   // The stats board's subagent-cost cell reads the shared page-scope cold-head cache.
@@ -572,6 +571,7 @@ export function makeContextView(
                 stepsOf={stepsOf}
                 onLocate={locateNode}
                 hoverKey={trendHoverCat}
+                onHoverKey={setHoverCat}
               />
             </div>
           )}
