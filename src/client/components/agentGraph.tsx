@@ -219,9 +219,12 @@ export function makeAgentGraph(
         <div className="lc-agents-split">
           <div className="lc-agents-main">
             <div className="lc-agents-stage" ref={stageRef}>
-              <div className="lc-agents-canvas" style={{ width: layout.width, height: layout.height }}>
+              <div
+                className={'lc-agents-canvas' + (lit !== null ? ' lc-agents-focus' : '')}
+                style={{ width: layout.width, height: layout.height }}
+              >
                 <svg
-                  className={'lc-agents-links' + (lit !== null ? ' lc-agents-focus' : '')}
+                  className="lc-agents-links"
                   width={layout.width}
                   height={layout.height}
                   viewBox={`0 0 ${layout.width} ${layout.height}`}
@@ -259,6 +262,7 @@ export function makeAgentGraph(
                       width={layout.cardW}
                       index={index}
                       hovered={hoverId === node.id}
+                      on={lit !== null && lit.has(node.id)}
                       pinned={pinnedId === node.id}
                       onHover={onHover}
                       onOpen={open}
@@ -307,6 +311,8 @@ interface CardProps {
   /** DFS order — the entrance stagger slot. */
   index: number
   hovered: boolean
+  /** The hovered card's lineage (ancestors + subtree): the focus dim spares these cards. */
+  on: boolean
   /** The list/team/comms pick this card echoes with a ring. */
   pinned: boolean
   onHover: (id: string | null) => void
@@ -345,7 +351,9 @@ function AgentCard(props: CardProps): ReactElement {
     + (node.isCurrent ? ' lc-agent-self' : '')
     // lc-agent-hover shares the card's own :hover rule, so the boards' linked hover
     // lifts the card exactly like pointing at it (and stays the specs' state anchor).
+    // lc-agent-on marks the hovered card's lineage — the canvas' focus dim spares it.
     + (props.hovered ? ' lc-agent-hover' : '')
+    + (props.on ? ' lc-agent-on' : '')
     + (props.pinned ? ' lc-agent-pinned' : '')
     + (selectable || !node.isCurrent ? ' lc-agent-clickable' : '')
   return (

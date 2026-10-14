@@ -275,13 +275,17 @@ describe('AgentGraph — the family tree', () => {
     assert.ok(text(inspector).includes('≈800 (96%)'))
     assert.ok(worker.classList.contains('lc-agent-hover'))
     // Lineage focus: the hovered card's own link lights up, its sibling's stays dim.
-    assert.ok(query(m.container, '.lc-agents-links').classList.contains('lc-agents-focus'))
+    assert.ok(query(m.container, '.lc-agents-canvas').classList.contains('lc-agents-focus'))
+    // The lineage's cards carry the dim's spare class; the unrelated sibling's does not.
+    assert.ok(worker.classList.contains('lc-agent-on'))
+    assert.ok(query(m.container, '[data-agent="root"]').classList.contains('lc-agent-on'))
+    assert.ok(!query(m.container, '[data-agent="done"]').classList.contains('lc-agent-on'))
     const lit = queryAll(m.container, 'g.lc-agents-on')
     assert.equal(lit.length, 1)
     await unhover(worker)
     assert.ok(text(query(m.container, '.lc-agents-inspector')).includes('Main Agent'))
     assert.equal(queryAll(m.container, 'g.lc-agents-on').length, 0)
-    assert.ok(!query(m.container, '.lc-agents-links').classList.contains('lc-agents-focus'))
+    assert.ok(!query(m.container, '.lc-agents-canvas').classList.contains('lc-agents-focus'))
 
     // Hovering the root lights its whole subtree (every link).
     await hover(query(m.container, '[data-agent="root"]'))
