@@ -685,30 +685,31 @@ export function makeContextBrowser(
           </select>
         </div>
 
-        <div className="lc-br-meta">
-          <b>{req !== null
-            ? t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0, n: stepsOf(req.turn) })
-            : t('browser.liveNow')}</b>
-          {req !== null ? <span>{fmtTime(req.time)}</span> : null}
-          <span className="lc-est">{t('detail.estTotal', { n: fmt(total) })}</span>
-          {actual !== null && actual.prompt !== undefined
-            ? <span>{t('detail.actual', { n: fmt(actual.prompt) })}</span>
-            : null}
-        </div>
-
         <div className={'lc-br-bar' + (dna ? ' lc-br-bar-dna' : '')}>
-          <StackedBar
-            parts={dnaParts ?? parts}
-            height={10}
-            // Highlight precedence: pointer hover (local in DNA mode, the shared link otherwise) over the open-category pin. In
-            // DNA mode the mirrored link is ONE-WAY: an incoming category key lights that category's bands, while band hovers stay
-            // on the bar and never report upward.
-            hoverKey={dna ? liveDnaKey ?? linkKey ?? pinKey : linkKey ?? pinKey}
-            onHoverKey={dna ? setDnaKey : linked ? props.onHoverKey : undefined}
-            tip={dna}
-            onPickKey={dna ? pickDna : undefined}
-            minBand={dna ? DNA_MIN_BAND : undefined}
-          />
+          <div className="lc-br-bar-main">
+            <div className="lc-br-meta">
+              <b>{req !== null
+                ? t('detail.step', { t: req.turn ?? 0, s: req.step ?? 0, n: stepsOf(req.turn) })
+                : t('browser.liveNow')}</b>
+              {req !== null ? <span>{fmtTime(req.time)}</span> : null}
+              <span className="lc-est">{t('detail.estTotal', { n: fmt(total) })}</span>
+              {actual !== null && actual.prompt !== undefined
+                ? <span>{t('detail.actual', { n: fmt(actual.prompt) })}</span>
+                : null}
+            </div>
+            <StackedBar
+              parts={dnaParts ?? parts}
+              height={10}
+              // Highlight precedence: pointer hover (local in DNA mode, the shared link otherwise) over the open-category pin. In
+              // DNA mode the mirrored link is ONE-WAY: an incoming category key lights that category's bands, while band hovers stay
+              // on the bar and never report upward.
+              hoverKey={dna ? liveDnaKey ?? linkKey ?? pinKey : linkKey ?? pinKey}
+              onHoverKey={dna ? setDnaKey : linked ? props.onHoverKey : undefined}
+              tip={dna}
+              onPickKey={dna ? pickDna : undefined}
+              minBand={dna ? DNA_MIN_BAND : undefined}
+            />
+          </div>
           <button
             type="button"
             className={'lc-br-map-btn' + (mapOn ? ' lc-br-map-btn-on' : '')}

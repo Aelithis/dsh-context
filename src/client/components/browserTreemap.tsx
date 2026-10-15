@@ -26,7 +26,7 @@ export interface BrowserTreemapProps {
 /** The toggle button's glyph: a tiny treemap. */
 export function MapIcon(): ReactElement {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
       <rect x="1.2" y="1.2" width="8" height="6" rx="1" />
       <rect x="10.6" y="1.2" width="4.2" height="6" rx="1" />
       <rect x="1.2" y="8.6" width="5" height="6.2" rx="1" />
