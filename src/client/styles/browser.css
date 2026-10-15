@@ -2,6 +2,34 @@
 .lc-br-dna-ctl { margin-left: 0; flex: none; }
 /* The divider scales with its band (`min(0.5px, 12.5%)` of its own width): long sessions pin hundreds of bands at ≤1px, where a fixed divider would cover the whole band. A gradient layer, because a fixed inset box-shadow cannot scale. */
 .lc-br-bar-dna .lc-stacked-seg { background-image: linear-gradient(to right, transparent calc(100% - min(0.5px, 12.5%)), var(--dsw-alias-bg-layer-1) 0); }
+/* The block-map toggle rides the bar's right edge; the bar's wrap keeps the flex line's slack. */
+.lc-br-bar { display: flex; align-items: flex-start; gap: 6px; }
+.lc-br-bar .lc-stacked-wrap { flex: 1; min-width: 0; }
+.lc-br-map-btn { flex: none; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-tertiary); cursor: pointer; transition: color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-br-map-btn svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.2; }
+.lc-br-map-btn:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l1); }
+.lc-br-map-btn-on, .lc-br-map-btn-on:hover { color: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+
+/* The block map: a measured squarified treemap (browserTreemap.tsx), fixed-height and reflowing on width. */
+.lc-map { position: relative; height: 240px; margin-top: 8px; }
+/* Narrow panes stack taller so regions stay legible instead of crushing into slivers. */
+@container lc-card (max-width: 560px) { .lc-map { height: 320px; } }
+.lc-map-empty { margin-top: 8px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.lc-map-cat { position: absolute; box-sizing: border-box; border: 1px solid color-mix(in srgb, var(--lc-map-c) 55%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--lc-map-c) 6%, transparent); overflow: hidden; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), box-shadow var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-map-cat-open, .lc-map-cat-on { border-color: var(--lc-map-c); box-shadow: 0 0 0 1px var(--lc-map-c); }
+.lc-map-cat-head { display: flex; align-items: center; gap: 6px; width: 100%; height: 16px; padding: 0 5px; border: 0; background: color-mix(in srgb, var(--lc-map-c) 16%, transparent); color: var(--dsw-alias-label-primary); font: inherit; font-size: 10px; cursor: pointer; text-align: left; }
+.lc-map-cat-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lc-map-cat-head b { flex: none; font-weight: 400; color: var(--dsw-alias-label-secondary); }
+.lc-map-block { position: absolute; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; border: 1px solid color-mix(in srgb, var(--lc-map-c) 45%, transparent); border-radius: 4px; background: color-mix(in srgb, var(--lc-map-c) var(--lc-map-a, 20%), transparent); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; padding: 0 5px; cursor: pointer; overflow: hidden; text-align: left; transition: background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-map-block:hover, .lc-map-block:focus-visible, .lc-map-block-on { background: color-mix(in srgb, var(--lc-map-c) 55%, transparent); }
+/* A hovered block stays lit while the rest of the map falls back (the composition bar's dimming idiom). */
+.lc-map-dim .lc-map-block:not(.lc-map-block-on):not(:hover) { opacity: 0.4; }
+.lc-map-block:focus-visible, .lc-map-cat-head:focus-visible { outline: 1px solid var(--dsw-alias-brand-primary); outline-offset: -1px; z-index: 1; }
+.lc-map-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
+.lc-map-label em { font-style: normal; font-size: 10px; color: var(--dsw-alias-label-secondary); margin-left: 3px; }
+.lc-map-num { font-size: 10px; color: var(--dsw-alias-label-secondary); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.lc-map-tip { display: flex; flex-direction: column; max-width: 240px; padding: 5px 8px; line-height: 1.45; white-space: nowrap; }
+.lc-map-tip-on { opacity: 1; }
 .lc-br-pick { font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 6px; max-width: 240px; }
 .lc-br-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 8px; color: var(--dsw-alias-label-secondary); }
 .lc-br-meta b { color: var(--dsw-alias-label-primary); }

@@ -22,6 +22,8 @@ import type { AttachmentOpener, ImageLoader } from '../services'
 import { TextSection, schemaTextOf, RowToolbar, ToolSchema, toolErrOf } from './browserToolCard'
 import { NodeContent, byCatOf, nodeNameOf, msgKindsOf, reasoningTextOf, ROW_KINDS } from './browserNodes'
 import type { RowKind } from './browserNodes'
+import { MapIcon, makeBrowserTreemap } from './browserTreemap'
+import type { MapBlock } from '../treemap'
 
 export interface ContextBrowserProps {
   data: ContextTimeline
@@ -97,6 +99,7 @@ export function makeContextBrowser(
 ): (props: ContextBrowserProps) => ReactElement {
   const { t, fmt, fmtTime, catLabel } = kit
   const DetailNote = makeDetailNote(kit)
+  const BrowserTreemap = makeBrowserTreemap(kit)
   const nodeText = makeNodeText(kit)
   const rich = makeRichText(kit)
   const AttachmentSection = makeAttachmentSection(kit)
@@ -125,6 +128,8 @@ export function makeContextBrowser(
       }
     }
     const [dnaKey, setDnaKey] = useState<string | null>(null)
+    // The block map is mount-local like the unlinked DNA toggle: a visualization lens, not shared page state.
+    const [mapOn, setMapOn] = useState(false)
     const [deltaBase, setDeltaBase] = useState<DefaultDeltaBase>(() => settings.defaultDeltaBase())
     const onOpenCat = props.onOpenCat
     const setCat = (c: string | null): void => {
@@ -307,7 +312,12 @@ export function makeContextBrowser(
       const it = dnaByKey.get(key)
       /* v8 ignore next 1 -- the bar only reports keys of the parts it was handed; defensive. */
       if (it === undefined) return
-      setCat(it.cat)
+      openRow(it.cat, key)
+    }
+
+    /** One shared land-on-a-row sequence for every bar/map click that opens an exact row. */
+    const openRow = (c: string, key: string): void => {
+      setCat(c)
       setRowQuery('')
       setRowKind(null)
       setOpenElem(key)
@@ -345,6 +355,19 @@ export function makeContextBrowser(
       setOpenElem(singleKeyOf(c))
     }
     const toggleElem = (key: string) => { setOpenElem(openElem === key ? null : key) }
+
+    /** Block-map picks: a one-item block lands on its exact row (the DNA band pick's path), a multi-item
+     * block filters the category's rows to the group's tag, and the "others" fold just opens the category. */
+    const pickMapBlock = (c: string, b: MapBlock): void => {
+      if (b.elem !== undefined) {
+        openRow(c, b.elem)
+      } else {
+        setCat(c)
+        setRowKind(null)
+        setOpenElem(null)
+        setRowQuery(b.query ?? '')
+      }
+    }
 
     /** Expandable element row; `err` carries the red run-state dot right after the chevron so a failed result scans while collapsed. */
     const elemRow = (
@@ -686,7 +709,33 @@ export function makeContextBrowser(
             onPickKey={dna ? pickDna : undefined}
             minBand={dna ? DNA_MIN_BAND : undefined}
           />
+          <button
+            type="button"
+            className={'lc-br-map-btn' + (mapOn ? ' lc-br-map-btn-on' : '')}
+            title={t('browser.mapTip')}
+            aria-label={t('browser.mapAria')}
+            aria-pressed={mapOn}
+            onClick={() => { setMapOn(!mapOn) }}
+          >
+            <MapIcon />
+          </button>
         </div>
+
+        {mapOn
+          ? (
+            <BrowserTreemap
+              view={view}
+              openCat={openCat}
+              hoverKey={linkKey}
+              // The map reports its category upward only outside DNA mode: there the bar's link is one-way (an
+              // incoming category key lights that category's bands; bar hovers stay local), and the map — the
+              // bar's companion surface — keeps the same convention so every hover link mirrors the bar's.
+              onHoverKey={dna ? undefined : linked ? props.onHoverKey : undefined}
+              onPickCat={toggleCat}
+              onPickBlock={pickMapBlock}
+            />
+          )
+          : null}
 
         {view.missingLive > 0
           ? <div className="lc-br-note">{t('browser.missingLive', { n: view.missingLive })}</div>
