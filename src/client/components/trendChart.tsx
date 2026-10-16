@@ -495,9 +495,11 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
       () => (dnaDeltaOn ? dnaBands.map((bands, i) => deltaBandsOf(bands, i > 0 ? dnaBands[i - 1] : null)) : null),
       [dnaDeltaOn, dnaBands],
     )
+    // The DNA faces decompose the full context, so the browser's category focus would plot tool-only
+    // bar totals against full-context band offsets — floating every lifetime slice above half-height bars.
     const { requests, focus } = useMemo(
-      () => preprocessTrend(props.requests, delta, props.focusCat),
-      [props.requests, delta, props.focusCat],
+      () => preprocessTrend(props.requests, delta, dnaOn ? null : props.focusCat),
+      [props.requests, delta, props.focusCat, dnaOn],
     )
     const markers = props.markers
     // The maxima over the bars on screen; null until the first measure, which falls back to the whole-log scale, so the

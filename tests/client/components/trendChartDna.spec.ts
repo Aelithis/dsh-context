@@ -265,12 +265,18 @@ describe('TrendChart DNA mode', () => {
   })
 
   test('the browser category focus is ignored — the bands already are the full composition', async () => {
+    // The axis is driven by the second bar's total, so the first bar's height discriminates: focused on 'user'
+    // the records shrink to their user figures (30/150 → 22px); ignored, they hold the full totals (300/600 → 56px).
     const r1 = req(1, { turn: 1, step: 0, total: 300 })
+    const r2 = req(2, { turn: 1, step: 1, total: 600, user: 150 })
     const d1 = dnaBands([['sys', 'system', 100], ['n1', 'user', 200, { seq: 1, cat: 'user', tokens: 200 }]])
-    const m = await mount(h(TrendChart, propsOf([r1], { dna: [d1], focusCat: 'user' })))
-    const dnaDiv = query(m.container, '.lc-bar-dna')
-    assert.equal(dnaDiv.style.height, `${CHART_H}px`, 'full height, not the focused category share')
-    assert.ok(dnaDiv.style.background.includes('var(--color-indigo-500)'), 'the system band is still painted')
+    const d2 = dnaBands([['sys', 'system', 100], ['n2', 'user', 500, { seq: 2, cat: 'user', tokens: 500 }]])
+    const m = await mount(h(TrendChart, propsOf([r1, r2], { dna: [d1, d2], focusCat: 'user' })))
+    const dnaDivs = queryAll(m.container, '.lc-bar-dna')
+    assert.equal(dnaDivs.length, 2)
+    assert.equal(dnaDivs[0].style.height, `${Math.round(CHART_H * 300 / 600)}px`, 'full-context share, not the focused category share')
+    assert.equal(dnaDivs[1].style.height, `${CHART_H}px`)
+    assert.ok(dnaDivs[0].style.background.includes('var(--color-indigo-500)'), 'the system band is still painted')
     await m.unmount()
   })
 
