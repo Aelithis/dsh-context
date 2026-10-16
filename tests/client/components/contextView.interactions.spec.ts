@@ -1,10 +1,11 @@
 import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
+import type { UseChatLike } from '../../../src/client/services'
 import { DICT_EN } from '../../../src/client/i18n'
 import { TestClientCtx } from '../helpers/harness'
 import { click, flush, hover, mount, query, queryAll, text, unhover } from '../helpers/kit'
-import { buttonByText, makeView, mountRich, projectionsFor, T0, timeline } from './contextViewHarness'
+import { buttonByText, makeView, mountRich, projectionsFor, richTimeline, T0, timeline } from './contextViewHarness'
 
 describe('ContextView — interactions', () => {
   test('renders the rich tab: stats, chart bars, markers, events, nodes, browser', async () => {
@@ -20,6 +21,40 @@ describe('ContextView — interactions', () => {
     // Turn strip partitions the two turn groups (turn 1 + the turn-less 0).
     assert.deepEqual(queryAll(m.container, '.lc-turn-label').map(el => text(el)), ['1', '0'])
     await m.unmount()
+  })
+
+  test('the browser column caps at three times the composition + trend card heights, live', async () => {
+    // jsdom has no layout: stand in a measured height for the two left cards only, then grow it, so both
+    // the apply and the re-measure arms of the cap run.
+    const orig = Element.prototype.getBoundingClientRect
+    let cardH = 100
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      const box = orig.call(this)
+      const leftCard = this.classList.contains('lc-card') && this.parentElement?.classList.contains('lc-col')
+        && !this.parentElement.classList.contains('lc-col-browser')
+      return leftCard ? { ...box, height: cardH } : box
+    } as never
+    try {
+      // One View instance across the update, so the second render re-measures in place.
+      const View = makeView(new TestClientCtx())
+      const el = () => h(View, {
+        sessionId: 'sv-cap',
+        useProjection: projectionsFor(richTimeline(), {
+          contextHeaders: { headers: [{ seq: 1, time: T0, system: 'SYS', tools: [{ name: 'bash', tokens: 12, description: 'run' }] }] },
+        }),
+        useChat: (sel => sel({ legacy: { nodes: [] } })) as UseChatLike,
+      })
+      const m = await mount(el())
+      const col = query<HTMLElement>(m.container, '.lc-col-browser')
+      assert.equal(col.style.maxHeight, '600px', '3 × (composition 100 + trend 100)')
+      assert.equal(col.style.overflowY, 'auto')
+      cardH = 150
+      await m.update(el())
+      assert.equal(col.style.maxHeight, '900px', 'the cap follows the cards on the next render')
+      await m.unmount()
+    } finally {
+      Element.prototype.getBoundingClientRect = orig
+    }
   })
 
   test('bar hover previews in the browser; hover loss on a granularity switch falls back', async () => {

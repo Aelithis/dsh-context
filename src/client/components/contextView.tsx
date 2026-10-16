@@ -55,6 +55,16 @@ function revealBrowser(root: HTMLElement | null): void {
   /* v8 ignore stop */
 }
 
+/** The Context browser's height ceiling: three times the left column's stacked cards beside it (the
+ * current-composition card plus the trend card). The DNA flat feed lays every message out at once, and an
+ * uncapped card would outgrow the page; taller content scrolls inside the column. Null — uncapped — while
+ * no card measures (the loading frame). */
+export function browserCapOf(cardHeights: readonly number[]): number | null {
+  let sum = 0
+  for (const h of cardHeights) sum += h
+  return sum > 0 ? Math.round(sum * 3) : null
+}
+
 /** The trend card's reserved body: the plot lane plus an empty detail panel wearing the panel's OWN classes, so the
  * pending and loaded states are measured by the same CSS and cannot drift. Without it the first step's arrival grew
  * the card by its whole height and shoved every card below it down the page. */
@@ -172,6 +182,30 @@ export function makeContextView(
     const restoredRef = useRef<string | null>(null)
     const [catFocus, setCatFocus] = useState<CatFocus | null>(null)
     const clearCatFocus = useCallback(() => { setCatFocus(null) }, [])
+
+    // The browser column's height cap — 3× the composition + trend cards beside it (browserCapOf) — re-measured
+    // per render and followed by a ResizeObserver, since pane drags and card reflows change no prop.
+    const leftColRef = useRef<HTMLDivElement | null>(null)
+    const [browserCap, setBrowserCap] = useState<number | null>(null)
+    const [, setCapTick] = useState(0)
+    useLayoutEffect(() => {
+      const col = leftColRef.current
+      /* v8 ignore next 1 -- the loading frame renders no left column; every carded render attaches it. */
+      if (col === null) return
+      // The column renders exactly the composition + trend cards; 3× their stacked height is the cap.
+      const next = browserCapOf([...col.children].map(el => el.getBoundingClientRect().height))
+      setBrowserCap(prev => (prev === next ? prev : next))
+    })
+    /* v8 ignore start -- jsdom has neither ResizeObserver nor layout: the cap's math is pinned by browserCapOf's unit tests. */
+    useEffect(() => {
+      const col = leftColRef.current
+      if (col === null || typeof ResizeObserver !== 'function') return
+      const observer = new ResizeObserver(() => { setCapTick(tick => tick + 1) })
+      observer.observe(col)
+      for (const el of col.querySelectorAll(':scope > .lc-card')) observer.observe(el)
+      return () => { observer.disconnect() }
+    }, [data])
+    /* v8 ignore stop */
     const onFigureClick = useCallback((figure: 'skills' | 'answers'): void => {
       setCatFocus(figure === 'skills' ? { cat: 'skill' } : { cat: 'assistant', kind: 'answer' })
       revealBrowser(rootRef.current)
@@ -621,9 +655,13 @@ export function makeContextView(
         </div>
 
         <div className="lc-cols lc-cols-main">
-          <div className="lc-col flex-1 min-w-[min(360px,100%)]">{compositionCard}{trendCard}</div>
-          {/* Stretches the browser card to the left column's height; the /context modal draws its own stack and stays content-sized. */}
-          <div className="lc-col lc-col-browser flex-1 min-w-[min(360px,100%)]">{browserCard}</div>
+          <div className="lc-col flex-1 min-w-[min(360px,100%)]" ref={leftColRef}>{compositionCard}{trendCard}</div>
+          {/* Stretches the browser card to the left column's height; the /context modal draws its own stack and stays content-sized.
+              Capped at 3× the left cards' height (browserCapOf): the DNA feed lays out every message, so it scrolls within. */}
+          <div
+            className="lc-col lc-col-browser flex-1 min-w-[min(360px,100%)]"
+            style={browserCap !== null ? { maxHeight: browserCap, overflowY: 'auto' } : undefined}
+          >{browserCard}</div>
         </div>
 
         <div className="lc-cols">
