@@ -325,6 +325,32 @@ export function makeContextBrowser(
       && (rowDnaKey === 'tools' ? view.header !== null
         : rowDnaKey === 'system' ? view.system !== null
           : dnaByKey.has(rowDnaKey)) ? rowDnaKey : null
+    // A band hover brings its echoed row into view — within the nearest scrollable ancestor's own scrollport
+    // (the capped column) and nothing above it: the pointer rests on the pinned bar, and a page scroll would
+    // drag it off the band mid-scrub.
+    useLayoutEffect(() => {
+      if (liveDnaKey === null) return
+      /* v8 ignore next 1 -- liveDnaKey non-null implies a mounted card: the ref always resolves. */
+      const row = rootRef.current?.querySelector('.lc-br-elem-echo') ?? null
+      /* v8 ignore next 1 -- a live band names a rendered item, so its echoed row always exists. */
+      if (row === null) return
+      let scroller: HTMLElement | null = row.parentElement
+      while (scroller !== null && scroller.scrollHeight <= scroller.clientHeight) {
+        scroller = scroller.parentElement
+      }
+      /* v8 ignore next 1 -- jsdom lays out nothing: no ancestor ever overflows. */
+      if (scroller === null) return
+      /* v8 ignore start -- real layout only: jsdom measures no boxes. */
+      const rb = row.getBoundingClientRect()
+      const sb = scroller.getBoundingClientRect()
+      // The row only has to reach the scrollport's VISIBLE slice: a capped column usually extends below the
+      // page fold, so its own box bottom is no visibility boundary.
+      const visTop = Math.max(sb.top, 0)
+      const visBottom = Math.min(sb.bottom, window.innerHeight)
+      if (rb.top < visTop) scroller.scrollTop -= visTop - rb.top
+      else if (rb.bottom > visBottom) scroller.scrollTop += rb.bottom - visBottom
+      /* v8 ignore stop */
+    }, [liveDnaKey])
     const pickDna = (key: string): void => {
       const it = dnaByKey.get(key)
       /* v8 ignore next 1 -- the bar only reports keys of the parts it was handed; defensive. */
@@ -407,7 +433,9 @@ export function makeContextBrowser(
 
     /** Expandable element row; `err` carries the red run-state dot right after the chevron so a failed result scans while collapsed.
      * `opts.open` overrides the `openElem === key` derivation for rows whose key set is wider (the flat feed's tools group);
-     * `opts.onHover` lets a DNA feed row light its own band on the composition bar. */
+     * `opts.onHover` lets a DNA feed row light its own band on the composition bar. The reverse echo — a DNA band
+     * hover lighting its row — derives straight from the band key: a node or the system prompt matches its own row,
+     * a tool-schema band matches the tools group row. */
     const elemRow = (
       key: string, tag: ReactNode | null, preview: string,
       tokens: number, time: number | undefined, body: ReactNode,
@@ -417,8 +445,10 @@ export function makeContextBrowser(
     ) => {
       const open = opts?.open ?? openElem === key
       const hover = opts?.onHover
+      const echo = dna && liveDnaKey !== null
+        && (liveDnaKey === key || (key === 'tools' && liveDnaKey.startsWith('tool:')))
       return (
-        <div key={key} className={'lc-br-elem' + (open ? ' lc-br-elem-on' : '')}>
+        <div key={key} className={'lc-br-elem' + (open ? ' lc-br-elem-on' : '') + (echo ? ' lc-br-elem-echo' : '')}>
           <button
             type="button"
             className="lc-br-elem-row hover:bg-(--dsw-alias-interactive-bg-hover)"

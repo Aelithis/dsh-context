@@ -326,6 +326,24 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     await m.unmount()
   })
 
+  test('hovering a DNA band echoes onto its feed row; a tool-schema band lights the tools group row', async () => {
+    const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
+    await click(dnaButton(m))
+    // Band n3 (index 4) is feed row index 2 (the feed runs newest-first).
+    await hover(bands(m)[4])
+    assert.ok(flatRows(m)[2].className.includes('lc-br-elem-echo'))
+    assert.ok(flatRows(m).every((r, i) => i === 2 || !r.className.includes('lc-br-elem-echo')))
+    await unhover(bands(m)[4])
+    assert.ok(flatRows(m).every(r => !r.className.includes('lc-br-elem-echo')))
+    // A tool-schema band echoes onto the tools group row; the system band onto the system row.
+    await hover(bands(m)[1])
+    assert.ok(flatRow(m, 'Tool Schemas').closest('.lc-br-elem')?.className.includes('lc-br-elem-echo'))
+    await unhover(bands(m)[1])
+    await hover(bands(m)[0])
+    assert.ok(flatRow(m, 'System Prompt').closest('.lc-br-elem')?.className.includes('lc-br-elem-echo'))
+    await m.unmount()
+  })
+
   test('a tiny item stays a hoverable filament (the minBand floor) while the tooltip reports the true share', async () => {
     const data = tl({
       current: { system: 0, tools: 0, user: 2, inject: 0, skill: 0, assistant: 998, tool: 0, total: 1000 },

@@ -88,6 +88,8 @@
 .lc-br-time { flex: none; color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: nowrap; }
 /* A PENDING stamp (a live-tail item no request carries yet) is an estimate; its tooltip names the not-yet-sent step. */
 .lc-br-time-pending { text-decoration: underline dotted; text-underline-offset: 2px; }
+/* A DNA band hover echoes onto its feed row: the row's button wears the hover wash while the pointer is on the bar. */
+.lc-br-elem-echo > .lc-br-elem-row { background-color: var(--dsw-alias-interactive-bg-hover); }
 /* Call-hit tally on a tool-definition row. */
 .lc-br-hits { flex: none; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 .lc-br-content { padding: 2px 6px 8px 26px; display: flex; flex-direction: column; gap: 6px; }
