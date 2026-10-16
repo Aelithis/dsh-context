@@ -74,6 +74,8 @@
 .lc-br-pct { flex: none; width: 36px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .lc-br-body { border-top: 1px solid var(--dsw-alias-border-l1); padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; }
 .lc-br-elem { border-radius: 6px; }
+/* `of` counts rows only: a toolbar or note never shifts the stripe's phase. */
+.lc-br-elem:nth-child(even of .lc-br-elem):not(.lc-br-elem-on) { background: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover) 60%, transparent); }
 .lc-br-elem-on { background: var(--dsw-alias-interactive-bg-active); }
 .lc-br-elem-row { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; padding: 5px 6px; cursor: pointer; text-align: left; border-radius: 6px; transition: background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 /* The chat's run-state dot, so the failure scans without expanding the row. */
