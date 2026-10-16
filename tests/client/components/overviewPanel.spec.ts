@@ -135,7 +135,7 @@ describe('OverviewPanel', () => {
     const ctx = makeCtx({ refresh: () => { pulls++; return Promise.resolve() } })
     const { m } = await openPanel(ctx)
     assert.equal(pulls, 1, 'the baseline re-pull fires on mount')
-    assert.deepEqual(backfillPosts, ['/api/dsh-context/backfill'], 'the warm-up trigger POST fires on mount')
+    assert.deepEqual(backfillPosts, ['api/dsh-context/backfill'], 'the warm-up trigger POST fires on mount')
     assert.ok(text(m.container).includes('Context Insights'))
     // The page chrome: the section's one scroll region carries the centered
     // content column — the page heading, then the 1:1 first row (the KPI

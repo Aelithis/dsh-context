@@ -9,11 +9,8 @@
  */
 
 import type { FleetDetail, FleetDescriptor, FleetMemberInfo, FleetMessage } from '../shared/types'
+import { FLEET_ROUTE } from './apiRoutes'
 import { asRecord, numOf } from './services'
-
-// The route of host/fleet.ts, re-declared here: the client bundle inlines every import and the
-// host module must never reach it.
-const FLEET_ROUTE = '/api/dsh-context/fleet'
 
 function strings(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined

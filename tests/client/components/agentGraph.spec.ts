@@ -664,7 +664,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
 
     // The cold relative fetched at mount; until the read lands it wears the pressure-only fill.
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'])
     assert.equal(query(m.container, '[data-agent="done"]').querySelectorAll('.lc-agent-bar-seg').length, 1)
 
     // A snapshot tick while the read is in flight re-attaches the SAME
@@ -688,14 +688,14 @@ describe('AgentGraph — cold-relative composition fetch', () => {
       face.setState(family())
     })
     await flush()
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'])
 
     // A remount (tab switch) resets the instance state but replays the
     // factory-cached read: the bar recomposes with no new request.
     await m.unmount()
     const remounted = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     await flush()
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'], 'the cache never re-fetches')
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'], 'the cache never re-fetches')
     const replayed = query(remounted.container, '[data-agent="done"]')
     assert.equal(replayed.querySelectorAll('.lc-agent-bar-seg').length, 6, 'the cached head replays into the fresh instance')
     await remounted.unmount()
@@ -706,14 +706,14 @@ describe('AgentGraph — cold-relative composition fetch', () => {
     const { View, face } = makeFetchingView()
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     await flush()
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'])
     assert.equal(query(m.container, '[data-agent="done"]').querySelectorAll('.lc-agent-bar-seg').length, 1)
     // A later snapshot tick (fresh forest, still pressure-only) re-fetches nothing.
     await act(async () => {
       face.setState(family())
     })
     await flush()
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'], 'the sticky failure never re-fetches')
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'], 'the sticky failure never re-fetches')
     await m.unmount()
   })
 
@@ -723,7 +723,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
       const { View } = makeFetchingView()
       const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
       await flush()
-      assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:done'])
+      assert.deepEqual(rpc.calls, ['api/dsh-context/detail:done'])
       assert.equal(query(m.container, '[data-agent="done"]').querySelectorAll('.lc-agent-bar-seg').length, 1)
       assert.ok(text(query(m.container, '[data-agent="done"]')).includes('95%'))
       await m.unmount()
@@ -762,7 +762,7 @@ describe('AgentGraph — cold-relative composition fetch', () => {
     const View = makeAgentGraph(asClientCtx(ctx), kit)
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.equal(query(m.container, '[data-agent="cold"]').querySelectorAll('.lc-agent-bar-seg').length, 0)
-    assert.deepEqual(rpc.calls, ['/api/dsh-context/detail:cold'])
+    assert.deepEqual(rpc.calls, ['api/dsh-context/detail:cold'])
 
     await act(async () => {
       rpc.release({ ok: true, status: 200, json: async () => ({ ok: true, value: detailValue(composedHead()) }) })

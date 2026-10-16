@@ -11,6 +11,7 @@
 
 import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import { dayKeyOf, endOfDayKey, startOfDayKey } from '../shared/days'
+import { BACKFILL_ROUTE } from './apiRoutes'
 import { billedParts } from './categories'
 import { cacheHitPercent } from './format'
 import { estimateSessionCost, mergeCostUsage } from './cost'
@@ -712,10 +713,6 @@ export function refreshSessions(ctx: ClientCtx): void {
     void Promise.resolve(sessions.refresh()).catch(() => { /* a failed re-pull keeps the stale rows */ })
   } catch { /* hostile service — no refresh */ }
 }
-
-// The plugin's warm-up trigger route (host/backfill.ts), re-declared here: the
-// client bundle inlines every import and the host module must never reach it.
-const BACKFILL_ROUTE = '/api/dsh-context/backfill'
 
 /** Summon the host's projection warm-up (host/backfill.ts): this page is
  * the rows' only reader, so the host defers the corpus-wide cold reads until

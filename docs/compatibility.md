@@ -76,6 +76,7 @@ Last verified: **2026-10-14** (dsh-context `0.70.0`, dsh `0.2.0-rc.2` npm instal
 5. **Re-prove everything at the boundary** — collections re-proven, scalars zeroed, whole-value absence stays `null` (the loading screen); structural narrowing over blind casts; skip elements that fail the shape instead of throwing. (`src/client/timelineSource.ts`)
 6. **Isolate per-item work over hostile objects**; every async read resolves to data or a retryable failure note — never an eternal spinner. (`src/client/timelineSource.ts`)
 7. **A pushed revision decrease resets the detail ledger** — stale reads never merge into the new head. (`src/client/timelineSource.ts`)
+8. **Fetch routes ride browser-relative spellings** (issue #159) — the client never issues a root-absolute `/api/...` URL: fetch resolves the relative form against the page's document base, so a deployment behind a path-prefixed reverse proxy (page at `/app/dsh/`) keeps its prefix, where a root-absolute spelling 404s at the gateway. (`src/client/apiRoutes.ts`)
 
 - **Limitation — complete prompt sections:** a deployment registering a `complete` system-prompt section keeps ONLY that section (registry design); `promptPrefix`/`promptSuffix` are dropped there. (dsh: `packages/core/system-prompt`)
 

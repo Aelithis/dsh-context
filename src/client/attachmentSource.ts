@@ -8,12 +8,9 @@
 
 import { previewAddressOf } from './fileActivity'
 import type { AttachmentRef } from '../shared/attachment'
+import { ATTACHMENT_ROUTE } from './apiRoutes'
 import { asRecord, openResourceVia } from './services'
 import type { AttachmentLocator, AttachmentOpener, ClientCtx } from './services'
-
-// The route of host/attachment.ts, re-declared here: the client bundle inlines every import and the
-// host module must never reach it (the detail route's own arrangement in timelineSource.ts).
-const ATTACHMENT_ROUTE = '/api/dsh-context/attachment'
 
 /** Cache ceiling: cards are clicked one at a time, so a small FIFO holds a session's working set. */
 const CACHE_MAX = 32

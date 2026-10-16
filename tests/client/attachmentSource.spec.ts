@@ -64,7 +64,7 @@ describe('makeAttachmentLocator', () => {
     assert.equal(await locate(FILE), ALIAS)
     assert.equal(await locate(FILE), ALIAS)
     assert.equal(calls.length, 1, 'the second read is served from the cache')
-    assert.equal(calls[0].url, '/api/dsh-context/attachment')
+    assert.equal(calls[0].url, 'api/dsh-context/attachment')
     assert.deepEqual(calls[0].body, { sessionId: 's1', attachmentId: 'sha256:f1' })
   })
 
