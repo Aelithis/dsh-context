@@ -31,7 +31,7 @@
 .lc-map-num { font-size: 10px; color: var(--dsw-alias-label-secondary); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .lc-map-tip { display: flex; flex-direction: column; max-width: 240px; padding: 5px 8px; line-height: 1.45; white-space: nowrap; }
 .lc-map-tip-on { opacity: 1; }
-.lc-br-pick { font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 6px; max-width: 240px; }
+.lc-br-pick { font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 0.5px solid var(--dsw-alias-border-l4); border-radius: 6px; padding: 3px 6px; max-width: 240px; }
 /* The right figure sits at the main column's edge — the button column takes its own slack, so the figures no longer sit beside the button. */
 .lc-br-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--dsw-alias-label-secondary); }
 .lc-br-meta b { color: var(--dsw-alias-label-primary); }
