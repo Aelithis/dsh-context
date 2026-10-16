@@ -165,6 +165,8 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 .lc-ov-search { flex: 1 1 150px; min-width: 110px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); outline: none; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 .lc-ov-search:focus { border-color: var(--dsw-alias-label-secondary); }
 .lc-ov-search::placeholder { color: var(--dsw-alias-label-secondary); }
+/* The coverage picker neighbors the search box; the search recipe keeps the two one height. */
+.lc-ov-cover { flex: none; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); }
 
 .lc-ov-groups { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 10px; }
 .lc-ov-chip { display: inline-flex; align-items: baseline; gap: 5px; border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-secondary); border-radius: 999px; font: inherit; font-size: 11px; line-height: 1.5; padding: 2px 10px; cursor: pointer; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
@@ -184,6 +186,7 @@ button.lc-heat-cell:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--col
 /* The 2-line clamp keeps one long title from ballooning its row; the full text stays on the tooltip. */
 .lc-ov-session-title { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .lc-ov-current { flex: none; font-size: 10px; line-height: 1.5; color: var(--color-blue-500); border: 1px solid color-mix(in srgb, var(--color-blue-500) 45%, transparent); border-radius: 4px; padding: 0 4px; }
+.lc-ov-archived { flex: none; font-size: 10px; line-height: 1.5; color: var(--dsw-alias-label-secondary); border: 1px solid var(--dsw-alias-border-l2); border-radius: 4px; padding: 0 4px; }
 .lc-ov-session-times { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .lc-ov-session-time { color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: nowrap; }
 .lc-ov-session-created { color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 1.4; white-space: nowrap; font-variant-numeric: tabular-nums; }
