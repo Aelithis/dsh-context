@@ -326,7 +326,7 @@ export function makeContextBrowser(
         : rowDnaKey === 'system' ? view.system !== null
           : dnaByKey.has(rowDnaKey)) ? rowDnaKey : null
     // A band hover brings its echoed row into view — within the nearest scrollable ancestor's own scrollport
-    // (the capped column) and nothing above it: the pointer rests on the pinned bar, and a page scroll would
+    // (the card's rows region) and nothing above it: the pointer rests on the bar, and a page scroll would
     // drag it off the band mid-scrub.
     useLayoutEffect(() => {
       if (liveDnaKey === null) return
@@ -814,8 +814,7 @@ export function makeContextBrowser(
     }
 
     return (
-      <div className="lc-card" ref={rootRef}>
-        {/* The head the capped column pins: everything above the scrolling list. */}
+      <div className="lc-card lc-br" ref={rootRef}>
         <div className="lc-br-head">
           <div className="lc-card-title">
             <span className="lc-card-title-text">{t('browser.title')}</span>
@@ -911,77 +910,79 @@ export function makeContextBrowser(
           {dna ? flatToolbar() : null}
         </div>
 
-        {mapOn
-          ? (
-            <BrowserTreemap
-              view={view}
-              openCat={openCat}
-              hoverKey={linkKey}
-              // The map reports its category upward only outside DNA mode: there the bar's link is one-way (an
-              // incoming category key lights that category's bands; bar hovers stay local), and the map — the
-              // bar's companion surface — keeps the same convention so every hover link mirrors the bar's.
-              onHoverKey={dna ? undefined : linked ? props.onHoverKey : undefined}
-              onPickCat={toggleCat}
-              onPickBlock={pickMapBlock}
-            />
-          )
-          : null}
+        <div className="lc-br-scroll">
+          {mapOn
+            ? (
+              <BrowserTreemap
+                view={view}
+                openCat={openCat}
+                hoverKey={linkKey}
+                // The map reports its category upward only outside DNA mode: there the bar's link is one-way (an
+                // incoming category key lights that category's bands; bar hovers stay local), and the map — the
+                // bar's companion surface — keeps the same convention so every hover link mirrors the bar's.
+                onHoverKey={dna ? undefined : linked ? props.onHoverKey : undefined}
+                onPickCat={toggleCat}
+                onPickBlock={pickMapBlock}
+              />
+            )
+            : null}
 
-        {dna
-          ? flatRows()
-          : (
-            <div className="lc-br-cats">
-              {CATS.map((c) => {
-                const count = toolCount(c.key)
-                const v = breakdown[c.key] || 0
-                const prevCount = zeroBase ? 0 : prevView !== null && prevByCat !== null ? countOf(prevView, prevByCat, c.key) : null
-                const countDelta = prevCount !== null ? count - prevCount : null
-                const prevTokens = zeroBase ? 0 : refReq !== null ? (refReq[c.key] || 0) : null
-                const tokenDelta = prevTokens !== null ? v - prevTokens : null
-                const openable = count > 0
-                  || ((c.key === 'system' || c.key === 'tools') && view.header === null)
-                const open = openCat === c.key && openable
-                return (
-                  <div key={c.key} className={'lc-br-cat' + (openable ? '' : ' lc-br-cat-empty')}>
-                    <button
-                      type="button"
-                      className={'lc-br-cat-row hover:bg-(--dsw-alias-interactive-bg-hover)'
-                        + (open ? ' lc-br-cat-open' : '')
-                        + (linked && props.hoverKey === c.key ? ' lc-br-cat-on' : '')}
-                      /* v8 ignore start -- the handlers exist only when linked,
-                         and linked already requires onHoverKey defined (above). */
-                      onMouseEnter={linked ? () => { if (props.onHoverKey !== undefined) props.onHoverKey(c.key) } : undefined}
-                      onMouseLeave={linked ? () => { if (props.onHoverKey !== undefined) props.onHoverKey(null) } : undefined}
-                      /* v8 ignore stop */
-                      onClick={() => { toggleCat(c.key) }}
-                    >
-                      <span className={'lc-br-chev' + (open ? ' lc-br-chev-on' : '')} />
-                      <i style={{ background: c.color }} />
-                      <span className="lc-br-cat-label">{catLabel(c.key)}</span>
-                      <span className="lc-br-count-grp">
-                        <span className="lc-br-cat-count">{t('browser.items', { n: count })}</span>
-                        {countDelta !== null && countDelta !== 0 ? (
-                          <span className={'lc-br-delta lc-br-delta-' + (countDelta > 0 ? 'up' : 'down')}>
-                            {`${countDelta > 0 ? '+' : ''}${countDelta}`}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="lc-br-tokens-grp">
-                        {tokenDelta !== null && tokenDelta !== 0 ? (
-                          <span className={'lc-br-tdelta lc-br-tdelta-' + (tokenDelta > 0 ? 'up' : 'down')}>
-                            {(tokenDelta > 0 ? '+' : '') + fmt(tokenDelta)}
-                          </span>
-                        ) : null}
-                        <span className="lc-br-tokens">{'≈' + fmt(v)}</span>
-                      </span>
-                      <span className="lc-br-pct">{total > 0 ? `${Math.round(v / total * 100)}%` : ''}</span>
-                    </button>
-                    {open ? <div className="lc-br-body">{catBody(c.key)}</div> : null}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          {dna
+            ? flatRows()
+            : (
+              <div className="lc-br-cats">
+                {CATS.map((c) => {
+                  const count = toolCount(c.key)
+                  const v = breakdown[c.key] || 0
+                  const prevCount = zeroBase ? 0 : prevView !== null && prevByCat !== null ? countOf(prevView, prevByCat, c.key) : null
+                  const countDelta = prevCount !== null ? count - prevCount : null
+                  const prevTokens = zeroBase ? 0 : refReq !== null ? (refReq[c.key] || 0) : null
+                  const tokenDelta = prevTokens !== null ? v - prevTokens : null
+                  const openable = count > 0
+                    || ((c.key === 'system' || c.key === 'tools') && view.header === null)
+                  const open = openCat === c.key && openable
+                  return (
+                    <div key={c.key} className={'lc-br-cat' + (openable ? '' : ' lc-br-cat-empty')}>
+                      <button
+                        type="button"
+                        className={'lc-br-cat-row hover:bg-(--dsw-alias-interactive-bg-hover)'
+                          + (open ? ' lc-br-cat-open' : '')
+                          + (linked && props.hoverKey === c.key ? ' lc-br-cat-on' : '')}
+                        /* v8 ignore start -- the handlers exist only when linked,
+                           and linked already requires onHoverKey defined (above). */
+                        onMouseEnter={linked ? () => { if (props.onHoverKey !== undefined) props.onHoverKey(c.key) } : undefined}
+                        onMouseLeave={linked ? () => { if (props.onHoverKey !== undefined) props.onHoverKey(null) } : undefined}
+                        /* v8 ignore stop */
+                        onClick={() => { toggleCat(c.key) }}
+                      >
+                        <span className={'lc-br-chev' + (open ? ' lc-br-chev-on' : '')} />
+                        <i style={{ background: c.color }} />
+                        <span className="lc-br-cat-label">{catLabel(c.key)}</span>
+                        <span className="lc-br-count-grp">
+                          <span className="lc-br-cat-count">{t('browser.items', { n: count })}</span>
+                          {countDelta !== null && countDelta !== 0 ? (
+                            <span className={'lc-br-delta lc-br-delta-' + (countDelta > 0 ? 'up' : 'down')}>
+                              {`${countDelta > 0 ? '+' : ''}${countDelta}`}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="lc-br-tokens-grp">
+                          {tokenDelta !== null && tokenDelta !== 0 ? (
+                            <span className={'lc-br-tdelta lc-br-tdelta-' + (tokenDelta > 0 ? 'up' : 'down')}>
+                              {(tokenDelta > 0 ? '+' : '') + fmt(tokenDelta)}
+                            </span>
+                          ) : null}
+                          <span className="lc-br-tokens">{'≈' + fmt(v)}</span>
+                        </span>
+                        <span className="lc-br-pct">{total > 0 ? `${Math.round(v / total * 100)}%` : ''}</span>
+                      </button>
+                      {open ? <div className="lc-br-body">{catBody(c.key)}</div> : null}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+        </div>
       </div>
     )
   }

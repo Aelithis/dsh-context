@@ -57,7 +57,7 @@ function revealBrowser(root: HTMLElement | null): void {
 
 /** The Context browser's height ceiling: three times the left column's stacked cards beside it (the
  * current-composition card plus the trend card). The DNA flat feed lays every message out at once, and an
- * uncapped card would outgrow the page; taller content scrolls inside the column. Null — uncapped — while
+ * uncapped card would outgrow the page; taller content scrolls inside the card. Null — uncapped — while
  * no card measures (the loading frame). */
 export function browserCapOf(cardHeights: readonly number[]): number | null {
   let sum = 0
@@ -657,10 +657,11 @@ export function makeContextView(
         <div className="lc-cols lc-cols-main">
           <div className="lc-col flex-1 min-w-[min(360px,100%)]" ref={leftColRef}>{compositionCard}{trendCard}</div>
           {/* Stretches the browser card to the left column's height; the /context modal draws its own stack and stays content-sized.
-              Capped at 3× the left cards' height (browserCapOf): the DNA feed lays out every message, so it scrolls within. */}
+              Capped at 3× the left cards' height (browserCapOf): the DNA feed lays out every message, so the card's rows region
+              scrolls inside the capped card. */}
           <div
             className="lc-col lc-col-browser flex-1 min-w-[min(360px,100%)]"
-            style={browserCap !== null ? { maxHeight: browserCap, overflowY: 'auto' } : undefined}
+            style={browserCap !== null ? { maxHeight: browserCap } : undefined}
           >{browserCard}</div>
         </div>
 

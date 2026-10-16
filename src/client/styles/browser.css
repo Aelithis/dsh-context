@@ -1,9 +1,13 @@
 /* The DNA group's margin is zeroed so the delta-baseline `.lc-gran` keeps the row's single auto-margin push. */
 .lc-br-dna-ctl { margin-left: 0; flex: none; }
-/* The card's pinned head: within the capped browser column the title, composition bar, notices and the DNA
-   feed's lens stay fixed while the rows scroll beneath. The /context modal scrolls as one card — no pin there. */
-.lc-col-browser .lc-br-head { position: sticky; top: 0; z-index: 2; background: var(--dsw-alias-bg-layer-1); }
-/* The head-pinned DNA lens keeps the feed's 10px bar-to-lens rhythm. */
+/* The card is a fixed-head flex column: the title row, composition bar, notices and the DNA lens never
+   scroll; the block map and the rows scroll in their own region. Only a height-bounded host actually
+   scrolls — the capped tab column; an unconstrained card (the /context modal's one-card scroll) lets
+   the region grow with the rows, and the page scrolls it as before. */
+.lc-br { display: flex; flex-direction: column; min-height: 0; }
+.lc-br-head { flex: none; }
+.lc-br-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* The fixed head's DNA lens keeps the feed's 10px bar-to-lens rhythm. */
 .lc-br-head .lc-br-toolctl { margin-top: 10px; }
 /* The divider scales with its band (`min(0.5px, 12.5%)` of its own width): long sessions pin hundreds of bands at ≤1px, where a fixed divider would cover the whole band. A gradient layer, because a fixed inset box-shadow cannot scale. */
 .lc-br-bar-dna .lc-stacked-seg { background-image: linear-gradient(to right, transparent calc(100% - min(0.5px, 12.5%)), var(--dsw-alias-bg-layer-1) 0); }

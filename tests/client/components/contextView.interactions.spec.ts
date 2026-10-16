@@ -47,7 +47,9 @@ describe('ContextView — interactions', () => {
       const m = await mount(el())
       const col = query<HTMLElement>(m.container, '.lc-col-browser')
       assert.equal(col.style.maxHeight, '600px', '3 × (composition 100 + trend 100)')
-      assert.equal(col.style.overflowY, 'auto')
+      // The cap only ceilings the card — the card's rows region scrolls; the column never does.
+      assert.equal(col.style.overflowY, '')
+      assert.ok(query(m.container, '.lc-br-scroll') !== null)
       cardH = 150
       await m.update(el())
       assert.equal(col.style.maxHeight, '900px', 'the cap follows the cards on the next render')
