@@ -44,7 +44,7 @@ export function TextSection(props: {
   lines: (n: number) => string
 }): ReactElement {
   const { rich } = props
-  const [mode, setMode] = rich.useRichMode()
+  const [mode, setMode, json] = rich.useRichMode(props.text)
   const find = rich.useRichFind(props.text, mode)
   const lineCount = useMemo(() => lineCountOf(props.text), [props.text])
   return (
@@ -52,7 +52,7 @@ export function TextSection(props: {
       label={props.label}
       foldHead
       actions={<>
-        <rich.RichSwitch mode={mode} onPick={setMode} />
+        <rich.RichSwitch mode={mode} json={json} onPick={setMode} />
         <rich.RichCopy text={props.text} />
         {find.button}
       </>}

@@ -111,13 +111,13 @@ const MarkdownBody = memo(function MarkdownBody(props: { rich: RichKit; text: st
 })
 
 /** One boxed section of an opened task card — the context tab's own section chrome, with the
- * raw/Markdown switch at the head's right. Markdown is the default; the raw source is one click away. */
+ * raw/Markdown/JSON switch at the head's right. JSON payloads open on the tree; the raw source is one click away. */
 function TaskTextSection(props: { label: string; text: string; rich: RichKit; meta?: ReactElement }): ReactElement {
-  const [mode, setMode] = props.rich.useRichMode()
+  const [mode, setMode, json] = props.rich.useRichMode(props.text)
   return (
     <Section
       label={props.label}
-      actions={<props.rich.RichSwitch mode={mode} onPick={setMode} />}
+      actions={<props.rich.RichSwitch mode={mode} json={json} onPick={setMode} />}
       meta={props.meta}
     >
       <props.rich.RichText text={props.text} mode={mode} />
