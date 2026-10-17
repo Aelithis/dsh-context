@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
-import { absPathOf, displayPathOf, glyphOf } from '../fileActivity'
+import { absPathOf, baseNameOf, displayPathOf, glyphOf } from '../fileActivity'
 import type { FileActivity, FileEntry, FileOp, FileOpKind } from '../fileActivity'
 import type { ContextSettings, DefaultFileSort } from '../settings'
 import type { DetailState } from '../timelineSource'
@@ -74,13 +74,21 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
     // Count sort magnitude: the selected kind's own ops under a kind chip, else the file's overall op count.
     const countOf = (e: FileEntry): number =>
       filter === 'read' ? e.reads : filter === 'write' ? e.writes : filter === 'search' ? e.searches : e.ops.length
+    // Name sort: the displayed last segment leads, the full path breaks ties between same-named files.
+    const byName = (a: FileEntry, b: FileEntry): number => {
+      const an = baseNameOf(displayOf(a))
+      const bn = baseNameOf(displayOf(b))
+      return an !== bn ? (an < bn ? -1 : 1) : (a.path < b.path ? -1 : 1)
+    }
     const shown = activity.entries
       .filter(e => matches(e, filter) && (q === '' || displayOf(e).toLowerCase().includes(q)))
       .sort((a, b) => sort === 'count'
         ? (countOf(b) - countOf(a)) || (b.ops[0].seq - a.ops[0].seq)
         : sort === 'latest'
           ? b.ops[0].seq - a.ops[0].seq
-          : (a.path < b.path ? -1 : 1))
+          : sort === 'name'
+            ? byName(a, b)
+            : (a.path < b.path ? -1 : 1))
 
     const chips: { key: FileFilter; files: number; ops: number }[] = [
       {
@@ -165,7 +173,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
               </span>
             ) : null}
             <span className="lc-gran lc-fa-sort" role="group" title={t('files.sortTip')}>
-              {(['count', 'latest', 'path'] as const).map(k => (
+              {(['count', 'latest', 'path', 'name'] as const).map(k => (
                 <button
                   key={k}
                   type="button"

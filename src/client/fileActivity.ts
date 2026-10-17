@@ -10,6 +10,7 @@
 
 import type { FileOpRecord, RequestRecord, SurfaceNode } from '../shared/types'
 import { opsOfCall, parseCallArgs } from '../shared/fileOps'
+import { leafNameOf } from '../shared/attachment'
 // The harness's browser-safe file-address layer, inlined by the client bundle:
 // the produced address is the `dsh-resource://file/…` spelling the preview claims.
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
@@ -152,10 +153,14 @@ function fileGlyph(base: string): FileGlyph {
   return { glyph: '📄', tip: 'files.form.text' }
 }
 
+/** The last segment of a path, either separator style, a trailing slash trimmed first. */
+export function baseNameOf(path: string): string {
+  return leafNameOf(path.endsWith('/') ? path.slice(0, -1) : path)
+}
+
 export function glyphOf(path: string, form: FileForm): FileGlyph {
   if (form === 'image') return { glyph: '🖼', tip: 'files.form.image' }
-  const trimmed = path.endsWith('/') ? path.slice(0, -1) : path
-  const base = trimmed.slice(trimmed.lastIndexOf('/') + 1)
+  const base = baseNameOf(path)
   return form === 'dir' ? dirGlyph(base) : fileGlyph(base)
 }
 

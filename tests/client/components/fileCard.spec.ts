@@ -226,11 +226,11 @@ describe('FileCard — header, rows, and filters', () => {
     await m.unmount()
   })
 
-  test('the sort toggle defaults to most-active and switches to latest and path', async () => {
+  test('the sort toggle defaults to most-active and switches to latest, path, and name', async () => {
     const m = await mount(h(FileCard, { activity: richActivity(), scope: 'live' }))
     const titles = () => queryAll(m.container, '.lc-fa-row').map(r => r.title)
     const sortBtns = queryAll(m.container, '.lc-fa-sort .lc-gran-btn')
-    assert.equal(sortBtns.length, 3)
+    assert.equal(sortBtns.length, 4)
     assert.ok(sortBtns[0].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
     // Latest order: many.log (seq 28) → ui.png (9) → solo.md (8) → a.ts (7) → /src/ (6).
@@ -241,9 +241,33 @@ describe('FileCard — header, rows, and filters', () => {
     await click(sortBtns[2])
     assert.ok(sortBtns[2].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/shots/ui.png', '/src/', '/src/a.ts', '/var/many.log', 'solo.md'])
+    // Name order: ascending over the last segment (a.ts → many.log → solo.md → src → ui.png).
+    await click(sortBtns[3])
+    assert.ok(sortBtns[3].className.includes('lc-gran-on'))
+    assert.deepEqual(titles(), ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png'])
     await click(sortBtns[0])
     assert.ok(sortBtns[0].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
+    await m.unmount()
+  })
+
+  test('the name sort leads with the last segment and breaks ties on the full path', async () => {
+    const readOne = (seq: number, path: string): FileEntry => entry(path, { reads: 1, ops: [fileOp(seq, 'read', 'read')] })
+    const activity: FileActivity = {
+      entries: [
+        readOne(4, '/b/x.ts'),
+        readOne(3, '/d/x.ts'),
+        readOne(2, '/a/x.ts'),
+        readOne(1, '/a/z.ts'),
+        readOne(5, 'C:\\repo\\x.ts'),
+      ],
+      totals: { read: { files: 5, ops: 5 }, write: { files: 0, ops: 0 }, search: { files: 0, ops: 0 }, image: { files: 0, ops: 0 }, added: 0, removed: 0 },
+    }
+    const m = await mount(h(FileCard, { activity, scope: 'live' }))
+    const sortBtns = queryAll(m.container, '.lc-fa-sort .lc-gran-btn')
+    await click(sortBtns[3])
+    // x.ts groups ahead of z.ts by leaf (backslash leaves count); within one leaf, the full path ascends.
+    assert.deepEqual(queryAll(m.container, '.lc-fa-row').map(r => r.title), ['/a/x.ts', '/b/x.ts', '/d/x.ts', 'C:\\repo\\x.ts', '/a/z.ts'])
     await m.unmount()
   })
 
@@ -261,6 +285,12 @@ describe('FileCard — header, rows, and filters', () => {
     m = await mount(h(FileCard, { activity: richActivity(), scope: 'live' }))
     assert.ok(sortBtns(m.container)[2].className.includes('lc-gran-on'))
     assert.deepEqual(titles(m.container), ['/shots/ui.png', '/src/', '/src/a.ts', '/var/many.log', 'solo.md'])
+    await m.unmount()
+
+    settings.set('defaultFileSort', 'name')
+    m = await mount(h(FileCard, { activity: richActivity(), scope: 'live' }))
+    assert.ok(sortBtns(m.container)[3].className.includes('lc-gran-on'))
+    assert.deepEqual(titles(m.container), ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png'])
     await m.unmount()
 
     // The stored preference resets the default; in-card toggling never writes back.

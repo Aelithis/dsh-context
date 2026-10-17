@@ -152,7 +152,7 @@ export type DefaultTrendMode = 'total' | 'delta'
 /** The browser delta baseline: against the immediately preceding record, or the previous turn's last step. */
 export type DefaultDeltaBase = 'step' | 'turn'
 
-export type DefaultFileSort = 'count' | 'latest' | 'path'
+export type DefaultFileSort = 'count' | 'latest' | 'path' | 'name'
 
 export type DefaultToolSort = 'size' | 'count' | 'name'
 

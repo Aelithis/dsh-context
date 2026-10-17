@@ -606,6 +606,10 @@ describe('glyphOf', () => {
     for (const [path, glyph, tip] of cases) assert.deepEqual(glyphOf(path, 'dir'), { glyph, tip }, path)
   })
 
+  test('a Windows-style path keys on its backslash leaf too', () => {
+    assert.deepEqual(glyphOf('C:\\repo\\.gitignore', 'text'), { glyph: '🚫', tip: 'files.glyph.ignore' })
+  })
+
   test('files resolve special names before extensions, and buckets before the fallback', () => {
     const cases: [string, string, string][] = [
       ['pnpm-lock.yaml', '🔒', 'files.glyph.lock'],
