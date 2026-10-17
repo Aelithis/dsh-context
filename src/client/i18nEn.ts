@@ -36,6 +36,8 @@ export const DICT_EN = {
   'stats.answersJump': 'Filter Answers in the Context Browser',
   'stats.humanInputs': 'Human Inputs',
   'stats.humanInputsTip': 'User messages and question answerings in current session.',
+  'stats.humanInputsJump': 'Open User Messages in the Context Browser',
+  'stats.filesJump': 'Filter this kind in File Activity',
   'stats.io': 'Input / Output',
   'stats.events': 'Context Events',
   'stats.toolCalls': 'Tool Calls',

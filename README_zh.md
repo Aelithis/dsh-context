@@ -89,7 +89,7 @@ dsh plugin --profile web update dsh-context@latest
 
 标题中的占用率和组成数据读取的都是与聊天输入框上下文环形图相同的**官方 Token 计量投影**（`contextPressure` / `contextBreakdown`），因此数值始终与环形图一致——卡片中的百分比就是同一占用率，精确显示到小数点后一位。
 
-**Context Stats** 卡片中的 Agent Network 单元格会跳转至 **Fleet** 标签页，查看整个 Agent 家族的计费 Token 和预估成本。
+**Context Stats** 卡片中的 Agent Network 单元格会跳转至 **Fleet** 标签页，查看整个 Agent 家族的计费 Token 和预估成本。输入输出一行的胶囊同样是跳转链接：**用户输入** 打开上下文浏览器的用户消息，**读取 / 写入 / 搜索 / 图片** 落到文件活动卡片并选中对应筛选。
 
 ### Context Stats
 

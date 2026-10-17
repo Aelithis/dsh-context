@@ -24,10 +24,12 @@ import { Donut } from './donut'
 import { makeCurrentComposition } from './currentComposition'
 import { makeEventList } from './events'
 import { makeFileCard } from './fileCard'
+import type { FileFilter } from './fileCard'
 import { makePluginInfo } from './pluginInfo'
 import { makeUpgradeGate } from './upgradeGate'
 import { makeRequestDetail } from './requestDetail'
 import { countsOfRecords, makeStatsContext, makeSubagentCost, toolTallyOf } from './statsContext'
+import type { StatsJump } from './statsContext'
 import { makeStatsTiming } from './statsTiming'
 import { makeStatsTokens } from './statsTokens'
 import { makeLegend, makeStackedBar } from './stackedBar'
@@ -46,12 +48,12 @@ const viewScroll = new Map<string, number>()
 
 const EVENT_KINDS = ['inject', 'compaction', 'prune', 'model', 'mode'] as const
 
-/** Scroll the Context Browser card to the top of the page's scrollport: the stats figures and the events card's
- * injection rows both jump into it, and neither may land below the fold. */
-function revealBrowser(root: HTMLElement | null): void {
-  /* v8 ignore start -- every render path attaches the root and draws the browser card, so the target always resolves. */
-  const browser = root?.querySelector('.lc-col-browser') ?? null
-  if (browser !== null) revealInScrollParent(browser)
+/** Scroll a landed-on card to the top of the page's scrollport: the stats jumps and the events card's injection
+ *  rows land on the browser, the stats file pills on the File Activity card, and no landing may stay below the fold. */
+function revealCard(root: HTMLElement | null, selector: string): void {
+  /* v8 ignore start -- every render path attaches the root and draws the landed-on card, so the target always resolves. */
+  const card = root?.querySelector(selector) ?? null
+  if (card !== null) revealInScrollParent(card)
   /* v8 ignore stop */
 }
 
@@ -198,6 +200,9 @@ export function makeContextView(
     const restoredRef = useRef<string | null>(null)
     const [catFocus, setCatFocus] = useState<CatFocus | null>(null)
     const clearCatFocus = useCallback(() => { setCatFocus(null) }, [])
+    // One-shot File Activity kind request from the stats board's file pills (the card owns the chips otherwise).
+    const [filterFocus, setFilterFocus] = useState<FileFilter | null>(null)
+    const clearFilterFocus = useCallback(() => { setFilterFocus(null) }, [])
 
     // The browser column's height cap (browserCapOf), re-measured per render and followed by a
     // ResizeObserver: pane drags and card reflows change no prop.
@@ -222,9 +227,18 @@ export function makeContextView(
       return () => { observer.disconnect() }
     }, [data])
     /* v8 ignore stop */
-    const onFigureClick = useCallback((figure: 'skills' | 'answers'): void => {
-      setCatFocus(figure === 'skills' ? { cat: 'skill' } : { cat: 'assistant', kind: 'answer' })
-      revealBrowser(rootRef.current)
+    // The stats board's jumps: a browser key lands on its own category row (skills inject, answers, user messages),
+    // a file kind on the File Activity card's matching chip.
+    const onJump = useCallback((jump: StatsJump): void => {
+      if (jump === 'read' || jump === 'write' || jump === 'search' || jump === 'image') {
+        setFilterFocus(jump)
+        revealCard(rootRef.current, '.lc-fa-card')
+        return
+      }
+      setCatFocus(jump === 'skills'
+        ? { cat: 'skill' }
+        : jump === 'answers' ? { cat: 'assistant', kind: 'answer' } : { cat: 'user' })
+      revealCard(rootRef.current, '.lc-col-browser')
     }, [])
     // The stats board's family cell names the Agent Network card: its own tab when the preferences serve one,
     // else the right Sidebar panel that keeps the card inline. A deployment serving neither — a stripped
@@ -434,7 +448,7 @@ export function makeContextView(
       // Removed before any step dispatched it: there is nothing left to show.
       if (step === null) return
       setNodeFocus({ step, key: 'n' + String(ev.seq), cat: node?.cat ?? 'inject' })
-      revealBrowser(rootRef.current)
+      revealCard(rootRef.current, '.lc-col-browser')
     }, [requests, nodeOfSeq])
 
     if (!data) {
@@ -662,7 +676,7 @@ export function makeContextView(
             <StatsContext counts={counts} humanInputs={data.humanInputs} answers={data.answers} toolCalls={data.toolCalls}
               files={ioTotals} tools={toolTally}
               cost={data.cost} locale={activeLocale} sessionId={typeof sessionId === 'string' ? sessionId : undefined}
-              onFigureClick={onFigureClick} onTeamClick={hasFamilyView ? onTeamClick : undefined} />
+              onJump={onJump} onTeamClick={hasFamilyView ? onTeamClick : undefined} />
             <PluginInfo />
           </div>
         )}
@@ -707,6 +721,7 @@ export function makeContextView(
           </div>
           <FileCard activity={fileActivity} scope={fileScope} workspace={workspace}
             onPreview={previewFile} onOpen={fileOpener} onLocate={locateFileOp}
+            filterFocus={filterFocus} onFilterFocusHandled={clearFilterFocus}
             state={source.detailState} onRetry={source.retryDetail} />
         </div>
 

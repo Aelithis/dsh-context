@@ -1,4 +1,4 @@
-import { memo, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
+import { memo, useEffect, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
 import { absPathOf, displayPathOf, glyphOf } from '../fileActivity'
 import type { FileActivity, FileEntry, FileOp, FileOpKind } from '../fileActivity'
 import type { ContextSettings, DefaultFileSort } from '../settings'
@@ -12,6 +12,10 @@ export interface FileCardProps {
   activity: FileActivity
   scope: string
   workspace?: string
+  /** One-shot kind request from the stats board's file pills: the chip band follows it, and the request is handed
+   *  back via `onFilterFocusHandled` so the same kind can jump again. Absent = the chips stay the card's own state. */
+  filterFocus?: FileFilter | null
+  onFilterFocusHandled?: () => void
   /** Returns whether the preview column took the file, so a refusal falls through to the system opener; absent = no preview column. */
   onPreview?: (entry: FileEntry) => boolean
   onOpen?: (absPath: string) => void
@@ -51,6 +55,17 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
     const [sort, setSort] = useState<DefaultFileSort>(() => settings.defaultFileSort())
     const [query, setQuery] = useState('')
     const [openPath, setOpenPath] = useState<string | null>(null)
+
+    // A stats-board jump re-points the chip band: the card drops its own lens and open row, so the landing is the
+    // frontier the click promised. The request is handed back so an unchanged kind can fire again.
+    const filterFocus = props.filterFocus
+    useEffect(() => {
+      if (filterFocus === null || filterFocus === undefined) return
+      setFilter(filterFocus)
+      setQuery('')
+      setOpenPath(null)
+      if (props.onFilterFocusHandled !== undefined) props.onFilterFocusHandled()
+    }, [filterFocus, props.onFilterFocusHandled])
 
     const q = query.trim().toLowerCase()
     // Display form of an entry's path: bare workspace-relative inside the workspace, verbatim outside — except search rows,
@@ -107,7 +122,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
     )
 
     return (
-      <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)]">
+      <div className="lc-card lc-fa-card lc-col flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('files.title')}</span>
           <span className="lc-card-sub">{props.scope}</span>

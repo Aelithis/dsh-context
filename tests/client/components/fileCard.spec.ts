@@ -2,6 +2,7 @@ import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { makeFileCard } from '../../../src/client/components/fileCard'
+import type { FileFilter } from '../../../src/client/components/fileCard'
 import type { FileActivity, FileEntry, FileOp } from '../../../src/client/fileActivity'
 import { createContextSettings } from '../../../src/client/settings'
 import { makeKit, mount, query, queryAll, text, click } from '../helpers/kit'
@@ -608,5 +609,55 @@ describe('FileCard — the split generation detail states', () => {
     assert.ok(text(inert.container).includes('No file reads'), 'no retry wired — the plain empty state')
     await inert.unmount()
     await m.unmount()
+  })
+})
+
+describe('FileCard — the stats board\'s kind focus', () => {
+  test('a one-shot filter focus picks the kind chip, drops the card\'s own lens, and hands itself back', async () => {
+    const handled: number[] = []
+    const props = (filterFocus: FileFilter) => ({
+      activity: richActivity(),
+      scope: 'live',
+      filterFocus,
+      onFilterFocusHandled: () => { handled.push(handled.length + 1) },
+    })
+    const m = await mount(h(FileCard, props('read')))
+    assert.equal(handled.length, 1, 'the request is consumed once')
+    assert.ok(chipByLabel(m.container, 'Read').className.includes('lc-gran-on'))
+    assert.deepEqual(queryAll(m.container, '.lc-fa-row').map(r => r.title), ['/var/many.log', '/src/a.ts', '/shots/ui.png'])
+
+    // The card's own lens and open row survive until the next jump replaces both.
+    await typeSearch(m.container, 'a.ts')
+    await click(rowByTitle(m.container, '/src/a.ts'))
+    assert.equal(queryAll(m.container, '.lc-fa-ops').length, 1)
+    await m.update(h(FileCard, props('image')))
+    assert.equal(handled.length, 2)
+    assert.ok(chipByLabel(m.container, 'Images').className.includes('lc-gran-on'))
+    assert.ok(!chipByLabel(m.container, 'Read').className.includes('lc-gran-on'))
+    assert.deepEqual(queryAll(m.container, '.lc-fa-row').map(r => r.title), ['/shots/ui.png'])
+    assert.equal(query<HTMLInputElement>(m.container, 'input.lc-fa-search').value, '', 'the text lens is dropped')
+    assert.equal(queryAll(m.container, '.lc-fa-ops').length, 0, 'no row stays open across the jump')
+
+    // The caller clears the request after every landing (null), so the SAME kind fires again over a card-local pick.
+    await m.update(h(FileCard, { activity: richActivity(), scope: 'live', filterFocus: null, onFilterFocusHandled: () => { handled.push(handled.length + 1) } }))
+    assert.equal(handled.length, 2, 'the cleared request never fires')
+    await click(chipByLabel(m.container, 'All'))
+    assert.ok(chipByLabel(m.container, 'All').className.includes('lc-gran-on'))
+    await m.update(h(FileCard, props('read')))
+    assert.equal(handled.length, 3)
+    assert.ok(chipByLabel(m.container, 'Read').className.includes('lc-gran-on'))
+    await m.unmount()
+  })
+
+  test('without a filter focus the chip band stays the card\'s own; a hand-back-free jump still lands', async () => {
+    const m = await mount(h(FileCard, { activity: richActivity(), scope: 'live' }))
+    assert.ok(chipByLabel(m.container, 'All').className.includes('lc-gran-on'))
+    await click(chipByLabel(m.container, 'Written'))
+    assert.ok(chipByLabel(m.container, 'Written').className.includes('lc-gran-on'))
+    await m.unmount()
+
+    const solo = await mount(h(FileCard, { activity: richActivity(), scope: 'live', filterFocus: 'search' }))
+    assert.ok(chipByLabel(solo.container, 'Searched').className.includes('lc-gran-on'))
+    await solo.unmount()
   })
 })

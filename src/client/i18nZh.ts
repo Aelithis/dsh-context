@@ -33,6 +33,8 @@ export const DICT_ZH = {
   'stats.answersJump': '在上下文浏览器中筛选回答',
   'stats.humanInputs': '用户输入',
   'stats.humanInputsTip': '当前会话中的用户消息与问题回答次数。',
+  'stats.humanInputsJump': '在上下文浏览器中展开用户消息',
+  'stats.filesJump': '在文件活动中筛选此类操作',
   'stats.io': '输入输出',
   'stats.events': '上下文事件',
   'stats.toolCalls': '工具调用',
