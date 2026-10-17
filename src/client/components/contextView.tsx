@@ -68,41 +68,17 @@ function revealBrowserIfOffscreen(root: HTMLElement | null): void {
   /* v8 ignore stop */
 }
 
-/** The smallest rows region the cap still guarantees on a degenerate pane: below it the head alone would
- * fill the card, so the floor overflows the pane a little rather than collapsing the region. */
-const BROWSER_MIN_PANE = 180
-/** The breathing gap under the card when the page has scrolled its top edge to the scrollport's top. */
-const PANE_FIT_GAP = 8
-
-/* v8 ignore start -- real layout only: jsdom measures no boxes. */
-function paneFitOf(col: HTMLElement): number | null {
-  for (let el = col.parentElement; el !== null && el !== document.body; el = el.parentElement) {
-    const oy = window.getComputedStyle(el).overflowY
-    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
-      const topGap = col.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop
-      return Math.max(BROWSER_MIN_PANE, el.clientHeight - topGap - PANE_FIT_GAP)
-    }
-  }
-  return Math.max(BROWSER_MIN_PANE, window.innerHeight - col.getBoundingClientRect().top - PANE_FIT_GAP)
-}
-/* v8 ignore stop */
-
-/** The Context browser's height ceiling: the left column's stacked cards beside it (the current-composition
- * card plus the trend card), so the column never outgrows its row and the cards below never move — and no
- * more than the host scrollport's slice from the card's top edge, so the head and the rows region fit the
- * pane together: only the rows region may scroll, and a taller card would drag the head off-screen. The
- * floor keeps a degenerate pane from collapsing the rows region to nothing. Null — uncapped — while no
- * card measures (the loading frame). */
-export function browserCapOf(cardHeights: readonly number[], paneFit: number | null): number | null {
-  let sum = 0
-  for (const h of cardHeights) {
-    if (typeof h !== 'number' || !Number.isFinite(h)) return null
-    sum += h
-  }
-  if (sum <= 0) return null
-  return Math.round(paneFit !== null && Number.isFinite(paneFit)
-    ? Math.max(BROWSER_MIN_PANE, Math.min(sum, paneFit))
-    : sum)
+/** The Context browser's height ceiling: the span from the first left card's top to the last card's bottom
+ * (the current-composition card plus the trend card, inter-card gap included), rounded up so the card is
+ * never shorter than the cards beside it and the cards below never move. The cards' own boxes — not the
+ * column's — keep the cap independent of the browser card stretching the row. Null — uncapped — while no
+ * usable card measurement exists (the loading frame, or a layout-less rect). */
+export function browserCapOf(cards: readonly { top: number; bottom: number }[]): number | null {
+  const first = cards.at(0)
+  const last = cards.at(-1)
+  if (first === undefined || last === undefined) return null
+  const span = last.bottom - first.top
+  return Number.isFinite(span) && span > 0 ? Math.ceil(span) : null
 }
 
 /** The trend card's reserved body: the plot lane plus an empty detail panel wearing the panel's OWN classes, so the
@@ -223,35 +199,24 @@ export function makeContextView(
     const [catFocus, setCatFocus] = useState<CatFocus | null>(null)
     const clearCatFocus = useCallback(() => { setCatFocus(null) }, [])
 
-    // The browser column's height cap — the left column's stacked height bounded by the host scrollport's
-    // slice from the BROWSER column's top edge (browserCapOf; on wrapped narrow layouts it sits below the
-    // left column, so its own top is the slice's origin) — re-measured per render and followed by a
-    // ResizeObserver, since pane drags and card reflows change no prop.
+    // The browser column's height cap (browserCapOf), re-measured per render and followed by a
+    // ResizeObserver: pane drags and card reflows change no prop.
     const leftColRef = useRef<HTMLDivElement | null>(null)
-    const browserColRef = useRef<HTMLDivElement | null>(null)
     const [browserCap, setBrowserCap] = useState<number | null>(null)
     const [, setCapTick] = useState(0)
     useLayoutEffect(() => {
       const col = leftColRef.current
-      const browserCol = browserColRef.current
-      /* v8 ignore next 1 -- the loading frame renders no left column; every carded render attaches both. */
-      if (col === null || browserCol === null) return
-      // The left column renders exactly the composition + trend cards; their stacked height, bounded by
-      // the pane slice from the browser column's top edge, is the cap.
-      const next = browserCapOf(
-        [...col.children].map(el => el.getBoundingClientRect().height),
-        paneFitOf(browserCol),
-      )
+      /* v8 ignore next 1 -- the loading frame renders no left column; every carded render attaches it. */
+      if (col === null) return
+      // The column renders exactly the composition + trend cards.
+      const next = browserCapOf([...col.children].map(el => el.getBoundingClientRect()))
       setBrowserCap(prev => (prev === next ? prev : next))
     })
     /* v8 ignore start -- jsdom has neither ResizeObserver nor layout: the cap's math is pinned by browserCapOf's unit tests. */
     useEffect(() => {
       const col = leftColRef.current
-      const root = rootRef.current
-      if (col === null || root === null || typeof ResizeObserver !== 'function') return
+      if (col === null || typeof ResizeObserver !== 'function') return
       const observer = new ResizeObserver(() => { setCapTick(tick => tick + 1) })
-      // The scroller rides along: window resizes and pane drags rewrite the scrollport without touching the column.
-      observer.observe(root)
       observer.observe(col)
       for (const el of col.querySelectorAll(':scope > .lc-card')) observer.observe(el)
       return () => { observer.disconnect() }
@@ -708,12 +673,11 @@ export function makeContextView(
 
         <div className="lc-cols lc-cols-main">
           <div className="lc-col flex-1 min-w-[min(360px,100%)]" ref={leftColRef}>{compositionCard}{trendCard}</div>
-          {/* Stretches the browser card to the left column's height; the /context modal draws its own stack and fills its own
-              card. Capped at the left column's height bounded by the host scrollport's slice from the card's top edge
-              (browserCapOf): the DNA feed lays out every message, so the card's rows region scrolls inside the capped card. */}
+          {/* The row's stretch makes the cap the card's height, ending it flush with the left cards; the
+              /context modal draws its own stack and fills its own card. The DNA feed lays out every
+              message, so the card's rows region scrolls inside the capped card. */}
           <div
             className="lc-col lc-col-browser flex-1 min-w-[min(360px,100%)]"
-            ref={browserColRef}
             style={browserCap !== null ? { maxHeight: browserCap } : undefined}
           >{browserCard}</div>
         </div>

@@ -23,19 +23,19 @@ describe('ContextView — interactions', () => {
     await m.unmount()
   })
 
-  test('the browser column caps at the left cards\' stacked height, bounded by the scrollport slice, live', async () => {
-    // jsdom has no layout: stand in a measured height for the two left cards only, and a window height
-    // between them, so both the slice bound and the sum bound run, plus the re-measure arm.
+  test('the browser column caps at the left cards\' full extent, flush with the column, live', async () => {
+    // jsdom has no layout: stand in rects for the two left cards only, laid out card + 7px gap, then grow
+    // them so the re-measure arm runs.
     const orig = Element.prototype.getBoundingClientRect
     let cardH = 100
     Element.prototype.getBoundingClientRect = function (this: Element) {
       const box = orig.call(this)
-      const leftCard = this.classList.contains('lc-card') && this.parentElement?.classList.contains('lc-col')
-        && !this.parentElement.classList.contains('lc-col-browser')
-      return leftCard ? { ...box, height: cardH } : box
+      const parent = this.parentElement
+      if (!this.classList.contains('lc-card') || parent === null
+        || !parent.classList.contains('lc-col') || parent.classList.contains('lc-col-browser')) return box
+      const top = 100 + [...parent.children].indexOf(this) * (cardH + 7)
+      return { ...box, top, bottom: top + cardH }
     } as never
-    const winH = Object.getOwnPropertyDescriptor(window, 'innerHeight') ?? Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'innerHeight')
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 250 })
     try {
       // One View instance across the update, so the second render re-measures in place.
       const View = makeView(new TestClientCtx())
@@ -48,18 +48,16 @@ describe('ContextView — interactions', () => {
       })
       const m = await mount(el())
       const col = query<HTMLElement>(m.container, '.lc-col-browser')
-      assert.equal(col.style.maxHeight, '200px', 'composition 100 + trend 100, under the pane slice')
+      assert.equal(col.style.maxHeight, '207px', 'two 100px cards and their 7px gap')
       // The cap only ceilings the card — the card's rows region scrolls; the column never does.
       assert.equal(col.style.overflowY, '')
       assert.ok(query(m.container, '.lc-br-scroll') !== null)
       cardH = 150
       await m.update(el())
-      assert.equal(col.style.maxHeight, '242px', 'the pane slice (250 − 8) now caps under the taller row')
+      assert.equal(col.style.maxHeight, '307px', 'the cap follows the grown cards on the next render')
       await m.unmount()
     } finally {
       Element.prototype.getBoundingClientRect = orig
-      if (winH !== undefined) Object.defineProperty(window, 'innerHeight', winH)
-      else Reflect.deleteProperty(window, 'innerHeight')
     }
   })
 

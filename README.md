@@ -145,7 +145,7 @@ Pick **Live (next request)** or any retained step, and browse what that request 
 
 - **Diff against the previous turn** — signed delta badges per category (`+N` items, `±Nk` tokens) tell you what a turn added or reclaimed at one glance. Steps older than a compaction are reconstructed from the removed-message archive — and the card says so when a step's makeup is only approximate.
 
-- **DNA mode lays the whole context out flat** — the bar draws one band per item in the model's reading order, and below it the same items become one flat list with the newest message on top (the model reads oldest-first, so the list runs that order bottom-up): every row carries its prompt position (`#12`), category, introducing step, and token price, and expands into the same full content; the tool schemas and the system prompt close the list as two group rows. The card is capped at three times the height of the composition + trend cards beside it — a fully flattened session scrolls inside instead of flooding the page.
+- **DNA mode lays the whole context out flat** — the bar draws one band per item in the model's reading order, and below it the same items become one flat list with the newest message on top (the model reads oldest-first, so the list runs that order bottom-up): every row carries its prompt position (`#12`), category, introducing step, and token price, and expands into the same full content; the tool schemas and the system prompt close the list as two group rows. The card ends flush with the composition + trend cards beside it — a fully flattened session scrolls inside instead of flooding the page.
 
 ### ⚡ Context Events — when and why the window changed
 
