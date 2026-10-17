@@ -275,10 +275,14 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
     const visible: TrendBand[] = []
     for (const b of props.bands) if (b.tokens > 0) visible.push(b)
     if (visible.length === 0) return null
+    // Shared per-token pixel scale (CHART_H/maxTotal), not per-bar percentages: the same band's stops are
+    // identical numbers in every bar, so the browser rasterizes common strands identically (per-bar %
+    // stops quantized against each bar's own total and made sub-pixel strands flip visible/merged).
+    const pxPerToken = CHART_H / props.maxTotal
     const runs: { color: string; from: number; to: number }[] = []
     for (const b of visible) {
-      const from = Math.round(b.off / props.total * 10000) / 100
-      const to = Math.round((b.off + b.tokens) / props.total * 10000) / 100
+      const from = Math.round(b.off * pxPerToken * 100) / 100
+      const to = Math.round((b.off + b.tokens) * pxPerToken * 100) / 100
       const last = runs.length > 0 ? runs[runs.length - 1] : null
       if (last !== null && last.color === b.color && last.to === from) last.to = to
       else runs.push({ color: b.color, from, to })
@@ -299,8 +303,8 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
       <div
         className={'lc-bar-dna' + (props.rise ? RISE_CLASS : '')}
         style={{
-          height: `${Math.max(1, Math.round(props.total / props.maxTotal * CHART_H))}px`,
-          background: 'linear-gradient(to top, ' + runs.map(r => `${r.color} ${r.from}%, ${r.color} ${r.to}%`).join(', ') + ')',
+          height: `${Math.max(1, Math.round(props.total * pxPerToken))}px`,
+          background: 'linear-gradient(to top, ' + runs.map(r => `${r.color} ${r.from}px, ${r.color} ${r.to}px`).join(', ') + ')',
           '--lc-i': Math.min(props.enterIndex, STAGGER_CAP),
         } as CSSProperties}
         onMouseMove={(e) => { props.onHit(hitAt(e).key) }}

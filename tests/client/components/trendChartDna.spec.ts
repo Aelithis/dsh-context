@@ -52,17 +52,17 @@ describe('TrendChart DNA mode', () => {
     assert.equal(dnaDivs.length, 2)
     assert.equal(dnaDivs[0].style.height, `${Math.round(300 / 600 * CHART_H)}px`)
     assert.equal(dnaDivs[1].style.height, `${CHART_H}px`)
-    // d1: the two adjacent assistant bands coalesce into ONE blue run (50% → 100%).
+    // d1: the two adjacent assistant bands coalesce into ONE blue run (28px → 56px on the shared scale).
     const g1 = dnaDivs[0].style.background
     assert.ok(g1.startsWith('linear-gradient(to top, '), g1)
-    assert.ok(g1.includes('var(--color-indigo-500) 0%, var(--color-indigo-500) 33.33%'), g1)
-    assert.ok(g1.includes('var(--color-amber-500) 33.33%, var(--color-amber-500) 50%'), g1)
-    assert.ok(g1.includes('var(--color-blue-500) 50%, var(--color-blue-500) 100%'), g1)
+    assert.ok(g1.includes('var(--color-indigo-500) 0px, var(--color-indigo-500) 18.67px'), g1)
+    assert.ok(g1.includes('var(--color-amber-500) 18.67px, var(--color-amber-500) 28px'), g1)
+    assert.ok(g1.includes('var(--color-blue-500) 28px, var(--color-blue-500) 56px'), g1)
     // d2: the zero-token user band leaves no run of its own; the teal run starts at its offset.
     const g2 = dnaDivs[1].style.background
-    assert.ok(g2.includes('var(--color-blue-500) 33.33%, var(--color-blue-500) 46.67%'), g2)
-    assert.ok(g2.includes('var(--color-green-500) 46.67%, var(--color-green-500) 63.33%'), g2)
-    assert.ok(g2.includes('var(--color-teal-500) 63.33%, var(--color-teal-500) 100%'), g2)
+    assert.ok(g2.includes('var(--color-blue-500) 37.33px, var(--color-blue-500) 52.27px'), g2)
+    assert.ok(g2.includes('var(--color-green-500) 52.27px, var(--color-green-500) 70.93px'), g2)
+    assert.ok(g2.includes('var(--color-teal-500) 70.93px, var(--color-teal-500) 112px'), g2)
     assert.equal(queryAll(m.container, '.lc-bar-stack').length, 0)
     assert.equal(query(m.container, '.lc-axis-top').textContent, '600')
     // Without an onPickBand handler a band click is a quiet no-op (the pick guard's undefined arm).
