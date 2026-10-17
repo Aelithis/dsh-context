@@ -1,12 +1,13 @@
 /* The DNA group's margin is zeroed so the delta-baseline `.lc-gran` keeps the row's single auto-margin push. */
 .lc-br-dna-ctl { margin-left: 0; flex: none; }
-/* The card is a fixed-head flex column: the title row, composition bar, notices and the DNA lens never
-   scroll; the block map and the rows scroll in their own region. Only a height-bounded host actually
-   scrolls — the capped tab column; an unconstrained card (the /context modal's one-card scroll) lets
-   the region grow with the rows, and the page scrolls it as before. */
+/* The card is a fixed-head flex column: the title row, composition bar, notices, the DNA lens and the block
+   map never scroll; only the rows region below them scrolls, in every host — the capped tab column
+   (browserCapOf), the /context modal's filled dialog (modal.css). The region's wheel never chains past its
+   ends, so the page (and the fixed zone with it) only moves when the pointer leaves it; its small floor
+   keeps a readable slice while the map folds under pane pressure. */
 .lc-br { display: flex; flex-direction: column; min-height: 0; }
 .lc-br-head { flex: none; }
-.lc-br-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.lc-br-scroll { flex: 1 1 auto; min-height: 28px; overflow-y: auto; overscroll-behavior: contain; }
 /* The fixed head's DNA lens keeps the feed's 10px bar-to-lens rhythm. */
 .lc-br-head .lc-br-toolctl { margin-top: 10px; }
 /* The divider scales with its band (`min(0.5px, 12.5%)` of its own width): long sessions pin hundreds of bands at ≤1px, where a fixed divider would cover the whole band. A gradient layer, because a fixed inset box-shadow cannot scale. */
@@ -20,7 +21,10 @@
 .lc-br-map-btn:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l1); }
 .lc-br-map-btn-on, .lc-br-map-btn-on:hover { color: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
 
-/* The block map: a measured squarified treemap (browserTreemap.tsx), fixed-height and reflowing on width. */
+/* The block map: a measured squarified treemap (browserTreemap.tsx) in the card's fixed zone, reflowing to
+   whatever box the cap leaves it — under pane pressure it folds in height down to its floor, so the rows
+   region below keeps a readable slice. */
+.lc-br > .lc-map { flex: 0 1 auto; min-height: 40px; }
 .lc-map { position: relative; height: 240px; margin-top: 8px; }
 /* Narrow panes stack taller so regions stay legible instead of crushing into slivers. */
 @container lc-card (max-width: 560px) { .lc-map { height: 320px; } }

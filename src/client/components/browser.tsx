@@ -20,6 +20,7 @@ import { makeRichText } from './richText'
 import type { StackedBarProps } from './stackedBar'
 import type { AttachmentOpener, ImageLoader } from '../services'
 import { TextSection, schemaTextOf, RowToolbar, ToolSchema, toolErrOf } from './browserToolCard'
+import { revealRowInCard } from '../revealScroll'
 import { NodeContent, byCatOf, nodeNameOf, msgKindsOf, reasoningTextOf, ROW_KINDS } from './browserNodes'
 import type { RowKind } from './browserNodes'
 import { MapIcon, makeBrowserTreemap } from './browserTreemap'
@@ -197,7 +198,8 @@ export function makeContextBrowser(
     useLayoutEffect(() => {
       if (!focusScrollRef.current) return
       focusScrollRef.current = false
-      rootRef.current?.querySelector('.lc-br-elem-on')?.scrollIntoView({ block: 'nearest' })
+      const row = rootRef.current?.querySelector('.lc-br-elem-on') ?? null
+      if (row !== null) revealRowInCard(rootRef.current, row)
     })
     // The note an un-joined open row shows, per fetch state (fetchOnMiss.tsx).
     const missNote = fetchMissNote(t, fetchContent, miss.state, miss.retry, 'browser.noContent')
@@ -325,31 +327,14 @@ export function makeContextBrowser(
       && (rowDnaKey === 'tools' ? view.header !== null
         : rowDnaKey === 'system' ? view.system !== null
           : dnaByKey.has(rowDnaKey)) ? rowDnaKey : null
-    // A band hover brings its echoed row into view — within the nearest scrollable ancestor's own scrollport
-    // (the card's rows region) and nothing above it: the pointer rests on the bar, and a page scroll would
-    // drag it off the band mid-scrub.
+    // A band hover brings its echoed row into view — within the rows region's own scrollport and nothing
+    // above it: the pointer rests on the bar, and a page scroll would drag it off the band mid-scrub.
     useLayoutEffect(() => {
       if (liveDnaKey === null) return
       /* v8 ignore next 1 -- liveDnaKey non-null implies a mounted card: the ref always resolves. */
       const row = rootRef.current?.querySelector('.lc-br-elem-echo') ?? null
       /* v8 ignore next 1 -- a live band names a rendered item, so its echoed row always exists. */
-      if (row === null) return
-      let scroller: HTMLElement | null = row.parentElement
-      while (scroller !== null && scroller.scrollHeight <= scroller.clientHeight) {
-        scroller = scroller.parentElement
-      }
-      /* v8 ignore next 1 -- jsdom lays out nothing: no ancestor ever overflows. */
-      if (scroller === null) return
-      /* v8 ignore start -- real layout only: jsdom measures no boxes. */
-      const rb = row.getBoundingClientRect()
-      const sb = scroller.getBoundingClientRect()
-      // The row only has to reach the scrollport's VISIBLE slice: a capped column usually extends below the
-      // page fold, so its own box bottom is no visibility boundary.
-      const visTop = Math.max(sb.top, 0)
-      const visBottom = Math.min(sb.bottom, window.innerHeight)
-      if (rb.top < visTop) scroller.scrollTop -= visTop - rb.top
-      else if (rb.bottom > visBottom) scroller.scrollTop += rb.bottom - visBottom
-      /* v8 ignore stop */
+      if (row !== null) revealRowInCard(rootRef.current, row)
     }, [liveDnaKey])
     const pickDna = (key: string): void => {
       const it = dnaByKey.get(key)
@@ -910,23 +895,26 @@ export function makeContextBrowser(
           {dna ? flatToolbar() : null}
         </div>
 
-        <div className="lc-br-scroll">
-          {mapOn
-            ? (
-              <BrowserTreemap
-                view={view}
-                openCat={openCat}
-                hoverKey={linkKey}
-                // The map reports its category upward only outside DNA mode: there the bar's link is one-way (an
-                // incoming category key lights that category's bands; bar hovers stay local), and the map — the
-                // bar's companion surface — keeps the same convention so every hover link mirrors the bar's.
-                onHoverKey={dna ? undefined : linked ? props.onHoverKey : undefined}
-                onPickCat={toggleCat}
-                onPickBlock={pickMapBlock}
-              />
-            )
-            : null}
+        {/* The block map sits in the card's fixed zone, right under the head: the rows region below is the
+            only scroller, so the map never rides a scroll, whether it is shown or not. The squarified panel
+            re-measures whatever box the cap leaves it, folding in height under pane pressure (browser.css). */}
+        {mapOn
+          ? (
+            <BrowserTreemap
+              view={view}
+              openCat={openCat}
+              hoverKey={linkKey}
+              // The map reports its category upward only outside DNA mode: there the bar's link is one-way (an
+              // incoming category key lights that category's bands; bar hovers stay local), and the map — the
+              // bar's companion surface — keeps the same convention so every hover link mirrors the bar's.
+              onHoverKey={dna ? undefined : linked ? props.onHoverKey : undefined}
+              onPickCat={toggleCat}
+              onPickBlock={pickMapBlock}
+            />
+          )
+          : null}
 
+        <div className="lc-br-scroll">
           {dna
             ? flatRows()
             : (

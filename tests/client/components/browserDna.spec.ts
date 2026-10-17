@@ -151,7 +151,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     await m.unmount()
   })
 
-  test('clicking a band opens its exact row in the flat feed and scrolls it into view; a stale filter is cleared', async () => {
+  test('clicking a band opens its exact row in the flat feed, revealed within the card only; a stale filter is cleared', async () => {
     const scrolls: unknown[] = []
     const orig = Element.prototype.scrollIntoView
     Element.prototype.scrollIntoView = function (this: Element, arg?: unknown) { scrolls.push(arg) } as never
@@ -163,7 +163,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
       const onRows = queryAll(m.container, '.lc-br-elem-on')
       assert.equal(onRows.length, 1)
       assert.ok(text(onRows[0]).includes('bash'))
-      assert.deepEqual(scrolls, [{ block: 'nearest' }])
+      assert.deepEqual(scrolls, [], 'the pick reveals inside the card — never a scrollIntoView that could drag the page')
 
       // A stale flat filter cannot hide the clicked band's row.
       await typeToolSearch(m, 'zzz')
