@@ -896,8 +896,7 @@ export function makeContextBrowser(
         </div>
 
         {/* The block map sits in the card's fixed zone, right under the head: the rows region below is the
-            only scroller, so the map never rides a scroll, whether it is shown or not. The squarified panel
-            re-measures whatever box the cap leaves it, folding in height under pane pressure (browser.css). */}
+            only scroller, and the map keeps the height it opens at (browser.css). */}
         {mapOn
           ? (
             <BrowserTreemap

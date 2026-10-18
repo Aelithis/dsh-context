@@ -21,10 +21,12 @@
 .lc-br-map-btn:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l1); }
 .lc-br-map-btn-on, .lc-br-map-btn-on:hover { color: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
 
-/* The block map: a measured squarified treemap (browserTreemap.tsx) in the card's fixed zone, reflowing to
-   whatever box the cap leaves it — under pane pressure it folds in height down to its floor, so the rows
-   region below keeps a readable slice. */
-.lc-br > .lc-map { flex: 0 1 auto; min-height: 40px; }
+/* The block map: a measured squarified treemap (browserTreemap.tsx) in the card's fixed zone. It keeps the
+   height it opens at: opened rows scroll the rows region below instead of squeezing the map, whose own flex
+   base no longer follows the content. The percentage ceiling folds it only when a capped card is genuinely
+   too short — it also leaves room for the head, the map's margin and the rows region's floor — and a
+   content-sized card ignores the percentage. */
+.lc-br > .lc-map { flex: none; min-height: 40px; max-height: calc(100% - 140px); }
 .lc-map { position: relative; height: 240px; margin-top: 8px; }
 /* Narrow panes stack taller so regions stay legible instead of crushing into slivers. */
 @container lc-card (max-width: 560px) { .lc-map { height: 320px; } }
