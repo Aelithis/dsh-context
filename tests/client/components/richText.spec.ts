@@ -1,5 +1,7 @@
 import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, test, vi } from 'vitest'
 import { jsonOf, makeRichText } from '../../../src/client/components/richText'
 import type { RichMode } from '../../../src/client/components/richText'
@@ -14,6 +16,21 @@ const JSON_SAMPLE = '{"name": "dsh", "meta": {"tags": ["a", "b"], "ver": 2}}'
 /** The raw body re-joined from its rendered line spans, i.e. the exact source text. */
 function rawText(container: ParentNode): string {
   return queryAll(container, '.lc-ts-line').map(line => line.textContent).join('\n')
+}
+
+/** The selector hiding an expanded row's inline preview and stranded comma, straight from the shipped stylesheet. */
+function expandedRowPreviewSelector(): string {
+  const css = readFileSync(join(process.cwd(), 'src/client/styles/detailSections.css'), 'utf8')
+  const rule = /^(\.lc-ts-desc-json[^{}]*\[class\*="_summary"\][^{}]*)\{[^}]*display:\s*none[^}]*\}/m.exec(css)
+  assert.ok(rule !== null, 'detailSections.css lost the expanded-row preview rule')
+  return rule[1].trim()
+}
+
+/** A row's direct child carrying one of the JsonTree locals (the preview's descendants carry punctuation too). */
+function directChildWith(parent: Element, local: string): HTMLElement {
+  const el = [...parent.children].find(child => (child.getAttribute('class') ?? '').includes(`_${local}`))
+  assert.ok(el instanceof HTMLElement, `no direct child with the ${local} local`)
+  return el
 }
 
 /** Harness wiring the hook to the switch and the body, like the detail cards do. */
@@ -69,6 +86,37 @@ describe('RichText', () => {
     const copy = query(m.container, '[data-json-copy-button]')
     assert.equal(copy.getAttribute('title'), 'Copy value; right-click for copy options')
     outside.remove()
+    await m.unmount()
+  })
+
+  test('the expanded-row preview rule matches both the shell build and test css-module spellings', async () => {
+    const m = await mount(h(RichText, { text: '{"a": {"tags": ["x"]}, "b": 2}', mode: 'json' }))
+    const rule = expandedRowPreviewSelector()
+    const expandedRow = query(m.container, '[role=treeitem][aria-expanded=true]')
+    const summary = directChildWith(expandedRow, 'summary')
+    const label = directChildWith(summary, 'label')
+    const preview = directChildWith(summary, 'preview')
+    const comma = directChildWith(summary, 'punctuation')
+    // The shell's Vite build appends the source line; the test transform stops at the hash.
+    const spellings: [string, (local: string) => string][] = [
+      ['test transform', local => `_${local}_h4sh`],
+      ['shell build', local => `_${local}_h4sh_98`],
+    ]
+    for (const [name, scope] of spellings) {
+      expandedRow.className = scope('row')
+      summary.className = scope('summary')
+      label.className = scope('label')
+      preview.className = scope('preview')
+      comma.className = scope('punctuation')
+      assert.equal(preview.matches(rule), true, `${name}: the preview hides`)
+      assert.equal(comma.matches(rule), true, `${name}: the stranded comma hides`)
+      assert.equal(label.matches(rule), false, `${name}: the field label stays`)
+    }
+    // A collapsed expandable row keeps its preview under the same rule.
+    const collapsedRow = queryAll(m.container, '[role=treeitem][aria-expanded=false]')
+      .find(row => row.querySelector('[data-json-expander]') !== null)
+    assert.ok(collapsedRow !== undefined)
+    assert.equal(directChildWith(directChildWith(collapsedRow, 'summary'), 'preview').matches(rule), false)
     await m.unmount()
   })
 

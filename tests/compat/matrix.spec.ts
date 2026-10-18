@@ -265,11 +265,6 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       for (const needle of tree.needles) {
         assert.equal(staging.dshHasString(baseline.tag, needle, tree.file), true, `JsonTree seam: ${needle}`)
       }
-      assert.equal(
-        staging.dshHasString(baseline.tag, tree.cssNamingNeedle, tree.cssNamingFile),
-        true,
-        'the css-module naming the expanded-row preview rule matches',
-      )
     })
 
     test('client: the icon seams resolve on this generation (primitives.ts)', () => {

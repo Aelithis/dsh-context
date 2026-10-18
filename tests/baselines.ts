@@ -25,15 +25,12 @@ export interface ClientSeam {
   /** MarkdownText's chrome prop the plugin must hand every markdown render. */
   markdownChrome: string
   /** The JsonTree faces the rich-text JSON body rides (src/client/components/richText.tsx): the expander DOM
-   * the two-level auto-open toggles, the summary/preview class locals the expanded-row preview rule matches
-   * (detailSections.css), the labels contract — plus the shell build's css-module naming those locals surface through. */
+   * the two-level auto-open toggles, the summary/preview/punctuation class locals the expanded-row rule matches
+   * (detailSections.css), and the labels contract. */
   jsonTree: {
     /** All needles live in the primitives JsonTree source. */
     file: string
     needles: readonly string[]
-    /** The shell client build's css-module naming pattern source. */
-    cssNamingFile: string
-    cssNamingNeedle: string
   }
   /** The platform module table the shell seeds (client-bundle requires must resolve). */
   platformModules: readonly string[]
@@ -235,10 +232,7 @@ function baseline(id: BaselineId, tag: string, session: string): Baseline {
       markdownChrome: 'labels',
       jsonTree: {
         file: 'packages/client/ui-primitives/src/JsonTree.tsx',
-        needles: ['data-json-expander', 'aria-expanded', 'css.summary', 'css.preview', 'expandTopLevel', 'copyButtonTitle'],
-        cssNamingFile: 'packages/client/tsdown.client.ts',
-        // git-grep BRE: the brackets must be escaped to match the literal pattern spelling.
-        cssNamingNeedle: '\\[hash\\]_\\[local\\]',
+        needles: ['data-json-expander', 'aria-expanded', 'css.summary', 'css.preview', 'css.punctuation', 'expandTopLevel', 'copyButtonTitle'],
       },
       platformModules: [
         'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
