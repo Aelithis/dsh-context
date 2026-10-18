@@ -8,7 +8,7 @@
  * agent row, a task owner chip, a blocker chip, and a comms party all steer each other.
  */
 
-import { createElement as h, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { createElement as h, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { AgentHeads } from '../agentHeads'
 import { agentSelfOf } from '../agentTree'
 import { displayCurrencyOf } from '../cost'
@@ -46,6 +46,20 @@ export function makeFleetView(
   function FleetBody(props: SessionStandardProps): ReactElement {
     const sessionId = typeof props.sessionId === 'string' ? props.sessionId : undefined
     const { source, data, pressure, breakdown, usage } = useContextSession(props)
+    const rootRef = useRef<HTMLDivElement | null>(null)
+    // The chat bottom-anchors the shared `[data-conversation-scroll]` scrollport, and the harness
+    // carries its scrollTop across tab switches — this page re-claims the top per session, in a
+    // layout effect so the inherited position never paints. No ledger: the page's height settles in
+    // late passes (forest arms, then details), so a saved position would clamp and re-pin to the
+    // bottom — a dashboard opens at its top.
+    useLayoutEffect(() => {
+      /* v8 ignore next 3 -- a layout effect body only runs while mounted and
+         both render paths attach rootRef, so the null arm cannot fire. */
+      const scroller = rootRef.current !== null
+        ? rootRef.current.closest('[data-conversation-scroll]')
+        : null
+      if (scroller !== null) scroller.scrollTop = 0
+    }, [sessionId])
     const self = data !== null ? agentSelfOf(data, pressure, breakdown, usage) : undefined
     // The model arms only once the tab's own timeline landed: while the loading/failure screen
     // stands, no snapshot subscription and no fleet-detail read fire.
@@ -164,7 +178,7 @@ export function makeFleetView(
 
     if (data === null) {
       return (
-        <div className="lc-root">
+        <div className="lc-root" ref={rootRef}>
           {source.detailState === 'failed'
             ? <DetailNote state="failed" onRetry={source.retryDetail} />
             : <div className="lc-empty">{t('loading')}</div>}
@@ -232,7 +246,7 @@ export function makeFleetView(
         ? <div className="lc-col flex-1 min-w-[min(360px,100%)]">{taskBoard}</div>
         : null
     return (
-      <div className="lc-root">
+      <div className="lc-root" ref={rootRef}>
         {forest !== null
           ? <FleetSummary forest={forest} team={team} book={book} currency={currency} t={t} fmt={kit.fmt} />
           : null}
