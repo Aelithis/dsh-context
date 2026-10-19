@@ -75,7 +75,7 @@ afterAll(() => {
 
 function entry(index: number): FileEntry {
   const op: FileOp = { seq: index, kind: 'read', tool: 'read', time: T0 + index, err: false, added: 0, removed: 0, path: '' }
-  return { path: `/src/file-${String(index).padStart(3, '0')}.ts`, form: 'text', reads: 1, writes: 0, searches: 0, added: 0, removed: 0, errs: 0, ops: [op] }
+  return { path: `/src/file-${String(index).padStart(3, '0')}.ts`, form: 'text', reads: 1, writes: 0, searches: 0, added: 0, removed: 0, ops: [op] }
 }
 
 function activityOf(count: number): FileActivity {

@@ -173,7 +173,6 @@ export const DICT_EN = {
   'files.open': 'Open on your system',
   'files.preview': 'Preview in the sidebar',
   'files.readEst': 'Lines read, estimated from the limit argument',
-  'files.errs': '{n} failed',
   'files.form.image': 'Image',
   'files.form.dir': 'Directory',
   'files.form.text': 'File',

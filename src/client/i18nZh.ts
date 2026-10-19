@@ -171,7 +171,6 @@ export const DICT_ZH = {
   'files.open': '在系统中打开',
   'files.preview': '在侧边栏预览',
   'files.readEst': '按调用参数 limit 估算的读取行数',
-  'files.errs': '{n} 次失败',
   'files.form.image': '图片',
   'files.form.dir': '目录',
   'files.form.text': '文件',

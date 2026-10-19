@@ -18,7 +18,7 @@ function fileOp(seq: number, kind: FileOp['kind'], tool: string, over: Partial<F
 }
 
 function entry(path: string, over: Partial<FileEntry>): FileEntry {
-  return { path, form: 'text', reads: 0, writes: 0, searches: 0, added: 0, removed: 0, errs: 0, ops: [], ...over }
+  return { path, form: 'text', reads: 0, writes: 0, searches: 0, added: 0, removed: 0, ops: [], ...over }
 }
 
 function richActivity(over: Partial<FileActivity> = {}): FileActivity {
@@ -29,7 +29,6 @@ function richActivity(over: Partial<FileActivity> = {}): FileActivity {
         writes: 2,
         added: 2,
         removed: 3,
-        errs: 1,
         ops: [
           fileOp(7, 'read', 'read'),
           fileOp(5, 'write', 'edit', { added: 2, removed: 1 }),
@@ -129,7 +128,8 @@ describe('FileCard — header, rows, and filters', () => {
     assert.ok(aRow.querySelector('.lc-fa-path b')?.textContent === 'a.ts')
     assert.equal(queryAll(aRow, '.lc-fa-badge').length, 2) // read + write
     assert.ok(text(aRow).includes('+2') && text(aRow).includes('−3'))
-    assert.ok(aRow.querySelector('.lc-br-err-dot') !== null)
+    // Failures surface on the expanded op rows only: the collapsed row keeps no error dot.
+    assert.equal(queryAll(aRow, '.lc-br-err-dot').length, 0)
     assert.ok(aRow.title === '/src/a.ts')
     const dirRow = rows.find(r => r.title === '/src/')
     assert.ok(dirRow !== undefined)

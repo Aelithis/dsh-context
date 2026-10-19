@@ -319,7 +319,6 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
                         <span className="lc-fa-badge lc-fa-b-search" title={t('files.kind.search')}><i />{fmt(e.searches)}</span>
                       ) : null}
                       {e.added + e.removed > 0 ? <DeltaPair added={e.added} removed={e.removed} /> : null}
-                      {e.errs > 0 ? <span className="lc-br-err-dot" title={t('files.errs', { n: e.errs })} /> : null}
                       {e.ops[0].time !== undefined
                         ? <span className="lc-fa-time">{fmtTime(e.ops[0].time)}</span>
                         : null}

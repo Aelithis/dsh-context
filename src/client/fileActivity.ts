@@ -28,7 +28,6 @@ export interface FileEntry {
   searches: number
   added: number
   removed: number
-  errs: number
   ops: FileOp[]
   /** Set when `path` is a pathless search's PATTERN, not a file path — display must not relativize it. */
   pattern?: true
@@ -243,7 +242,6 @@ function aggregateOps(ops: readonly FileOp[], before: number | null): FileActivi
         searches: 0,
         added: 0,
         removed: 0,
-        errs: 0,
         ops: [],
         ...(op.pattern === true ? { pattern: true as const } : {}),
       }
@@ -254,7 +252,6 @@ function aggregateOps(ops: readonly FileOp[], before: number | null): FileActivi
     else entry.searches++
     entry.added += op.added
     entry.removed += op.removed
-    if (op.err) entry.errs++
     entry.ops.push(op)
   }
   const entries = [...byPath.values()]
