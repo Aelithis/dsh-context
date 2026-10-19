@@ -151,7 +151,6 @@ export const DICT_EN = {
   'kind.model': 'Switch',
   'kind.mode': 'Mode',
   'files.title': 'File Activity',
-  'files.scopeLatest': 'Up to latest · follows the trend chart pick',
   'files.kind.all': 'All',
   'files.kind.read': 'Read',
   'files.kind.write': 'Written',

@@ -149,7 +149,6 @@ export const DICT_ZH = {
   'kind.model': '切换',
   'kind.mode': '模式',
   'files.title': '文件活动',
-  'files.scopeLatest': '截至最新 · 跟随趋势图的选择',
   'files.kind.all': '全部',
   'files.kind.read': '读取',
   'files.kind.write': '写入',

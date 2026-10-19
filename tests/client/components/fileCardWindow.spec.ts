@@ -88,7 +88,7 @@ function activityOf(count: number): FileActivity {
   }
 }
 
-const props = { activity: activityOf(60), scope: 'scope', state: 'ready' as const, onRetry: undefined }
+const props = { activity: activityOf(60), state: 'ready' as const, onRetry: undefined }
 
 describe('FileCard row windowing', () => {
   test('renders a measured window with full-height pads and follows the scroll', async () => {

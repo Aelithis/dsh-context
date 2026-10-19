@@ -587,12 +587,6 @@ export function makeContextView(
 
     // Provider-anchored occupancy: the 4-chars/token heuristic undercounts CJK by ~10–15%, so the headline anchors to the billed total.
     const head = headlineOf(data, pressure, breakdown)
-    let fileScope = t('files.scopeLatest')
-    if (activeReq !== null && filesBefore !== null) {
-      fileScope = activeReq.stepCount !== undefined && activeReq.stepCount > 1
-        ? t('detail.turn', { t: activeReq.turn ?? 0, n: activeReq.stepCount })
-        : t('detail.step', { t: activeReq.turn ?? 0, s: activeReq.step ?? 0, n: stepsOf(activeReq.turn) })
-    }
 
     // Turn highlight is hover-only (strip hover wins, then the hovered bar's turn): no fallback, so a pinned or
     // default selection never glows.
@@ -844,7 +838,7 @@ export function makeContextView(
               </div>
               <EventList events={shownEvents} state={source.detailState} onRetry={source.retryDetail} onInjectFocus={focusInject} />
             </div>
-            <FileCard activity={fileActivity} scope={fileScope} workspace={workspace}
+            <FileCard activity={fileActivity} workspace={workspace}
               onPreview={previewFile} onOpen={fileOpener} onLocate={locateFileOp}
               filterFocus={filterFocus} onFilterFocusHandled={clearFilterFocus}
               state={source.detailState} onRetry={source.retryDetail} />

@@ -11,7 +11,6 @@ export type FileFilter = 'all' | FileOpKind | 'image'
 
 export interface FileCardProps {
   activity: FileActivity
-  scope: string
   workspace?: string
   /** One-shot kind request from the stats board's file pills: the chip band follows it, and the request is handed
    *  back via `onFilterFocusHandled` so the same kind can jump again. Absent = the chips stay the card's own state. */
@@ -47,7 +46,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
     )
   }
 
-  // Memoized at the factory level: the parent's activity/scope/onLocate props are reference-stable across hover/select
+  // Memoized at the factory level: the parent's activity/onLocate props are reference-stable across hover/select
   // renders (see contextView), so the card skips reconciliation whenever its own inputs did not move.
   return memo(function FileCard(props: FileCardProps): ReactElement {
     const { activity } = props
@@ -186,45 +185,33 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
       <div className="lc-card lc-fa-card lc-col flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('files.title')}</span>
-          <span className="lc-card-sub">{props.scope}</span>
+          {/* The five chips overflow a narrow card in English — fold the group to two lines. */}
+          <div className="lc-gran lc-fa-chips @max-[380px]/lc-card:flex-wrap">
+            {chips.map(c => (
+              <button
+                key={c.key}
+                type="button"
+                className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
+                  + (c.key === 'read' || c.key === 'write' || c.key === 'search' ? ' lc-fa-chip-' + c.key : '')}
+                title={t('files.chipTip', { files: c.files, ops: c.ops })}
+                onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
+              >
+                {t('files.kind.' + c.key)}
+                <b className="lc-fa-n">{fmt(c.ops)}</b>
+              </button>
+            ))}
+          </div>
         </div>
-        {/* The filter band and the list lane render in EVERY state, so an empty or pending card measures exactly what a
-            populated one does: the band alone was worth 55px of the row, which reflowed the page below it on the first
-            read of a session. */}
+        {/* The controls and the list lane render in EVERY state, so an empty or pending card measures exactly what a
+            populated one does. */}
         <div>
           <div className="lc-fa-ctl">
-            {/* The five chips overflow a ~300px card in English — fold the group to two lines. */}
-            <div className="lc-gran @max-[380px]/lc-card:flex-wrap">
-              {chips.map(c => (
-                <button
-                  key={c.key}
-                  type="button"
-                  className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
-                    + (c.key === 'read' || c.key === 'write' || c.key === 'search' ? ' lc-fa-chip-' + c.key : '')}
-                  title={t('files.chipTip', { files: c.files, ops: c.ops })}
-                  onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
-                >
-                  {t('files.kind.' + c.key)}
-                  <b className="lc-fa-n">{fmt(c.ops)}</b>
-                </button>
-              ))}
-            </div>
             <input
               className="lc-fa-search focus:border-(--dsw-alias-label-dimmed)"
               value={query}
               placeholder={t('files.search')}
               onChange={(ev: ChangeEvent<HTMLInputElement>) => { setQuery(ev.target.value) }}
             />
-          </div>
-          <div className="lc-fa-meta">
-            <span>{t('files.files', { n: activity.entries.length })}</span>
-            {activity.totals.added + activity.totals.removed > 0 ? (
-              /* The one styled tip of the card lives OUTSIDE the scrolling list, so the bubble never clips. */
-              <span className="lc-fa-meta-delta group/tip">
-                <DeltaPair added={activity.totals.added} removed={activity.totals.removed} />
-                <span className="lc-tip lc-fa-meta-tip group-hover/tip:opacity-100" role="tooltip">{t('files.deltaTip')}</span>
-              </span>
-            ) : null}
             <span className="lc-gran lc-fa-sort" role="group" title={t('files.sortTip')}>
               {(['count', 'latest', 'path', 'name'] as const).map(k => (
                 <button
@@ -237,6 +224,16 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
                 </button>
               ))}
             </span>
+          </div>
+          <div className="lc-fa-meta">
+            <span>{t('files.files', { n: activity.entries.length })}</span>
+            {activity.totals.added + activity.totals.removed > 0 ? (
+              /* The one styled tip of the card lives OUTSIDE the scrolling list, so the bubble never clips. */
+              <span className="lc-fa-meta-delta group/tip">
+                <DeltaPair added={activity.totals.added} removed={activity.totals.removed} />
+                <span className="lc-tip lc-fa-meta-tip group-hover/tip:opacity-100" role="tooltip">{t('files.deltaTip')}</span>
+              </span>
+            ) : null}
           </div>
           {activity.entries.length === 0 && props.state === 'loading' ? (
             <DetailNote state="loading" className="lc-empty lc-lane" />

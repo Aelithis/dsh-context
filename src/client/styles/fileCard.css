@@ -1,16 +1,13 @@
+/* The chips ride the title row; the reserved folded height keeps the header's line count a function of the card's
+   width, never of the tallies it renders (the old controls band reserved its own fold for the same reason). */
+.lc-fa-card .lc-card-title { align-content: center; }
+@container lc-card (max-width: 505px) { .lc-fa-card .lc-card-title { min-height: 45px; } }
+@container lc-card (max-width: 380px) { .lc-fa-card .lc-card-title { min-height: 66px; } }
 .lc-fa-ctl, .lc-br-toolctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
-/* The tally chips widen as their counts gain digits, which used to rewrap the band mid-session and reflow the page.
-   The band holds TWO lines unconditionally — the folded width is where the chips and the search box land together, so
-   reserving it makes the line count a property of the card's width alone, never of the numbers. On a phone-width card
-   the chip group folds to two lines of its own (see the `@max-[380px]` rule on `.lc-gran` in the JSX), so the band
-   holds three there. */
-.lc-fa-ctl { min-height: 51px; align-content: center; }
-@container lc-card (max-width: 380px) { .lc-fa-ctl { min-height: 70px; } }
-.lc-fa-ctl .lc-gran { margin-left: 0; }
 .lc-fa-n { margin-left: 4px; font-weight: 700; opacity: 0.75; }
 .lc-fa-search, .lc-br-tool-search, .lc-find-input { flex: 1; min-width: 80px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 8px; outline: none; }
+.lc-fa-sort { flex: none; }
 .lc-fa-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
-.lc-fa-meta .lc-fa-sort { flex: none; }
 /* Sits outside the scrolling list, so the tip bubble never clips. */
 .lc-fa-meta-delta { position: relative; }
 .lc-fa-meta-tip { top: calc(100% + 6px); left: 0; max-width: 260px; white-space: normal; line-height: 1.5; }

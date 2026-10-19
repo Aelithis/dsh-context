@@ -5,7 +5,7 @@ import { DICT_EN } from '../../../src/client/i18n'
 import type { UseChatLike } from '../../../src/client/services'
 import type { ContextTimeline } from '../../../src/shared/types'
 import { TestClientCtx } from '../helpers/harness'
-import { click, flush, hover, mount, query, queryAll, text, unhover } from '../helpers/kit'
+import { click, flush, hover, mount, query, queryAll, text, unhover, until } from '../helpers/kit'
 import { buttonByText, makeView, projectionsFor, T0, timeline } from './contextViewHarness'
 
 describe('ContextView — file activity card', () => {
@@ -60,27 +60,24 @@ describe('ContextView — file activity card', () => {
     return { m, card }
   }
 
-  test('follows the chart pick: the scope label and the exclusive next-step bound', async () => {
+  test('follows the chart pick: the exclusive next-step bound', async () => {
     const { m, card } = await mountFiles('sv-files-scope')
-    assert.ok(text(card).includes(DICT_EN['files.scopeLatest']))
     assert.ok(text(card).includes('+1') && text(card).includes('−2'))
 
     // Hovering the FIRST bar bounds the fold at the second request: the edit drops out.
     await hover(query(m.container, '.lc-bar[data-seq="2"]'))
     await rest()
-    assert.ok(text(card).includes('Turn 1 · Step 1'))
     assert.equal(queryAll(card, '.lc-fa-meta-delta').length, 0)
     assert.equal(queryAll(card, '.lc-fa-row').length, 1)
     assert.ok(!text(card).includes('+1'))
 
-    // The turn-less mid step falls back to zero labels and still bounds at the next request.
+    // The turn-less mid step still bounds at the next request: both the read and the edit stay.
     await hover(query(m.container, '.lc-bar[data-seq="6"]'))
     await rest()
-    assert.ok(text(card).includes('Turn 0 · Step 0'))
     assert.ok(text(card).includes('+1'))
 
     await unhover(query(m.container, '.lc-chart'))
-    assert.ok(text(card).includes(DICT_EN['files.scopeLatest']))
+    assert.ok(text(card).includes('−2'))
     await m.unmount()
   })
 
@@ -93,8 +90,8 @@ describe('ContextView — file activity card', () => {
     await hover(query(m.container, '.lc-bar[data-seq="4"]'))
     await hover(query(m.container, '.lc-bar[data-seq="6"]'))
     clock.mockRestore()
-    await rest()
-    assert.ok(text(card).includes('Turn 0 · Step 0'))
+    // Poll rather than sleep a fixed margin: the trailing timer may land late under a loaded coverage run.
+    await until(() => text(card).includes('+1'), 'the trailing hover lands on the last bar')
     await m.unmount()
   })
 
@@ -104,27 +101,15 @@ describe('ContextView — file activity card', () => {
     await hover(query(m.container, '.lc-bar[data-seq="2"]'))
     await new Promise(resolve => setTimeout(resolve, 80))
     // The chart lights its own bar immediately; the cross-card preview stays on the latest scope.
-    assert.ok(text(card).includes(DICT_EN['files.scopeLatest']))
+    assert.ok(text(card).includes('−2'))
     await new Promise(resolve => setTimeout(resolve, 300))
-    assert.ok(text(card).includes('Turn 1 · Step 1'))
+    assert.ok(!text(card).includes('−2'))
     await m.unmount()
   })
 
-  test('turn aggregates label the scope; op clicks reveal the result in the browser', async () => {
+  test('op clicks reveal the result in the browser', async () => {
     const { m, card } = await mountFiles('sv-files-locate')
     const pick = query<HTMLSelectElement>(m.container, 'select.lc-br-pick')
-
-    await click(buttonByText(m.container, DICT_EN['gran.turn']))
-    await hover(query(m.container, '.lc-bar[data-seq="4"]'))
-    await rest()
-    assert.ok(text(card).includes(DICT_EN['detail.turn'].replace('{t}', '1').replace('{n}', '2')))
-    await hover(query(m.container, '.lc-bar[data-seq="7"]'))
-    await rest()
-    assert.ok(text(card).includes(DICT_EN['detail.turn'].replace('{t}', '0').replace('{n}', '2')))
-    await hover(query(m.container, '.lc-bar[data-seq="8"]'))
-    await rest()
-    assert.ok(text(card).includes('Turn 2 · Step 1'))
-    await unhover(query(m.container, '.lc-chart'))
 
     // Expand the file row: the compacted edit (seq 5) has no viewing step and
     // its click is a no-op; the read (seq 3) reveals in step 4's surface.
