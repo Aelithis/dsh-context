@@ -6,13 +6,13 @@ The rules dsh-context must hold on every supported `@deepseek-ai/dsh` release, a
 
 **Law.** Record only what no other artifact carries; delete what code, tests, or git history already say. Verify against the dsh sources before acting — source wins over this page. Less is ALWAYS better.
 
-Last verified: **2026-10-14** (dsh-context `0.70.0`, dsh `0.2.0-rc.2` npm install and `0.2.1-alpha.3` tree).
+Last verified: **2026-10-20** (dsh-context `0.73.3`, dsh `0.1.7-rc.2` / `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
 
 ## 1 · Supported set
 
 *What the plugin declares it works on.*
 
-1. **Support exactly `0.1.7-rc.2` and `0.2.0-rc.2`** — both the V4 durable-log generation. The floor is `0.1.7-rc.2` because it is the first `0.1.7`-line release with a complete npm dependency closure; anything older gets §2's fallback composition with an upgrade prompt, never a fold.
+1. **Support exactly `0.1.7-rc.2`, `0.2.0-rc.2` and `0.2.1-rc.2`** — all the V4 durable-log generation. The floor is `0.1.7-rc.2` because it is the first `0.1.7`-line release with a complete npm dependency closure; anything older gets §2's fallback composition with an upgrade prompt, never a fold.
 
 ## 2 · Admission
 

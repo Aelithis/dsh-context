@@ -54,7 +54,8 @@ jobs:
           git remote add origin https://github.com/deepseek-ai/deepseek-harness.git
           git fetch --depth 1 -q origin \
             refs/tags/dsh-v0.1.7-rc.2:refs/tags/dsh-v0.1.7-rc.2 \
-            refs/tags/dsh-v0.2.0-rc.2:refs/tags/dsh-v0.2.0-rc.2
+            refs/tags/dsh-v0.2.0-rc.2:refs/tags/dsh-v0.2.0-rc.2 \
+            refs/tags/dsh-v0.2.1-rc.2:refs/tags/dsh-v0.2.1-rc.2
 
       # `pnpm test` is the vitest run only: all three projects (host and client
       # against src, compat against the BUILT plugin at each baseline tag) plus

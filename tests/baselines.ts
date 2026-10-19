@@ -16,7 +16,7 @@
  */
 
 /** The supported dsh tags, in lockstep with the BASELINES entries below. */
-export type BaselineId = 'v0.1.7-rc.2' | 'v0.2.0-rc.2'
+export type BaselineId = 'v0.1.7-rc.2' | 'v0.2.0-rc.2' | 'v0.2.1-rc.2'
 
 /** The harness web half's client faces, as far as the compat probes consume them. */
 export interface ClientSeam {
@@ -223,12 +223,12 @@ export interface Baseline {
 }
 
 /** One support-matrix entry. Every supported line is the V4 generation, so
- * the seams are spelled once here; a future line that diverges on a needle outgrows the factory (inline its entry instead). */
-function baseline(id: BaselineId, tag: string, session: string): Baseline {
+ * the seams are spelled once here; a line that diverges states its divergence here. */
+function baseline(id: BaselineId, tag: string, session: string, line: { cordis?: string; stockIds?: readonly string[] } = {}): Baseline {
   return {
     id,
     tag,
-    cordis: '4.0.4',
+    cordis: line.cordis ?? '4.0.4',
     session,
     foldEventTypes: [
       'request/header', 'request/context', 'step/start', 'step/end',
@@ -319,7 +319,7 @@ function baseline(id: BaselineId, tag: string, session: string): Baseline {
       },
       stockIds: {
         file: 'packages/bundle/base/cordis.patch.yml',
-        ids: ['llm-deepseek', 'web-search-deepseek'],
+        ids: line.stockIds ?? ['llm-deepseek', 'web-search-deepseek'],
       },
       providerFiles: [
         {
@@ -384,4 +384,12 @@ export const BASELINES: readonly Baseline[] = [
   // session-format tree carries no v4-to-v5 migration). Cordis stays 4.0.4,
   // and the line continues to enforce the plugin dsh-peer gate this plugin's `>=0.1.7-rc.2` peers satisfy.
   baseline('v0.2.0-rc.2', 'dsh-v0.2.0-rc.2', '0.2.0-rc.2'),
+  // The 0.2.1 line continues the V4 Config-form generation with every seam the
+  // plugin rides spelled as at `0.2.0-rc.2`. Two facts differ: the line
+  // vendors cordis 4.0.5, and it adds the `web-deepseek-api` entry the
+  // balance fold falls back to.
+  baseline('v0.2.1-rc.2', 'dsh-v0.2.1-rc.2', '0.2.1-rc.2', {
+    cordis: '4.0.5',
+    stockIds: ['llm-deepseek', 'web-search-deepseek', 'web-deepseek-api'],
+  }),
 ]
