@@ -11,7 +11,7 @@ import { useContextSession } from '../sessionData'
 import { makeDetailNote } from './detailNote'
 import { canOpenPathsOf, openPathVia, openResourceVia, workspaceOf } from '../services'
 import { makeAttachmentOpener } from '../attachmentSource'
-import { activityOf, activityOfOps, locateStepOf, previewAddressOf } from '../fileActivity'
+import { activityOf, activityOfOps, locateStepOf, previewAddressOf, surfaceSeqOf } from '../fileActivity'
 import type { FileEntry, FileOp } from '../fileActivity'
 import type { ContextSettings } from '../settings'
 import type { ViewKit } from '../viewkit'
@@ -35,6 +35,7 @@ import { makeStatsTokens } from './statsTokens'
 import { makeLegend, makeStackedBar } from './stackedBar'
 import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
 import { makeTrendOverview } from './trendOverview'
+import { stepStampOf } from './browserHelpers'
 import { cachedByData, assembleCached } from './derivedCache'
 import { useLazyMount } from './useLazyMount'
 import { trendBandsOf } from '../dna'
@@ -371,6 +372,7 @@ export function makeContextView(
     )
     // Tallied over the RAW step records — turn-mode aggregates read their own stepCount instead.
     const stepsOf = useMemo(() => turnStepsOf(requests), [requests])
+    const opStampOf = useMemo(() => stepStampOf(requests), [requests])
     const markers = useMemo(() => attachMarkers(displayRequests, events), [displayRequests, events])
     // One assemble() per displayed record — the same pure reconstruction the browser uses — memoized so hover-driven
     // re-renders never reassemble.
@@ -531,7 +533,7 @@ export function makeContextView(
     )
     const locateFileOp = useCallback((op: FileOp): void => {
       // A nested Code-Mode op has no surface row of its own — it reveals on its parent run_code result.
-      const seq = op.parent ?? op.seq
+      const seq = surfaceSeqOf(op)
       const step = locateStepOf(requests, seq, op.gone)
       if (step === null) return
       setNodeFocus({ step, key: 'n' + String(seq), cat: 'tool' })
@@ -838,7 +840,7 @@ export function makeContextView(
               </div>
               <EventList events={shownEvents} state={source.detailState} onRetry={source.retryDetail} onInjectFocus={focusInject} />
             </div>
-            <FileCard activity={fileActivity} workspace={workspace}
+            <FileCard activity={fileActivity} workspace={workspace} stampOf={opStampOf}
               onPreview={previewFile} onOpen={fileOpener} onLocate={locateFileOp}
               filterFocus={filterFocus} onFilterFocusHandled={clearFilterFocus}
               state={source.detailState} onRetry={source.retryDetail} />

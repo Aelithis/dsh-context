@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
-import { absPathOf, baseNameOf, displayPathOf, glyphOf } from '../fileActivity'
+import { absPathOf, baseNameOf, displayPathOf, glyphOf, surfaceSeqOf } from '../fileActivity'
 import type { FileActivity, FileEntry, FileOp, FileOpKind } from '../fileActivity'
 import type { ContextSettings, DefaultFileSort } from '../settings'
 import type { DetailState } from '../timelineSource'
@@ -20,6 +20,9 @@ export interface FileCardProps {
   onPreview?: (entry: FileEntry) => boolean
   onOpen?: (absPath: string) => void
   onLocate?: (op: FileOp) => void
+  /** The turn/step whose request first carried an op's result node (the Context Browser's own stamp), by node seq;
+   *  absent = op rows print no stamps. */
+  stampOf?: (seq: number) => { turn: number; step: number } | null
   state?: DetailState
   onRetry?: () => void
 }
@@ -154,32 +157,44 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
       { key: 'image', files: activity.totals.image.files, ops: activity.totals.image.ops },
     ]
 
-    const opLine = (op: FileOp): ReactElement => (
-      <>
-        <span className="lc-fa-op-tool" title={op.tool}>{op.tool}</span>
-        {op.read !== undefined
-          ? (
+    const opLine = (op: FileOp): ReactElement => {
+      const stamp = props.stampOf?.(surfaceSeqOf(op)) ?? null
+      const stampText = stamp !== null ? t('browser.stepAt', { t: stamp.turn, s: stamp.step }) : null
+      const timeText = op.time !== undefined ? fmtTime(op.time) : null
+      return (
+        <>
+          <span className="lc-fa-op-tool" title={op.tool}>{op.tool}</span>
+          {op.detail !== undefined ? <span className="lc-fa-op-detail">{op.detail}</span> : null}
+          {op.hits !== undefined ? <span className="lc-fa-op-detail">{t('files.hits', { n: fmt(op.hits) })}</span> : null}
+          {/* A nested PTC op with no other detail still names its program. */}
+          {op.detail === undefined && op.hits === undefined && op.program !== undefined
+            ? <span className="lc-fa-op-detail">{op.program}</span>
+            : null}
+          <span className="lc-fa-op-meta">
+            {op.read !== undefined
+              ? (
+                <span
+                  className="lc-fa-read"
+                  title={'est' in op.read
+                    ? t('files.readEst')
+                    : t('files.readTip', { a: fmt(op.read.start), b: fmt(op.read.start + op.read.count - 1) })}
+                >
+                  {('est' in op.read ? '≈' : '>>') + fmt(op.read.count)}
+                </span>
+              )
+              : null}
+            {op.added + op.removed > 0 ? <DeltaPair added={op.added} removed={op.removed} /> : null}
+            {op.err ? <span className="lc-br-err-dot" title={t('node.failed')} /> : null}
             <span
-              className="lc-fa-read"
-              title={'est' in op.read
-                ? t('files.readEst')
-                : t('files.readTip', { a: fmt(op.read.start), b: fmt(op.read.start + op.read.count - 1) })}
+              className="lc-fa-op-time"
+              title={stamp !== null ? t('browser.stepAtTip', { t: stamp.turn, s: stamp.step }) : undefined}
             >
-              {('est' in op.read ? '≈' : '>>') + fmt(op.read.count)}
+              {[stampText, timeText].filter(part => part !== null).join(' · ') || '—'}
             </span>
-          )
-          : null}
-        {op.detail !== undefined ? <span className="lc-fa-op-detail">{op.detail}</span> : null}
-        {op.hits !== undefined ? <span className="lc-fa-op-detail">{t('files.hits', { n: fmt(op.hits) })}</span> : null}
-        {/* A nested PTC op with no other detail still names its program. */}
-        {op.detail === undefined && op.hits === undefined && op.program !== undefined
-          ? <span className="lc-fa-op-detail">{op.program}</span>
-          : null}
-        {op.added + op.removed > 0 ? <DeltaPair added={op.added} removed={op.removed} /> : null}
-        {op.err ? <span className="lc-br-err-dot" title={t('node.failed')} /> : null}
-        <span className="lc-fa-op-time">{op.time !== undefined ? fmtTime(op.time) : '—'}</span>
-      </>
-    )
+          </span>
+        </>
+      )
+    }
 
     return (
       <div className="lc-card lc-fa-card lc-col flex-1 min-w-[min(360px,100%)]">

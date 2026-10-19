@@ -34,6 +34,12 @@ export interface FileEntry {
   pattern?: true
 }
 
+/** The surface node that carries an op: a nested Code-Mode op lives on its parent `run_code` result, not on the
+ *  sub-call seq. */
+export function surfaceSeqOf(op: FileOp): number {
+  return op.parent ?? op.seq
+}
+
 export interface FileKindTotal { files: number; ops: number }
 
 export interface FileActivity {
@@ -224,8 +230,7 @@ function aggregateOps(ops: readonly FileOp[], before: number | null): FileActivi
   }
   const byPath = new Map<string, FileEntry>()
   for (const op of ops) {
-    // A nested op's scope key is its parent result's seq.
-    const key = op.parent ?? op.seq
+    const key = surfaceSeqOf(op)
     if (before !== null && key >= before) continue
     totals[op.kind].ops++
     let entry = byPath.get(op.path)
@@ -275,7 +280,7 @@ export function activityOfOps(ops: readonly FileOpRecord[], archive: readonly Su
   const goneBySeq = new Map<number, number>()
   for (const n of archive) if (n.gone !== undefined) goneBySeq.set(n.seq, n.gone)
   const joined = ops.map((op) => {
-    const gone = goneBySeq.get(op.parent ?? op.seq)
+    const gone = goneBySeq.get(surfaceSeqOf(op))
     return gone !== undefined && op.gone === undefined ? { ...op, gone } : op
   })
   return aggregateOps(joined, before)

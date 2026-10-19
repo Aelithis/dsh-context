@@ -336,6 +336,33 @@ describe('FileCard — expansion and locate', () => {
     await m.unmount()
   })
 
+  test('expanded ops hold their values and step stamp on the right edge', async () => {
+    const m = await mount(h(FileCard, {
+      activity: richActivity(),
+      // Two a.ts reads carry stamps: the seq-7 one and the seq-3 timeless one.
+      stampOf: seq => (seq === 7 ? { turn: 2, step: 1 } : seq === 3 ? { turn: 3, step: 4 } : null),
+    }))
+    await click(rowByTitle(m.container, '/src/a.ts'))
+    const ops = queryAll(m.container, '.lc-fa-op')
+    // Every row ends in one meta group: the values, the failure dot and the stamp+time.
+    for (const op of ops) assert.equal(op.lastElementChild, query(op, '.lc-fa-op-meta'))
+    const stamped = ops[0] // the seq-7 read
+    assert.ok(text(stamped).includes('T2 S1'))
+    assert.ok(text(stamped).includes(':')) // the stamp prefixes, never replaces, the time
+    assert.equal(
+      query(stamped, '.lc-fa-op-time').getAttribute('title'),
+      'First carried by the Turn 2 · Step 1 request',
+    )
+    assert.ok(query(stamped, '.lc-fa-op-meta .lc-fa-op-time') !== null)
+    // A stamped op with no time keeps the stamp and drops both the separator and the dash.
+    assert.equal(query(ops[3], '.lc-fa-op-time').textContent, 'T3 S4')
+    const unstamped = ops[1] // the seq-5 edit
+    assert.ok(!text(unstamped).includes('T2 S1'))
+    assert.equal(query(unstamped, '.lc-fa-op-time').getAttribute('title'), null)
+    assert.ok(query(unstamped, '.lc-fa-op-meta .lc-fa-delta') !== null)
+    await m.unmount()
+  })
+
   test('a search op shows its pattern detail; the expanded log lists every op', async () => {
     const m = await mount(h(FileCard, { activity: richActivity() }))
     // The directory row: one grep op with its searched pattern.
@@ -414,18 +441,18 @@ describe('FileCard — expansion and locate', () => {
     }))
     await click(rowByTitle(m.container, '/src/a.ts'))
     const ops = queryAll(m.container, '.lc-fa-op')
-    // The exact read: `>> count` with the range as the title.
-    const exact = queryAll(ops[0], '.lc-fa-read')
+    // The exact read rides the row's right-edge group: `>> count` with the range as the title.
+    const exact = queryAll(ops[0], '.lc-fa-op-meta .lc-fa-read')
     assert.equal(exact.length, 1)
     assert.equal(exact[0].textContent, '>>30')
     assert.equal(exact[0].getAttribute('title'), 'Read lines 41–70')
     // The estimate keeps the ≈ form and its own title.
-    const est = queryAll(ops[1], '.lc-fa-read')
+    const est = queryAll(ops[1], '.lc-fa-op-meta .lc-fa-read')
     assert.equal(est.length, 1)
     assert.equal(est[0].textContent, '≈80')
     assert.equal(est[0].getAttribute('title'), 'Lines read, estimated from the limit argument')
-    // The time is the row's last cell, pushed to the right edge (formatted, not the timeless dash).
-    const time = query(ops[1], '.lc-fa-op-time')
+    // The time is the group's last cell, flushed to the card's right edge (formatted, not the timeless dash).
+    const time = query(ops[1], '.lc-fa-op-meta .lc-fa-op-time')
     assert.notEqual(time.textContent, '—')
     assert.ok((time.textContent ?? '').includes(':'))
     await m.unmount()

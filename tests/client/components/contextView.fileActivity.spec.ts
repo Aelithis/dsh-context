@@ -116,6 +116,10 @@ describe('ContextView — file activity card', () => {
     await click(query(card, '.lc-fa-row'))
     const ops = queryAll(card, '.lc-fa-op')
     assert.equal(ops.length, 2)
+    // The Context Browser's own stamp: the read result (seq 3) is first carried by the seq-4 request (Turn 1 · Step 2);
+    // the compacted edit's carrying request is turn-less, so its row prints no stamp.
+    assert.ok(text(query(ops[1], '.lc-fa-op-time')).includes('T1 S2'))
+    assert.ok(/^\d{2}:\d{2}:\d{2}$/.test(text(query(ops[0], '.lc-fa-op-time'))))
     await click(ops[0]) // edit, gone = 6: unlocatable
     assert.equal(pick.value, 'live')
     await click(ops[1]) // read at seq 3
