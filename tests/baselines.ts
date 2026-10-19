@@ -169,12 +169,13 @@ export interface Baseline {
     transportPresent: boolean
   }
   /** The balance capsule's host seam (src/host/balance.ts). The facts fold
-   * reads the DeepSeek API-key provider's settings row off the Config-form
-   * `describe()` projection — the provider row is the entry whose served
-   * value declares the top-level `apiKeyEnv` credential ref, preferred under
-   * the settings ids the generations have served it as. The retired
-   * registered-section `get(ns)` read is probed absent, so a resurrection
-   * names the seam instead of silently shadowing the projection. */
+   * reads the DeepSeek platform's settings row off the Config-form
+   * `describe()` projection — the provider directory names the API-key
+   * model's own row, and dsh's stock entry ids are the fallback — and reads
+   * that projection redacted, so a row's literal key never enters the fold.
+   * The retired registered-section `get(ns)` read is probed absent, so a
+   * resurrection names the seam instead of silently shadowing the
+   * projection. */
   balance: {
     settingsFile: string
     /** The retired `get(ns)` section read — absent on every supported line. */
@@ -182,7 +183,16 @@ export interface Baseline {
     settingsGetPresent: boolean
     /** The Config-form projection needle the fold reads. */
     settingsDescribeNeedle: string | undefined
-    /** The provider sources carrying the plugin id and the section shape the fold matches. */
+    /** The projection's redaction option — the fold reads every row redacted. */
+    settingsRedactNeedle: string
+    /** The provider directory: the route key's own settings id, whatever the
+     * entry is called. */
+    providerDirectory: { file: string; needle: string }
+    /** The stock entry ids of the DeepSeek platform's own rows on this line — the
+     * fold's fallback when the provider directory answers nothing. The set grows
+     * with the line, so it is pinned per line. */
+    stockIds: { file: string; ids: readonly string[] }
+    /** The provider sources carrying the route key and the section shape the fold reads. */
     providerFiles: readonly { file: string; needles: readonly string[] }[]
   }
   /** The system-prompt injection seam (src/host/promptInjection.ts): the
@@ -302,10 +312,19 @@ function baseline(id: BaselineId, tag: string, session: string): Baseline {
       settingsGetNeedle: 'get<const Namespace extends string>(ns:',
       settingsGetPresent: false,
       settingsDescribeNeedle: 'describe(options?: SettingsDescribeOptions)',
+      settingsRedactNeedle: 'redactSecrets?: boolean',
+      providerDirectory: {
+        file: 'packages/llm/llm/src/index.ts',
+        needle: 'listConfigurableProviders(): LlmConfigurableProvider',
+      },
+      stockIds: {
+        file: 'packages/bundle/base/cordis.patch.yml',
+        ids: ['llm-deepseek', 'web-search-deepseek'],
+      },
       providerFiles: [
         {
           file: 'packages/llm/llm-deepseek-api-key/src/index.ts',
-          needles: ["export const name = 'llm-deepseek-api-key'"],
+          needles: ["const PROVIDER = 'deepseek-official'"],
         },
         {
           file: 'packages/llm/llm-deepseek-api-key/src/config.ts',
