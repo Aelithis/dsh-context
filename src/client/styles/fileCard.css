@@ -1,13 +1,18 @@
 /* The chips ride the title row; the reserved folded height keeps the header's line count a function of the card's
-   width, never of the tallies it renders (the old controls band reserved its own fold for the same reason). */
+   width, never of the tallies it renders (the old controls band reserved its own fold for the same reason). Under the
+   one-line breakpoint the chip group takes a row of its own so tallies cannot move it between rows. */
 .lc-fa-card .lc-card-title { align-content: center; }
-@container lc-card (max-width: 505px) { .lc-fa-card .lc-card-title { min-height: 45px; } }
-@container lc-card (max-width: 380px) { .lc-fa-card .lc-card-title { min-height: 66px; } }
+.lc-fa-chips-row { display: flex; margin-left: auto; }
+@container lc-card (max-width: 632px) {
+  .lc-fa-chips-row { flex: 0 0 100%; justify-content: flex-end; }
+  .lc-fa-card .lc-card-title { min-height: 50px; }
+}
+@container lc-card (max-width: 380px) { .lc-fa-card .lc-card-title { min-height: 69px; } }
 .lc-fa-ctl, .lc-br-toolctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .lc-fa-n { margin-left: 4px; font-weight: 700; opacity: 0.75; }
 .lc-fa-search, .lc-br-tool-search, .lc-find-input { flex: 1; min-width: 80px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 8px; outline: none; }
 .lc-fa-sort { flex: none; }
-.lc-fa-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.lc-fa-meta { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }
 /* Sits outside the scrolling list, so the tip bubble never clips. */
 .lc-fa-meta-delta { position: relative; }
 .lc-fa-meta-tip { top: calc(100% + 6px); left: 0; max-width: 260px; white-space: normal; line-height: 1.5; }

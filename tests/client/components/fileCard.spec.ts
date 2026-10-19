@@ -101,8 +101,9 @@ describe('FileCard — header, rows, and filters', () => {
     assert.ok(text(chipByLabel(m.container, 'All')).includes('16'))
     assert.ok(text(chipByLabel(m.container, 'Read')).includes('12'))
     assert.ok(text(chipByLabel(m.container, 'Images')).includes('1'))
-    // Layout: the chips ride the title row; the search and the sort share the band below.
+    // Layout: the title row carries the file tally, then the chips; the search and the sort share the band below.
     assert.equal(queryAll(m.container, '.lc-card-sub').length, 0)
+    assert.equal(queryAll(m.container, '.lc-card-title .lc-fa-meta').length, 1)
     assert.equal(queryAll(m.container, '.lc-card-title .lc-fa-chips .lc-gran-btn').length, 5)
     assert.ok(query(m.container, '.lc-fa-ctl input.lc-fa-search') !== null)
     assert.equal(queryAll(m.container, '.lc-fa-ctl .lc-fa-sort .lc-gran-btn').length, 4)

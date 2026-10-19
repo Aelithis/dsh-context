@@ -200,22 +200,34 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
       <div className="lc-card lc-fa-card lc-col flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('files.title')}</span>
-          {/* The five chips overflow a narrow card in English — fold the group to two lines. */}
-          <div className="lc-gran lc-fa-chips @max-[380px]/lc-card:flex-wrap">
-            {chips.map(c => (
-              <button
-                key={c.key}
-                type="button"
-                className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
-                  + (c.key === 'image' ? '' : ' lc-fa-chip-' + c.key)}
-                title={t('files.chipTip', { files: c.files, ops: c.ops })}
-                onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
-              >
-                {t('files.kind.' + c.key)}
-                <b className="lc-fa-n">{fmt(c.ops)}</b>
-              </button>
-            ))}
-          </div>
+          <span className="lc-fa-meta">
+            <span>{t('files.files', { n: activity.entries.length })}</span>
+            {activity.totals.added + activity.totals.removed > 0 ? (
+              /* The one styled tip of the card lives OUTSIDE the scrolling list, so the bubble never clips. */
+              <span className="lc-fa-meta-delta group/tip">
+                <DeltaPair added={activity.totals.added} removed={activity.totals.removed} />
+                <span className="lc-tip lc-fa-meta-tip group-hover/tip:opacity-100" role="tooltip">{t('files.deltaTip')}</span>
+              </span>
+            ) : null}
+          </span>
+          <span className="lc-fa-chips-row">
+            {/* The five chips overflow a narrow card in English — fold the group to two lines. */}
+            <div className="lc-gran lc-fa-chips @max-[380px]/lc-card:flex-wrap">
+              {chips.map(c => (
+                <button
+                  key={c.key}
+                  type="button"
+                  className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
+                    + (c.key === 'image' ? '' : ' lc-fa-chip-' + c.key)}
+                  title={t('files.chipTip', { files: c.files, ops: c.ops })}
+                  onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
+                >
+                  {t('files.kind.' + c.key)}
+                  <b className="lc-fa-n">{fmt(c.ops)}</b>
+                </button>
+              ))}
+            </div>
+          </span>
         </div>
         {/* The controls and the list lane render in EVERY state, so an empty or pending card measures exactly what a
             populated one does. */}
@@ -239,16 +251,6 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
                 </button>
               ))}
             </span>
-          </div>
-          <div className="lc-fa-meta">
-            <span>{t('files.files', { n: activity.entries.length })}</span>
-            {activity.totals.added + activity.totals.removed > 0 ? (
-              /* The one styled tip of the card lives OUTSIDE the scrolling list, so the bubble never clips. */
-              <span className="lc-fa-meta-delta group/tip">
-                <DeltaPair added={activity.totals.added} removed={activity.totals.removed} />
-                <span className="lc-tip lc-fa-meta-tip group-hover/tip:opacity-100" role="tooltip">{t('files.deltaTip')}</span>
-              </span>
-            ) : null}
           </div>
           {activity.entries.length === 0 && props.state === 'loading' ? (
             <DetailNote state="loading" className="lc-empty lc-lane" />
