@@ -192,7 +192,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
                 key={c.key}
                 type="button"
                 className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
-                  + (c.key === 'read' || c.key === 'write' || c.key === 'search' ? ' lc-fa-chip-' + c.key : '')}
+                  + (c.key === 'image' ? '' : ' lc-fa-chip-' + c.key)}
                 title={t('files.chipTip', { files: c.files, ops: c.ops })}
                 onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
               >
