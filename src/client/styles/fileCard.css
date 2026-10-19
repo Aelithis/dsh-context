@@ -1,12 +1,7 @@
-/* The chips ride the title row; the reserved folded height keeps the header's line count a function of the card's
-   width, never of the tallies it renders (the old controls band reserved its own fold for the same reason). Under the
-   one-line breakpoint the chip group takes a row of its own so tallies cannot move it between rows. */
+/* The title, the tally and the chips share one row whenever they fit and wrap naturally when they don't. On a
+   phone-width card the chips fold inside their band, so the title row reserves that folded height rather than
+   following the tallies it renders. */
 .lc-fa-card .lc-card-title { align-content: center; }
-.lc-fa-chips-row { display: flex; margin-left: auto; }
-@container lc-card (max-width: 632px) {
-  .lc-fa-chips-row { flex: 0 0 100%; justify-content: flex-end; }
-  .lc-fa-card .lc-card-title { min-height: 50px; }
-}
 @container lc-card (max-width: 380px) { .lc-fa-card .lc-card-title { min-height: 69px; } }
 .lc-fa-ctl, .lc-br-toolctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .lc-fa-n { margin-left: 4px; font-weight: 700; opacity: 0.75; }

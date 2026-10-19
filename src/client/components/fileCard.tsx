@@ -210,24 +210,22 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
               </span>
             ) : null}
           </span>
-          <span className="lc-fa-chips-row">
-            {/* The five chips overflow a narrow card in English — fold the group to two lines. */}
-            <div className="lc-gran lc-fa-chips @max-[380px]/lc-card:flex-wrap">
-              {chips.map(c => (
-                <button
-                  key={c.key}
-                  type="button"
-                  className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
-                    + (c.key === 'image' ? '' : ' lc-fa-chip-' + c.key)}
-                  title={t('files.chipTip', { files: c.files, ops: c.ops })}
-                  onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
-                >
-                  {t('files.kind.' + c.key)}
-                  <b className="lc-fa-n">{fmt(c.ops)}</b>
-                </button>
-              ))}
-            </div>
-          </span>
+          {/* The five chips overflow a narrow card in English — fold the group to two lines. */}
+          <div className="lc-gran lc-fa-chips @max-[380px]/lc-card:flex-wrap">
+            {chips.map(c => (
+              <button
+                key={c.key}
+                type="button"
+                className={'lc-gran-btn' + (filter === c.key ? ' lc-gran-on' : '')
+                  + (c.key === 'image' ? '' : ' lc-fa-chip-' + c.key)}
+                title={t('files.chipTip', { files: c.files, ops: c.ops })}
+                onClick={() => { setFilter(cur => (cur === c.key ? 'all' : c.key)) }}
+              >
+                {t('files.kind.' + c.key)}
+                <b className="lc-fa-n">{fmt(c.ops)}</b>
+              </button>
+            ))}
+          </div>
         </div>
         {/* The controls and the list lane render in EVERY state, so an empty or pending card measures exactly what a
             populated one does. */}
