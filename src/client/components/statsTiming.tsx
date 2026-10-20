@@ -180,6 +180,7 @@ export function makeStatsTiming(kit: ViewKit, Donut: (props: DonutProps) => Reac
       <div className="lc-card lc-col-donut flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('timing.title')}</span>
+          <span className="lc-card-sub">{t('timing.scope')}</span>
           {tps !== null && (
             <span className="lc-card-rate" title={t('timing.tpsTip')}>{t('timing.tps', { tps })}</span>
           )}
