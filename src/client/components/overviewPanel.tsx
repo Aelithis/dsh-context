@@ -17,7 +17,7 @@
  * harness's own `openSessionVia`, whose navigation returns the center column to the conversation.
  */
 
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactElement } from 'react'
 import { estimateSessionCost, formatCost, type CostCurrency, type ModelBook } from '../cost'
 import { fmt } from '../format'
 import { useModelPrices } from '../modelPrices'
@@ -31,6 +31,7 @@ import {
 import { openSessionVia, type ClientCtx } from '../services'
 import { readSkillCatalog } from '../skills'
 import { openPluginSettings } from '../settingsJump'
+import type { ContextSettings } from '../settings'
 import type { SkillInfo } from '../../shared/types'
 import { dayKeyOf } from '../../shared/days'
 import type { ViewKit } from '../viewkit'
@@ -60,8 +61,13 @@ const COVERAGE: readonly OverviewCoverage[] = ['all', 'active', 'archived']
 /** The heatmap's depth metrics, in toggle order (tokens is the default). */
 const METRICS: readonly HeatMetric[] = ['sessions', 'tokens']
 
-export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: OverviewPanelProps) => ReactElement | null {
+export function makeOverviewPanel(
+  ctx: ClientCtx,
+  kit: ViewKit,
+  settings: ContextSettings,
+): (props: OverviewPanelProps) => ReactElement | null {
   const { t, fmtDuration } = kit
+  const subscribeSettings = settings.store.subscribe.bind(settings.store)
   const Heatmap = makeHeatmap(kit)
   const OverviewCard = makeOverviewCard(kit)
   const BalanceCapsule = makeBalanceCapsule(ctx, kit)
@@ -88,7 +94,11 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
     const { book } = useModelPrices()
     const snapshot = sessionsSnapshotOf(props)
     const wsSnapshot = workspacesSnapshotOf(props)
-    const [preset, setPreset] = useState<OverviewRange>('30d')
+    // The preset follows the served default until the reader picks one, so a late-arriving settings
+    // section still lands; a remount starts from the default again.
+    const configuredRange = useSyncExternalStore(subscribeSettings, () => settings.defaultOverviewRange())
+    const [picked, setPicked] = useState<OverviewRange | null>(null)
+    const preset = picked ?? configuredRange
     const [custom, setCustom] = useState<DayRange | null>(null)
     const [coverage, setCoverage] = useState<OverviewCoverage>('all')
     const [day, setDay] = useState<string | null>(null)
@@ -206,7 +216,7 @@ export function makeOverviewPanel(ctx: ClientCtx, kit: ViewKit): (props: Overvie
                       key={r}
                       type="button"
                       className={'lc-gran-btn' + (custom === null && preset === r ? ' lc-gran-on' : '')}
-                      onClick={() => { setPreset(r); setCustom(null) }}
+                      onClick={() => { setPicked(r); setCustom(null) }}
                     >{t('ov.range.' + r)}</button>
                   ))}
                 </div>

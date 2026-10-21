@@ -101,6 +101,7 @@ export const DICT_ZH = {
   'settings.mode': '趋势图 · 展示方式',
   'settings.durationCurve': '趋势图 · 耗时曲线',
   'settings.overviewAuto': '趋势图 · 自动总览',
+  'settings.overviewRange': '上下文洞察 · 默认时间范围',
   'settings.overviewAutoSteps': '{n} 步',
   'settings.overviewAutoOff': '不启用',
   'settings.deltaBase': '上下文浏览器 · 对比基线',

@@ -104,6 +104,7 @@ export const DICT_EN = {
   'settings.mode': 'Trend Chart · Display',
   'settings.durationCurve': 'Trend Chart · Duration curve',
   'settings.overviewAuto': 'Trend Chart · Auto Overview',
+  'settings.overviewRange': 'Context Insights · Default range',
   'settings.overviewAutoSteps': '{n} steps',
   'settings.overviewAutoOff': 'Off',
   'settings.deltaBase': 'Context Browser · Diff baseline',
