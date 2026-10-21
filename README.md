@@ -190,11 +190,11 @@ A centered dialog opens with the **Current Composition** card and the **Context 
 
 ## ⚙️ Settings
 
-The **Context** preferences card holds this plugin's per-user settings — default placement (the **Context** and **Fleet** conversation tabs, the right Sidebar panel, or both), the **Fleet** tab's own Show/Hide switch, the **Context Insights** default range (Today / Last 7 days / Last 30 days / All, Last 30 days unless changed), trend granularity (Step/Turn), trend mode (Total/Delta), the trend duration curve (shown by default), tool and File Activity sort, and the sidebar insights entry. It lives on the **Plugins** page: the sidebar **Plugins** entry → the **dsh-context** bundle's page → its **Configuration** section (the card is served by the entry's live Config form).
+The **Context** preferences card holds this plugin's per-user settings — default placement (the **Context** and **Fleet** conversation tabs, the right Sidebar panel, or both), the **Fleet** tab's own Show/Hide switch, the **Context Insights** default range (Today / Last 7 days / Last 30 days / All, Last 30 days unless changed; picking a preset on the page writes it back), trend granularity (Step/Turn), trend mode (Total/Delta), the trend duration curve (shown by default), tool and File Activity sort, and the sidebar insights entry. It lives on the **Plugins** page: the sidebar **Plugins** entry → the **dsh-context** bundle's page → its **Configuration** section (the card is served by the entry's live Config form).
 
 The **System Prompt · Prefix / Suffix** rows hold free text joined at the very start / end of every session's system prompt, for all agents (subagents included) — a per-deployment persona or behavioral rule that rides the harness's own prompt assembly. Edits apply from the next turn; leave a row empty to disable it.
 
-In-chart and in-card toggles stay per-view and never overwrite the stored preference.
+The Context Insights preset buttons write the pick back as the stored default; every other in-chart and in-card toggle stays per-view and never overwrites the stored preference.
 
 ![The Context settings card](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/settings.png)
 

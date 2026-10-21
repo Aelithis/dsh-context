@@ -94,8 +94,8 @@ export function makeOverviewPanel(
     const { book } = useModelPrices()
     const snapshot = sessionsSnapshotOf(props)
     const wsSnapshot = workspacesSnapshotOf(props)
-    // The preset follows the served default until the reader picks one, so a late-arriving settings
-    // section still lands; a remount starts from the default again.
+    // The preset follows the served default until the reader picks one; a pick is written back as the
+    // new default where settings are writable, and a late-arriving section still lands while none is picked.
     const configuredRange = useSyncExternalStore(subscribeSettings, () => settings.defaultOverviewRange())
     const [picked, setPicked] = useState<OverviewRange | null>(null)
     const preset = picked ?? configuredRange
@@ -175,6 +175,13 @@ export function makeOverviewPanel(
     const paged = pageOf(visible, page)
     const kpi = kpisOf(ranged, book, currency, scope)
     const days = aggregateDays(covered, book, currency)
+    /** A preset pick applies at once and becomes the stored default where the settings form is writable. */
+    const pickPreset = (range: OverviewRange): void => {
+      setPicked(range)
+      setCustom(null)
+      const state = settings.store.getSnapshot()
+      if (state.status === 'ready' && state.writable) settings.set('defaultOverviewRange', range)
+    }
     const openOne = (id: string): void => {
       // The view owner's verb navigates the center column back to the
       // conversation itself (selectPanel(null)), so the page needs no close.
@@ -216,7 +223,7 @@ export function makeOverviewPanel(
                       key={r}
                       type="button"
                       className={'lc-gran-btn' + (custom === null && preset === r ? ' lc-gran-on' : '')}
-                      onClick={() => { setPicked(r); setCustom(null) }}
+                      onClick={() => { pickPreset(r) }}
                     >{t('ov.range.' + r)}</button>
                   ))}
                 </div>

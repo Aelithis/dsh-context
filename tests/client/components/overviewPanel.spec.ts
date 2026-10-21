@@ -109,6 +109,27 @@ function settingsWith(range?: DefaultOverviewRange): ContextSettings {
   return settings
 }
 
+/** Settings whose scope keeps each write, like the Host-served form, so a remount reads it back. */
+function writableSettings(range: DefaultOverviewRange = '30d', writable = true): {
+  settings: ContextSettings
+  sets: { field: string; value: unknown }[]
+} {
+  let value: Record<string, unknown> = { defaultOverviewRange: range }
+  const listeners = new Set<() => void>()
+  const sets: { field: string; value: unknown }[] = []
+  const settings = createContextSettings()
+  settings.attach({
+    getSnapshot: () => ({ status: 'ready', value, writable }),
+    subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    set: async (field, next) => {
+      sets.push({ field, value: next })
+      value = { ...value, [field]: next }
+      for (const listener of listeners) listener()
+    },
+  })
+  return { settings, sets }
+}
+
 function makeCtx(sessions: Record<string, unknown> = {}): TestClientCtx {
   return new TestClientCtx({ services: { sessions } })
 }
@@ -300,6 +321,38 @@ describe('OverviewPanel', () => {
     await act(async () => { notify?.() })
     assert.ok(rangeButtons[1].className.includes('lc-gran-on'), 'the served default takes over once it lands')
     assert.ok(!rangeButtons[2].className.includes('lc-gran-on'))
+    await m.unmount()
+  })
+
+  test('picking a range writes it back as the default, so a remount keeps it', async () => {
+    const { settings, sets } = writableSettings()
+    const first = await openPanel(makeCtx(), {}, settings)
+    const buttons = queryAll<HTMLButtonElement>(first.m.container, '.lc-ov-range .lc-gran-btn')
+    await click(buttons[1])
+    assert.deepEqual(sets, [{ field: 'defaultOverviewRange', value: '7d' }])
+    assert.equal(settings.store.getSnapshot().overviewRange, '7d', 'the settings card reads the written default')
+    assert.ok(buttons[1].className.includes('lc-gran-on'), 'the pick applies immediately')
+    await first.m.unmount()
+
+    const second = await openPanel(makeCtx(), {}, settings)
+    const again = queryAll<HTMLButtonElement>(second.m.container, '.lc-ov-range .lc-gran-btn')
+    assert.ok(again[1].className.includes('lc-gran-on'), 'the remount reads the written default')
+    assert.deepEqual(
+      queryAll(second.m.container, '.lc-dp-half').map(el => el.textContent),
+      [dayKeyOf(NOW - 7 * 86_400_000), TODAY],
+      'the remount opens on the written window',
+    )
+    await second.m.unmount()
+  })
+
+  test('a read-only settings form keeps the pick for the visit without a write', async () => {
+    const { settings, sets } = writableSettings('30d', false)
+    const { m } = await openPanel(makeCtx(), {}, settings)
+    const buttons = queryAll<HTMLButtonElement>(m.container, '.lc-ov-range .lc-gran-btn')
+    await click(buttons[1])
+    assert.deepEqual(sets, [], 'a read-only form is never written')
+    assert.ok(buttons[1].className.includes('lc-gran-on'), 'the pick still applies to this visit')
+    assert.equal(settings.store.getSnapshot().overviewRange, '30d', 'the stored default is untouched')
     await m.unmount()
   })
 
