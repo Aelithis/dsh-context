@@ -46,7 +46,7 @@ export const DICT_EN = {
   'stats.cacheHitTip': 'Cumulative cache-read share of billed input across the session.',
   'stats.cost': 'Cost',
   'stats.costTip': 'Estimated cost for this agent and every descendant subagent session, for reference only.',
-  'stats.costTipDeepseek': 'DeepSeek bills peak windows (Beijing Time weekdays 09:00–12:00, 14:00–18:00) at list price; all other hours are half price.',
+  'stats.costTipDeepseek': 'DeepSeek’s models.dev rates are its off-peak rates; peak windows (Beijing Time Monday–Friday 09:00–12:00 and 14:00–18:00) bill at twice the listed rate, while Saturday and Sunday are off-peak.',
   'stats.costTipCny': 'The CNY display converts at 1 CNY = 0.15 USD.',
   'stats.currentAgent': 'Current Agent',
   'stats.teamSubs': 'Subagents × {n}',
