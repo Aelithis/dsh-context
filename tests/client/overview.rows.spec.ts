@@ -278,19 +278,33 @@ describe('rowsOfSnapshot: the family fold', () => {
     assert.equal(billedOf(rows[0]), 200, 'the ghost subtree folds into no row')
   })
 
-  test('a blank placeholder’s subtree stays out, and a lineage cycle cannot loop the walk', () => {
+  test('a blank placeholder’s subtree stays out, and a forked row’s seed lineage is no subtree edge', () => {
     const rows = rowsOfSnapshot(snapshotOf([
-      // The reachable cycle: root points at p and p points back — the walk
-      // must cut at the revisited id (root counts its family, never itself twice).
-      ['root', { displayTitle: 'root', parentId: 'p', projectionValues: { contextTimeline: billedHead(1, COST) } }],
+      // The fork seed: parentId points at the absent source — seed lineage folds nothing back in.
+      ['root', { displayTitle: 'root', parentId: 'source', projectionValues: { contextTimeline: billedHead(1, COST) } }],
       ['p', { origin: 'subagent', parentId: 'root', projectionValues: { contextTimeline: billedHead(2, COST2) } }],
       ['blank', { blank: true, parentId: 'root', projectionValues: { contextTimeline: billedHead(9, COST2) } }],
       ['under-blank', { origin: 'subagent', parentId: 'blank', projectionValues: { contextTimeline: billedHead(9, COST2) } }],
     ]))
     assert.ok(rows !== null)
     assert.equal(rows.length, 1)
-    assert.equal(rows[0].family.length, 2, 'root + p once; the blank is no agent and its child never links through')
-    assert.equal(billedOf(rows[0]), 500, 'COST + COST2 — the cycle’s revisit adds nothing twice')
+    assert.equal(rows[0].family.length, 2, 'root + p; the blank is no agent and its child never links through')
+    assert.equal(billedOf(rows[0]), 500, 'COST + COST2')
+  })
+
+  test('a forked row never folds its source, and the source keeps the fork out of its family', () => {
+    const rows = rowsOfSnapshot(snapshotOf([
+      ['source', { displayTitle: 'source', projectionValues: { contextTimeline: billedHead(1, COST) } }],
+      // The fork seed: parentId = source, no origin.
+      ['fork', { displayTitle: 'source (1)', parentId: 'source', projectionValues: { contextTimeline: billedHead(10, COST2) } }],
+      ['sub', { origin: 'subagent', parentId: 'source', projectionValues: { contextTimeline: billedHead(100) } }],
+    ]))
+    assert.ok(rows !== null)
+    assert.deepEqual(rows.map(r => r.id), ['source', 'fork'])
+    assert.equal(rows[0].family.length, 2, 'source + its subagent only')
+    assert.equal(billedOf(rows[0]), 200, 'the fork cost (300) never rides the source family')
+    assert.equal(rows[1].family.length, 1, 'the fork is its own family — the source never folds into it')
+    assert.equal(billedOf(rows[1]), 300)
   })
 
   test('the daily ledgers’ skill tables merge name by name (loads sum, last takes the max)', () => {

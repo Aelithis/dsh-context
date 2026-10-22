@@ -361,10 +361,10 @@ describe('AgentGraph — the family tree', () => {
     const byId: Record<string, unknown> = { root: { displayTitle: 'Main', running: false, updatedAt: 1 } }
     let parent = 'root'
     for (let i = 0; i < 4; i++) {
-      byId['level' + i] = { parentId: parent, updatedAt: 10 }
+      byId['level' + i] = { parentId: parent, origin: 'subagent', updatedAt: 10 }
       parent = 'level' + i
     }
-    for (let i = 0; i < 45; i++) byId['kid' + i] = { parentId: parent, updatedAt: i }
+    for (let i = 0; i < 45; i++) byId['kid' + i] = { parentId: parent, origin: 'subagent', updatedAt: i }
     const View = makeView(new FakeSessions(byId))
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.equal(queryAll(m.container, '.lc-agent-card').length, 50)

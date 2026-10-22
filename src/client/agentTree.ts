@@ -22,7 +22,8 @@ export interface AgentRow {
   displayTitle?: string
   title?: string
   parentId?: string
-  origin?: string
+  /** The durable classification of a subagent child; a fork seed carries none. */
+  origin?: 'subagent'
   running: boolean
   blank: boolean
   updatedAt: number
@@ -105,12 +106,22 @@ export function agentRowOf(value: unknown): AgentRow | null {
     ...(typeof rec.displayTitle === 'string' ? { displayTitle: rec.displayTitle } : {}),
     ...(typeof rec.title === 'string' ? { title: rec.title } : {}),
     ...(typeof rec.parentId === 'string' ? { parentId: rec.parentId } : {}),
-    ...(typeof rec.origin === 'string' ? { origin: rec.origin } : {}),
+    ...(rec.origin === 'subagent' ? { origin: rec.origin } : {}),
     running: rec.running === true,
     blank: rec.blank === true,
     updatedAt: numOf(rec.updatedAt),
     ...(projections !== null ? { projections } : {}),
   }
+}
+
+/**
+ * The family edge a listed row draws — only a subagent child belongs to its parent's fleet.
+ * A fork seed records the source session as `parentId` too, but its header carries no `origin`
+ * (dsh forks an ordinary Session), so seed lineage is not a family edge: the fork is an
+ * independent root, never a member of the source's family.
+ */
+export function familyParentOf(row: AgentRow | undefined): string | undefined {
+  return row !== undefined && row.origin === 'subagent' ? row.parentId : undefined
 }
 
 export function agentIdentityOf(value: unknown): AgentIdentity | null {
@@ -223,16 +234,28 @@ export function catalogOrderOf(values: Record<string, unknown> | undefined): Map
   return order.size > 0 ? order : null
 }
 
-interface AgentChild {
+export interface AgentChild {
   id: string
   row: AgentRow
 }
 
+/** Group parsed rows by the family parent each one draws (see {@link familyParentOf}). */
+export function familyChildrenOf(rows: ReadonlyMap<string, AgentRow>): Map<string, AgentChild[]> {
+  const childrenOf = new Map<string, AgentChild[]>()
+  for (const [id, row] of rows) {
+    const parentId = familyParentOf(row)
+    if (parentId === undefined) continue
+    const list = childrenOf.get(parentId) ?? []
+    list.push({ id, row })
+    childrenOf.set(parentId, list)
+  }
+  return childrenOf
+}
+
 /**
- * Build the current session's agent family: walk up `parentId` to the topmost
- * known ancestor, then DFS its whole subtree (blank rows excluded). Null when
- * there is no anchor; the current session synthesizes a row when the list has
- * not delivered it yet.
+ * Build the current session's agent family: walk up the subagent `parentId` lineage to the
+ * topmost known ancestor, then DFS its whole subtree (blank rows excluded). Null when there is
+ * no anchor; the current session synthesizes a row when the list has not delivered it yet.
  * @param fetched - detail-channel heads for COLD rows, keyed by session id.
  *   The list block serves projection values only from the projection cache, so
  *   these fill in relatives that would otherwise list pressure-only; a row's
@@ -261,7 +284,7 @@ export function agentForestOf(
   let root = currentId
   const chain = new Set<string>([currentId])
   for (;;) {
-    const parent = rows.get(root)?.parentId
+    const parent = familyParentOf(rows.get(root))
     if (parent === undefined || !rows.has(parent) || chain.has(parent)) break
     chain.add(parent)
     root = parent
@@ -270,13 +293,7 @@ export function agentForestOf(
   /** v8 ignore next 2 -- root is currentId (inserted above) or a parent verified with rows.has, so its row always exists. */
   if (rootRow === undefined) return null
 
-  const childrenOf = new Map<string, AgentChild[]>()
-  for (const [id, row] of rows) {
-    if (row.parentId === undefined || !rows.has(row.parentId)) continue
-    const list = childrenOf.get(row.parentId) ?? []
-    list.push({ id, row })
-    childrenOf.set(row.parentId, list)
-  }
+  const childrenOf = familyChildrenOf(rows)
   for (const [pid, kids] of childrenOf) {
     // Sibling order follows the parent's subagent catalog (the harness header popup's
     // own spawn order) when cached; uncataloged children fall after cataloged ones,
@@ -355,8 +372,9 @@ export interface SubagentCostFold {
 
 /** Merge the current session's SUBAGENT subtree cost: warm rows'
  * `contextTimeline` cost first, fetched slim heads (`landed`) standing in for
- * rows with no timeline value. Blank rows are not agents; the current session
- * itself is never counted — the caller already holds its own usage. */
+ * rows with no timeline value. Blank rows are not agents (see
+ * {@link familyChildrenOf} for the family edges); the current session itself is
+ * never counted — the caller already holds its own usage. */
 export function subagentCostFoldOf(
   snapshot: unknown,
   currentId: string | undefined,
@@ -364,14 +382,12 @@ export function subagentCostFoldOf(
 ): SubagentCostFold {
   const byId = asRecord(asRecord(snapshot)?.byId)
   if (byId === null || currentId === undefined || currentId === '') return { usage: null, cold: [], count: 0 }
-  const childrenOf = new Map<string, string[]>()
+  const rows = new Map<string, AgentRow>()
   for (const key of Object.keys(byId)) {
     const row = agentRowOf(byId[key])
-    if (row === null || row.blank || row.parentId === undefined) continue
-    const list = childrenOf.get(row.parentId) ?? []
-    list.push(key)
-    childrenOf.set(row.parentId, list)
+    if (row !== null && !row.blank) rows.set(key, row)
   }
+  const childrenOf = familyChildrenOf(rows)
   const parts: SessionCostUsage[] = []
   const cold: string[] = []
   const seen = new Set<string>([currentId])
@@ -379,20 +395,20 @@ export function subagentCostFoldOf(
   for (let i = 0; i < queue.length; i++) {
     const id = queue[i]
     for (const kid of childrenOf.get(id) ?? []) {
-      if (seen.has(kid)) continue
-      seen.add(kid)
-      const head = landed?.get(kid)
-      const values = agentRowOf(byId[kid])?.projections
+      if (seen.has(kid.id)) continue
+      seen.add(kid.id)
+      const head = landed?.get(kid.id)
+      const values = kid.row.projections
       if (values?.contextTimeline === undefined) {
         // A cold relative's usage rides its fetched slim head; until one lands
         // the id stays a fetch target, and a landed head is final either way.
-        if (head === undefined) cold.push(kid)
+        if (head === undefined) cold.push(kid.id)
         else if (head.cost !== undefined) parts.push(head.cost)
       } else {
         const cost = timelineOf(values.contextTimeline)?.cost
         if (cost !== undefined) parts.push(cost)
       }
-      queue.push(kid)
+      queue.push(kid.id)
     }
   }
   return { usage: parts.length > 0 ? mergeCostUsage(...parts) : null, cold, count: seen.size - 1 }

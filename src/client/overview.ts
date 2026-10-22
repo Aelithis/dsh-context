@@ -16,7 +16,7 @@ import { billedParts } from './categories'
 import { cacheHitPercent } from './format'
 import { estimateSessionCost, mergeCostUsage } from './cost'
 import type { CostCurrency, ModelBook } from './cost'
-import { agentRowOf } from './agentTree'
+import { agentRowOf, familyChildrenOf, type AgentRow } from './agentTree'
 import { activityOf, asRecord, timelineOf, type ClientCtx, type SessionsFace } from './services'
 import type { ActivityDay, ContextActivity, ContextTimeline, DefaultOverviewRange, SessionCostUsage, TimingTotals, TokenUsage, ToolTimingTotals } from '../shared/types'
 
@@ -191,31 +191,26 @@ export function rowsOfSnapshot(snapshot: unknown, workspaces?: unknown): Overvie
       // A hostile row (throwing accessor) drops whole; the list keeps working.
     }
   }
-  // Mirrors the Context tab's own cost fold (agentTree subagentCostFoldOf):
-  // childrenOf off non-blank rows' parentId, BFS with a seen-set against cycles.
-  const childrenOf = new Map<string, string[]>()
+  // The Context tab's own family edges (agentTree familyChildrenOf): each main-line row folds
+  // only its subagent subtree, so a fork seed's source lineage stays out of its family.
+  const sessionRows = new Map<string, AgentRow>()
   for (const id of Object.keys(byId)) {
     try {
       const row = agentRowOf(byId[id])
-      if (row === null || row.blank || row.parentId === undefined) continue
-      const list = childrenOf.get(row.parentId) ?? []
-      list.push(id)
-      childrenOf.set(row.parentId, list)
+      if (row !== null && !row.blank) sessionRows.set(id, row)
     } catch { /* the hostile row links nobody */ }
   }
+  const childrenOf = familyChildrenOf(sessionRows)
   for (const row of rows) {
     const timelines: (ContextTimeline | null)[] = [row.timeline]
     const activities: (ContextActivity | null)[] = [row.activity]
-    const seen = new Set<string>([row.id])
     const queue = [row.id]
     for (let i = 0; i < queue.length; i++) {
       for (const kid of childrenOf.get(queue[i]) ?? []) {
-        if (seen.has(kid)) continue
-        seen.add(kid)
-        const values = asRecord(asRecord(byId[kid])?.projectionValues)
+        const values = kid.row.projections
         timelines.push(timelineOf(values?.contextTimeline))
         activities.push(activityOf(values?.contextActivity))
-        queue.push(kid)
+        queue.push(kid.id)
       }
     }
     row.family = timelines

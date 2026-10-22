@@ -6,7 +6,7 @@ The rules dsh-context must hold on every supported `@deepseek-ai/dsh` release, a
 
 **Law.** Record only what no other artifact carries; delete what code, tests, or git history already say. Verify against the dsh sources before acting — source wins over this page. Less is ALWAYS better.
 
-Last verified: **2026-10-21** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
+Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
 
 ## 1 · Supported set
 
@@ -79,6 +79,7 @@ Last verified: **2026-10-21** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-r
 6. **Isolate per-item work over hostile objects**; every async read resolves to data or a retryable failure note — never an eternal spinner. (`src/client/timelineSource.ts`)
 7. **A pushed revision decrease resets the detail ledger** — stale reads never merge into the new head. (`src/client/timelineSource.ts`)
 8. **Fetch routes ride browser-relative spellings** (issue #159) — the client never issues a root-absolute `/api/...` URL: fetch resolves the relative form against the page's document base, so a deployment behind a path-prefixed reverse proxy (page at `/app/dsh/`) keeps its prefix, where a root-absolute spelling 404s at the gateway. (`src/client/apiRoutes.ts`)
+9. **Only a `'subagent'`-origin row draws a family edge** — a list row's `parentId` is subagent lineage only when its `origin` says so; a fork seed records the source session as `parentSession` with no `origin` (dsh forks an ordinary Session), so the fork roots its own family and never joins the source's graph, boards, comms, or cost folds. (dsh: header lineage in `packages/api/session-controller/src/list.ts` `listFields`; the row rename in `packages/api/session-controller/src/client/sessions/service.ts`; fork meta in `commands.ts`; `src/client/agentTree.ts` `familyParentOf`)
 
 - **Limitation — complete prompt sections:** a deployment registering a `complete` system-prompt section keeps ONLY that section (registry design); `promptPrefix`/`promptSuffix` are dropped there. (dsh: `packages/core/system-prompt`)
 

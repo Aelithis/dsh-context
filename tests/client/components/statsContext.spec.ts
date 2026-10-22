@@ -799,8 +799,8 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     }
     const { seat, face } = makeSeat({
       root: { running: false, updatedAt: 1 },
-      warm: { parentId: 'root', updatedAt: 2, projectionValues: { contextTimeline: head(SUB_WARM) } },
-      cold: { parentId: 'root', updatedAt: 3 },
+      warm: { parentId: 'root', origin: 'subagent', updatedAt: 2, projectionValues: { contextTimeline: head(SUB_WARM) } },
+      cold: { parentId: 'root', origin: 'subagent', updatedAt: 3 },
     })
     const Stats = makeStatsContext(kit, seat)
     const m = await mount(h(Stats, {
@@ -822,8 +822,8 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     await act(async () => {
       face.setState({
         root: { running: false, updatedAt: 1 },
-        warm: { parentId: 'root', updatedAt: 2, projectionValues: { contextTimeline: head(SUB_WARM) } },
-        cold: { parentId: 'root', updatedAt: 3 },
+        warm: { parentId: 'root', origin: 'subagent', updatedAt: 2, projectionValues: { contextTimeline: head(SUB_WARM) } },
+        cold: { parentId: 'root', origin: 'subagent', updatedAt: 3 },
       })
     })
     await flush()
@@ -859,7 +859,7 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     })
     const { seat, face } = makeSeat({
       root: { running: false, updatedAt: 1 },
-      cold: { parentId: 'root', updatedAt: 2 },
+      cold: { parentId: 'root', origin: 'subagent', updatedAt: 2 },
     })
     const Stats = makeStatsContext(kit, seat)
     const m = await mount(h(Stats, {
@@ -877,7 +877,7 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     assert.deepEqual(queryAll(flowNodes(m.container)[4], '.lc-flow-row-label').map(el => el.textContent), ['Current Agent', 'Subagents × 1?'])
     // A later snapshot tick re-folds the subtree; the sticky failure never re-fetches.
     await act(async () => {
-      face.setState({ root: { running: false, updatedAt: 1 }, cold: { parentId: 'root', updatedAt: 2 } })
+      face.setState({ root: { running: false, updatedAt: 1 }, cold: { parentId: 'root', origin: 'subagent', updatedAt: 2 } })
     })
     await flush()
     assert.deepEqual(calls, ['cold'])
@@ -898,8 +898,8 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     })
     const { seat, face } = makeSeat({
       root: { running: false, updatedAt: 1 },
-      headless: { parentId: 'root', updatedAt: 2 },
-      absent: { parentId: 'root', updatedAt: 3 },
+      headless: { parentId: 'root', origin: 'subagent', updatedAt: 2 },
+      absent: { parentId: 'root', origin: 'subagent', updatedAt: 3 },
     })
     const Stats = makeStatsContext(kit, seat)
     const m = await mount(h(Stats, {
@@ -918,8 +918,8 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
     await act(async () => {
       face.setState({
         root: { running: false, updatedAt: 1 },
-        headless: { parentId: 'root', updatedAt: 2 },
-        absent: { parentId: 'root', updatedAt: 3 },
+        headless: { parentId: 'root', origin: 'subagent', updatedAt: 2 },
+        absent: { parentId: 'root', origin: 'subagent', updatedAt: 3 },
       })
     })
     await flush()
@@ -949,7 +949,7 @@ describe('StatsContext — the real subagent-cost seat (makeSubagentCost)', () =
       calls.push(String((JSON.parse(String(init?.body)) as { sessionId?: unknown }).sessionId))
       throw new Error('must not fetch')
     })
-    const face = new FakeSessions({ root: { running: false, updatedAt: 1 }, kid: { parentId: 'root', updatedAt: 2 } })
+    const face = new FakeSessions({ root: { running: false, updatedAt: 1 }, kid: { parentId: 'root', origin: 'subagent', updatedAt: 2 } })
     const ctx = new TestClientCtx({ services: { sessions: face } })
     const Stats = makeStatsContext(kit, makeSubagentCost(asClientCtx(ctx), makeAgentHeads()))
     const m = await mount(h(Stats, {

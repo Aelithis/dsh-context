@@ -13,6 +13,7 @@ import {
   agentStatsOf,
   barSegments,
   familyHue,
+  familyParentOf,
   fmtDurationCompact,
   layoutForest,
   lineageOf,
@@ -73,6 +74,18 @@ describe('agentRowOf', () => {
       displayTitle: 1, title: null, parentId: 2, origin: false,
       running: 'yes', updatedAt: 'soon', projectionValues: 7,
     }), { running: false, blank: false, updatedAt: 0 })
+    // Only the durable subagent classification is kept; any other origin spelling drops.
+    assert.deepEqual(agentRowOf({ origin: 'team' }), { running: false, blank: false, updatedAt: 0 })
+  })
+})
+
+describe('familyParentOf', () => {
+  test('only a subagent row draws a family edge — fork seed lineage does not', () => {
+    assert.equal(familyParentOf({ parentId: 'p', origin: 'subagent', running: false, blank: false, updatedAt: 0 }), 'p')
+    // A fork seed's header carries parentId but no origin (dsh forks an ordinary Session).
+    assert.equal(familyParentOf({ parentId: 'p', running: false, blank: false, updatedAt: 0 }), undefined)
+    assert.equal(familyParentOf({ origin: 'subagent', running: false, blank: false, updatedAt: 0 }), undefined)
+    assert.equal(familyParentOf(undefined), undefined)
   })
 })
 
@@ -241,8 +254,8 @@ describe('agentForestOf', () => {
   test('a finished subagent turn marks the node done, and a running one never is', () => {
     const forest = agentForestOf(snap({
       root: row({ running: true }),
-      kid: row({ parentId: 'root', projectionValues: { subagentTiming: { settledMs: 5000, lastTurnCompleted: true } } }),
-      open: row({ parentId: 'root', projectionValues: { subagentTiming: { settledMs: 1000, active: { since: 10, through: 99 } } } }),
+      kid: row({ parentId: 'root', origin: 'subagent', projectionValues: { subagentTiming: { settledMs: 5000, lastTurnCompleted: true } } }),
+      open: row({ parentId: 'root', origin: 'subagent', projectionValues: { subagentTiming: { settledMs: 1000, active: { since: 10, through: 99 } } } }),
     }), 'root')
     assert.ok(forest !== null)
     const byId = new Map(forest.nodes.map(n => [n.id, n]))
@@ -253,7 +266,7 @@ describe('agentForestOf', () => {
     // A running session is never done, whatever its last closed turn said.
     const live = agentForestOf(snap({
       root: row({ running: true }),
-      kid: row({ parentId: 'root', running: true, projectionValues: { subagentTiming: { settledMs: 5000, lastTurnCompleted: true } } }),
+      kid: row({ parentId: 'root', origin: 'subagent', running: true, projectionValues: { subagentTiming: { settledMs: 5000, lastTurnCompleted: true } } }),
     }), 'root')
     assert.ok(live !== null)
     assert.equal(live.nodes.find(n => n.id === 'kid')?.completed, false)
@@ -342,7 +355,7 @@ describe('agentForestOf', () => {
         parentId: 'root', origin: 'subagent', updatedAt: 2,
         projectionValues: { contextPressure: { projectedTokens: 500, contextWindow: 1000 } },
       }),
-      warm: row({ parentId: 'root', projectionValues: { contextTimeline: timeline(100, 1) } }),
+      warm: row({ parentId: 'root', origin: 'subagent', projectionValues: { contextTimeline: timeline(100, 1) } }),
     }), 'root', undefined, new Map<string, unknown>([
       ['cold', composed],
       ['warm', composed],
@@ -392,19 +405,19 @@ describe('agentForestOf', () => {
     const forest = agentForestOf(snap({
       root: row({ displayTitle: 'Root', running: true, updatedAt: 5 }),
       a: row({ parentId: 'root', title: 'Child A', origin: 'subagent', updatedAt: 3 }),
-      b: row({ parentId: 'root', displayTitle: 'Child B', running: true, updatedAt: 1 }),
+      b: row({ parentId: 'root', displayTitle: 'Child B', origin: 'subagent', running: true, updatedAt: 1 }),
       // Same running state and same updatedAt: the id tiebreak orders them.
-      c2: row({ parentId: 'root', updatedAt: 3 }),
-      c1: row({ parentId: 'root', updatedAt: 3 }),
-      g: row({ parentId: 'a', updatedAt: 2 }),
+      c2: row({ parentId: 'root', origin: 'subagent', updatedAt: 3 }),
+      c1: row({ parentId: 'root', origin: 'subagent', updatedAt: 3 }),
+      g: row({ parentId: 'a', origin: 'subagent', updatedAt: 2 }),
       // An unrelated family never joins the forest.
       other: row({ displayTitle: 'Other' }),
       // A blank placeholder row is excluded (unless it is the current session).
-      blank: row({ parentId: 'root', blank: true }),
+      blank: row({ parentId: 'root', origin: 'subagent', blank: true }),
       // Garbage rows degrade out of the row set entirely.
       junk: 'not-a-row',
       // An orphan whose parent is unknown hangs off nobody.
-      orphan: row({ parentId: 'missing' }),
+      orphan: row({ parentId: 'missing', origin: 'subagent' }),
     }), 'g')
     assert.ok(forest !== null)
     assert.deepEqual(forest.nodes.map(n => n.id), ['root', 'b', 'a', 'g', 'c1', 'c2'])
@@ -423,25 +436,55 @@ describe('agentForestOf', () => {
     assert.equal(forest.solo, false)
   })
 
+  test('a forked session roots its own family and never joins the source it was cut from', () => {
+    const byId = {
+      source: row({ displayTitle: 'Source' }),
+      // The fork seed: parentId is source lineage, no origin — the harness forked an ordinary Session.
+      fork: row({ parentId: 'source', displayTitle: 'Source (1)' }),
+      kid: row({ parentId: 'source', origin: 'subagent' }),
+      forkKid: row({ parentId: 'fork', origin: 'subagent' }),
+      forkOfFork: row({ parentId: 'fork' }),
+    }
+    // The source's family holds its subagent child only — the fork is no family member.
+    const source = agentForestOf(snap(byId), 'source')
+    assert.ok(source !== null)
+    assert.deepEqual(source.nodes.map(n => n.id), ['source', 'kid'])
+    // The fork's own family: itself and its own subagents, never the source or its subagents.
+    const fork = agentForestOf(snap(byId), 'fork')
+    assert.ok(fork !== null)
+    assert.deepEqual(fork.nodes.map(n => n.id), ['fork', 'forkKid'])
+    assert.equal(fork.nodes[0].parentId, undefined)
+    // A subagent of the fork sees no further than the fork.
+    const belowFork = agentForestOf(snap(byId), 'forkKid')
+    assert.ok(belowFork !== null)
+    assert.deepEqual(belowFork.nodes.map(n => n.id), ['fork', 'forkKid'])
+    // A fork of the fork is its own root again.
+    const nested = agentForestOf(snap(byId), 'forkOfFork')
+    assert.ok(nested !== null)
+    assert.deepEqual(nested.nodes.map(n => n.id), ['forkOfFork'])
+  })
+
   test('subagent flag comes from origin or a descriptor identity', () => {
     const forest = agentForestOf(snap({
       root: row({}),
       byOrigin: row({ parentId: 'root', origin: 'subagent' }),
-      byDescriptor: row({ parentId: 'root', projectionValues: { subagent: { mode: 'one-shot', label: 'task' } } }),
     }), 'root')
     assert.ok(forest !== null)
-    const byOrigin = forest.nodes.find(n => n.id === 'byOrigin')
-    const byDescriptor = forest.nodes.find(n => n.id === 'byDescriptor')
-    assert.equal(byOrigin?.subagent, true)
-    assert.equal(byDescriptor?.subagent, true)
-    assert.equal(byDescriptor?.label, 'task')
+    assert.equal(forest.nodes.find(n => n.id === 'byOrigin')?.subagent, true)
     assert.equal(forest.nodes[0].subagent, false)
+    // The current session's own row can carry the descriptor identity as its only subagent marker.
+    const self = agentForestOf(snap({
+      self: row({ projectionValues: { subagent: { mode: 'continuable', label: 'task' } } }),
+    }), 'self')
+    assert.ok(self !== null)
+    assert.equal(self.nodes[0].subagent, true)
+    assert.equal(self.nodes[0].label, 'task')
   })
 
   test('a lineage cycle anchors at the repeated id instead of looping', () => {
     const forest = agentForestOf(snap({
-      a: row({ parentId: 'b', displayTitle: 'A' }),
-      b: row({ parentId: 'a', displayTitle: 'B' }),
+      a: row({ parentId: 'b', origin: 'subagent', displayTitle: 'A' }),
+      b: row({ parentId: 'a', origin: 'subagent', displayTitle: 'B' }),
     }), 'a')
     assert.ok(forest !== null)
     // a → b → a(chain hit): the walk roots at b, whose subtree holds both.
@@ -460,8 +503,8 @@ describe('agentForestOf', () => {
           ],
         },
       }),
-      a: row({ parentId: 'root', running: true, updatedAt: 9 }),
-      b: row({ parentId: 'root', updatedAt: 1 }),
+      a: row({ parentId: 'root', origin: 'subagent', running: true, updatedAt: 9 }),
+      b: row({ parentId: 'root', origin: 'subagent', updatedAt: 1 }),
     }), 'root')
     assert.ok(forest !== null)
     assert.deepEqual(forest.nodes.map(n => n.id), ['root', 'b', 'a'])
@@ -483,9 +526,9 @@ describe('agentForestOf', () => {
       }),
       // Insertion order a→b→c makes the sort compare the cataloged b against the
       // uncataloged a in both argument directions.
-      a: row({ parentId: 'root', updatedAt: 5 }),
-      b: row({ parentId: 'root', updatedAt: 1 }),
-      c: row({ parentId: 'root', running: true }),
+      a: row({ parentId: 'root', origin: 'subagent', updatedAt: 5 }),
+      b: row({ parentId: 'root', origin: 'subagent', updatedAt: 1 }),
+      c: row({ parentId: 'root', origin: 'subagent', running: true }),
     }), 'root')
     assert.ok(forest !== null)
     // b cataloged first; the uncataloged tail keeps the activity heuristic (running c, then a).
@@ -496,8 +539,8 @@ describe('agentForestOf', () => {
     for (const cat of ['nope', 42, [], [null], [{ id: '' }]]) {
       const forest = agentForestOf(snap({
         root: row({ projectionValues: { subagentCatalog: cat } }),
-        a: row({ parentId: 'root', updatedAt: 1 }),
-        b: row({ parentId: 'root', updatedAt: 9 }),
+        a: row({ parentId: 'root', origin: 'subagent', updatedAt: 1 }),
+        b: row({ parentId: 'root', origin: 'subagent', updatedAt: 9 }),
       }), 'root')
       assert.ok(forest !== null)
       assert.deepEqual(forest.nodes.map(n => n.id), ['root', 'b', 'a'], `catalog ${JSON.stringify(cat)} ignored`)
@@ -513,7 +556,7 @@ describe('agentForestOf', () => {
 
   test('draws the whole family, however large', () => {
     const byId: Record<string, unknown> = { root: row({}) }
-    for (let i = 0; i < 105; i++) byId['kid' + i] = row({ parentId: 'root', updatedAt: i })
+    for (let i = 0; i < 105; i++) byId['kid' + i] = row({ parentId: 'root', origin: 'subagent', updatedAt: i })
     const forest = agentForestOf(snap(byId), 'root')
     assert.ok(forest !== null)
     assert.equal(forest.nodes.length, 106)
@@ -528,7 +571,7 @@ describe('subagentCostFoldOf', () => {
   /** A row whose timeline carries the given cost (a priced row when cost is given). */
   function costRow(parentId: string | undefined, cost?: SessionCostUsage): Record<string, unknown> {
     return row({
-      ...(parentId !== undefined ? { parentId } : {}),
+      ...(parentId !== undefined ? { parentId, origin: 'subagent' } : {}),
       projectionValues: { contextTimeline: { ...timeline(100), ...(cost !== undefined ? { cost } : {}) } },
     })
   }
@@ -560,8 +603,8 @@ describe('subagentCostFoldOf', () => {
   test('a descendant without a timeline row is a cold fetch target until its head lands', () => {
     const byId = {
       root: costRow(undefined, COST_A),
-      cold: row({ parentId: 'root', projectionValues: { contextPressure: { projectedTokens: 1 } } }),
-      bare: row({ parentId: 'root' }),
+      cold: row({ parentId: 'root', origin: 'subagent', projectionValues: { contextPressure: { projectedTokens: 1 } } }),
+      bare: row({ parentId: 'root', origin: 'subagent' }),
     }
     const fold = subagentCostFoldOf(snap(byId), 'root')
     assert.equal(fold.usage, null, 'nothing warm or landed yet')
@@ -574,7 +617,7 @@ describe('subagentCostFoldOf', () => {
   })
 
   test('a landed head whose cost is absent leaves the id warm but contributes nothing', () => {
-    const byId = { root: costRow(undefined, COST_A), cold: row({ parentId: 'root' }) }
+    const byId = { root: costRow(undefined, COST_A), cold: row({ parentId: 'root', origin: 'subagent' }) }
     const landed = new Map<string, ContextTimeline>([['cold', timeline(50)]])
     const fold = subagentCostFoldOf(snap(byId), 'root', landed)
     // The head landed (no more fetch targets) but carried no cost — and the
@@ -587,7 +630,7 @@ describe('subagentCostFoldOf', () => {
   test('blank placeholders are not agents and a lineage cycle cannot loop the walk', () => {
     const byId: Record<string, unknown> = {
       root: costRow(undefined, COST_A),
-      blank: row({ parentId: 'root', blank: true, projectionValues: { contextTimeline: { ...timeline(1), cost: COST_B } } }),
+      blank: row({ parentId: 'root', origin: 'subagent', blank: true, projectionValues: { contextTimeline: { ...timeline(1), cost: COST_B } } }),
       a: row({ parentId: 'b' }),
       b: row({ parentId: 'a' }),
     }
@@ -598,11 +641,12 @@ describe('subagentCostFoldOf', () => {
   })
 
   test('a cycle reachable from the current session is cut at the revisited id', () => {
-    // The current session's row points at p, and p points back — the walk
-    // must not re-enter the current session as its own "descendant".
+    // A hostile cycle whose members all read as subagents: the current session's own
+    // row points at p, and p points back — the walk must not re-enter the current
+    // session as its own "descendant".
     const byId: Record<string, unknown> = {
-      root: row({ parentId: 'p', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_A } } }),
-      p: row({ parentId: 'root', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_B } } }),
+      root: row({ parentId: 'p', origin: 'subagent', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_A } } }),
+      p: row({ parentId: 'root', origin: 'subagent', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_B } } }),
     }
     const fold = subagentCostFoldOf(snap(byId), 'root')
     assert.deepEqual(fold.usage, COST_B, 'p counts once; the current session never counts as its own child')
@@ -614,9 +658,9 @@ describe('subagentCostFoldOf', () => {
     const byId = {
       root: costRow(undefined, COST_A),
       junkRow: 5,
-      hostileTimeline: row({ parentId: 'root', projectionValues: { contextTimeline: 'garbage' } }),
+      hostileTimeline: row({ parentId: 'root', origin: 'subagent', projectionValues: { contextTimeline: 'garbage' } }),
       hostileCost: row({
-        parentId: 'root',
+        parentId: 'root', origin: 'subagent',
         projectionValues: { contextTimeline: { ...timeline(1), cost: { junk: 5, p: { m: { peak: { uncached: 'x', cacheRead: 7 } } } } } },
       }),
     }
@@ -626,6 +670,19 @@ describe('subagentCostFoldOf', () => {
     assert.deepEqual(fold.usage, { p: { m: { peak: { uncached: 0, cacheRead: 7, cacheWrite: 0, output: 0 } } } })
     assert.deepEqual(fold.cold, [])
     assert.equal(fold.count, 2, 'the non-row never joined the walk')
+  })
+
+  test('a forked session’s subtree is no subagent cost — the fork anchors its own', () => {
+    const byId: Record<string, unknown> = {
+      root: costRow(undefined, COST_A),
+      // The fork seed: parentId is source lineage, no origin.
+      fork: row({ parentId: 'root', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_B } } }),
+      forkKid: row({ parentId: 'fork', origin: 'subagent', projectionValues: { contextTimeline: { ...timeline(1), cost: COST_A } } }),
+    }
+    // The source pays no fork cost (and the fork's own subagent is not beneath it).
+    assert.deepEqual(subagentCostFoldOf(snap(byId), 'root'), { usage: null, cold: [], count: 0 })
+    // Anchored at the fork, only its own subagent subtree counts — never the source.
+    assert.deepEqual(subagentCostFoldOf(snap(byId), 'fork'), { usage: COST_A, cold: [], count: 1 })
   })
 })
 
@@ -843,9 +900,9 @@ describe('layoutForest', () => {
 describe('lineageOf', () => {
   const forest = agentForestOf(snap({
     root: row({}),
-    a: row({ parentId: 'root' }),
-    b: row({ parentId: 'root' }),
-    g: row({ parentId: 'a' }),
+    a: row({ parentId: 'root', origin: 'subagent' }),
+    b: row({ parentId: 'root', origin: 'subagent' }),
+    g: row({ parentId: 'a', origin: 'subagent' }),
   }), 'root')
   assert.ok(forest !== null)
 
@@ -865,8 +922,8 @@ describe('lineageOf', () => {
 
   test('a parentage cycle terminates instead of looping', () => {
     const cycle = agentForestOf(snap({
-      a: row({ parentId: 'b' }),
-      b: row({ parentId: 'a' }),
+      a: row({ parentId: 'b', origin: 'subagent' }),
+      b: row({ parentId: 'a', origin: 'subagent' }),
     }), 'a')
     assert.ok(cycle !== null)
     assert.deepEqual([...lineageOf(cycle, 'a') ?? []].sort(), ['a', 'b'])
