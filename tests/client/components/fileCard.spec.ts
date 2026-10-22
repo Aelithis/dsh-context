@@ -114,13 +114,13 @@ describe('FileCard — header, rows, and filters', () => {
 
     const rows = queryAll(m.container, '.lc-fa-row')
     assert.equal(rows.length, 5)
-    assert.deepEqual(rows.map(r => r.title), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
-    const first = rows[0]
-    assert.ok(first.querySelector('.lc-fa-path em')?.textContent === '/var/')
-    assert.ok(first.querySelector('.lc-fa-path b')?.textContent === 'many.log')
-    assert.ok(text(first).includes('9')) // read ×9 badge
-    assert.equal(queryAll(first, '.lc-fa-badge').length, 1) // read only
-    assert.ok(first.querySelector('.lc-fa-time') !== null)
+    assert.deepEqual(rows.map(r => r.title), ['/src/a.ts', 'solo.md', '/shots/ui.png', '/src/', '/var/many.log'])
+    const logRow = rowByTitle(m.container, '/var/many.log')
+    assert.ok(logRow.querySelector('.lc-fa-path em')?.textContent === '/var/')
+    assert.ok(logRow.querySelector('.lc-fa-path b')?.textContent === 'many.log')
+    assert.ok(text(logRow).includes('9')) // read ×9 badge
+    assert.equal(queryAll(logRow, '.lc-fa-badge').length, 1) // read only
+    assert.ok(logRow.querySelector('.lc-fa-time') !== null)
     const aRow = rowByTitle(m.container, '/src/a.ts')
     assert.ok(aRow.querySelector('.lc-fa-path em')?.textContent === '/src/')
     assert.ok(aRow.querySelector('.lc-fa-path b')?.textContent === 'a.ts')
@@ -159,7 +159,7 @@ describe('FileCard — header, rows, and filters', () => {
     await click(chipByLabel(m.container, 'Images'))
     assert.deepEqual(paths(), ['/shots/ui.png'])
     await click(chipByLabel(m.container, 'Read'))
-    assert.deepEqual(paths(), ['/var/many.log', '/src/a.ts', '/shots/ui.png'])
+    assert.deepEqual(paths(), ['/src/a.ts', '/shots/ui.png', '/var/many.log'])
     await click(chipByLabel(m.container, 'Read'))
     assert.equal(paths().length, 5)
     await m.unmount()
@@ -197,6 +197,7 @@ describe('FileCard — header, rows, and filters', () => {
       },
     }
     const m = await mount(h(FileCard, { activity }))
+    await click(queryAll(m.container, '.lc-fa-sort .lc-gran-btn')[0])
     const titles = () => queryAll(m.container, '.lc-fa-row').map(r => r.title)
     assert.deepEqual(titles(), ['/logs/x.log', '/src/idx.md', '/code/y.ts', '/src/pat.txt'])
     await click(chipByLabel(m.container, 'Read'))
@@ -220,16 +221,16 @@ describe('FileCard — header, rows, and filters', () => {
     await m.unmount()
   })
 
-  test('the sort toggle defaults to most-active and switches to lines, latest, path, and name', async () => {
+  test('the sort toggle defaults to line changes and switches to most-active, latest, path, and name', async () => {
     const m = await mount(h(FileCard, { activity: richActivity() }))
     const titles = () => queryAll(m.container, '.lc-fa-row').map(r => r.title)
     const sortBtns = queryAll(m.container, '.lc-fa-sort .lc-gran-btn')
     assert.equal(sortBtns.length, 5)
+    assert.ok(sortBtns[1].className.includes('lc-gran-on'))
+    assert.deepEqual(titles(), ['/src/a.ts', 'solo.md', '/shots/ui.png', '/src/', '/var/many.log'])
+    await click(sortBtns[0])
     assert.ok(sortBtns[0].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
-    await click(sortBtns[1])
-    assert.ok(sortBtns[1].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(), ['solo.md', '/src/a.ts', '/var/many.log', '/shots/ui.png', '/src/'])
     await click(sortBtns[2])
     assert.ok(sortBtns[2].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/var/many.log', '/shots/ui.png', 'solo.md', '/src/a.ts', '/src/'])
@@ -239,9 +240,9 @@ describe('FileCard — header, rows, and filters', () => {
     await click(sortBtns[4])
     assert.ok(sortBtns[4].className.includes('lc-gran-on'))
     assert.deepEqual(titles(), ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png'])
-    await click(sortBtns[0])
-    assert.ok(sortBtns[0].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
+    await click(sortBtns[1])
+    assert.ok(sortBtns[1].className.includes('lc-gran-on'))
+    assert.deepEqual(titles(), ['/src/a.ts', 'solo.md', '/shots/ui.png', '/src/', '/var/many.log'])
     await m.unmount()
   })
 
@@ -261,6 +262,20 @@ describe('FileCard — header, rows, and filters', () => {
     const sortBtns = queryAll(m.container, '.lc-fa-sort .lc-gran-btn')
     await click(sortBtns[4])
     assert.deepEqual(queryAll(m.container, '.lc-fa-row').map(r => r.title), ['/a/x.ts', '/b/x.ts', '/d/x.ts', 'C:\\repo\\x.ts', '/a/z.ts'])
+    await m.unmount()
+  })
+
+  test('the line sort breaks equal churn on the full path, not the displayed path', async () => {
+    const activity: FileActivity = {
+      entries: [
+        entry('/x/z.ts', { writes: 1, added: 2, ops: [fileOp(2, 'write', 'edit')] }),
+        entry('/w/a.ts', { writes: 1, added: 2, ops: [fileOp(1, 'write', 'edit')] }),
+      ],
+      totals: { read: { files: 0, ops: 0 }, write: { files: 2, ops: 2 }, search: { files: 0, ops: 0 }, image: { files: 0, ops: 0 }, added: 4, removed: 0 },
+    }
+    const m = await mount(h(FileCard, { activity, workspace: '/w' }))
+    // The raw '/w/a.ts' sorts before '/x/z.ts', while the displayed 'a.ts' would sort after it.
+    assert.deepEqual(queryAll(m.container, '.lc-fa-row').map(r => r.title), ['/w/a.ts', '/x/z.ts'])
     await m.unmount()
   })
 
@@ -284,12 +299,6 @@ describe('FileCard — header, rows, and filters', () => {
     m = await mount(h(FileCard, { activity: richActivity() }))
     assert.ok(sortBtns(m.container)[4].className.includes('lc-gran-on'))
     assert.deepEqual(titles(m.container), ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png'])
-    await m.unmount()
-
-    settings.set('defaultFileSort', 'lines')
-    m = await mount(h(FileCard, { activity: richActivity() }))
-    assert.ok(sortBtns(m.container)[1].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(m.container), ['solo.md', '/src/a.ts', '/var/many.log', '/shots/ui.png', '/src/'])
     await m.unmount()
 
     // The stored preference resets the default; in-card toggling never writes back.

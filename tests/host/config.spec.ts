@@ -26,7 +26,7 @@ describe('Config validator (cordis Standard Schema face)', () => {
       defaultTrendMode: 'total',
       defaultDeltaBase: 'step',
       defaultToolSort: 'count',
-      defaultFileSort: 'count',
+      defaultFileSort: 'lines',
       insightsEntry: 'show',
       defaultDurationCurve: 'show',
       overviewAutoSteps: '200',
@@ -85,7 +85,7 @@ describe('preference fields (the Config-form generation surface)', () => {
     assert.equal(deref(resolved.defaultTrendMode), 'total')
     assert.equal(deref(resolved.defaultDeltaBase), 'step')
     assert.equal(deref(resolved.defaultToolSort), 'count')
-    assert.equal(deref(resolved.defaultFileSort), 'count')
+    assert.equal(deref(resolved.defaultFileSort), 'lines')
     assert.equal(deref(resolved.insightsEntry), 'show')
     assert.equal(deref(resolved.defaultDurationCurve), 'show')
     assert.equal(deref(resolved.overviewAutoSteps), '200')
@@ -96,9 +96,9 @@ describe('preference fields (the Config-form generation surface)', () => {
   })
 
   test('a stored preference survives the resolve', () => {
-    const resolved = Config({ defaultPlacement: 'sidebar', defaultFileSort: 'lines', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' })
+    const resolved = Config({ defaultPlacement: 'sidebar', defaultFileSort: 'count', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' })
     assert.equal(deref(resolved.defaultPlacement), 'sidebar')
-    assert.equal(deref(resolved.defaultFileSort), 'lines')
+    assert.equal(deref(resolved.defaultFileSort), 'count')
     assert.equal(deref(resolved.insightsEntry), 'hide')
     assert.equal(deref(resolved.overviewAutoSteps), 'off')
     assert.equal(deref(resolved.defaultOverviewRange), '7d')

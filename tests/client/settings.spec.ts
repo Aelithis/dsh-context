@@ -43,7 +43,7 @@ describe('createContextSettings defaults', () => {
       mode: 'total',
       deltaBase: 'step',
       toolSort: 'count',
-      fileSort: 'count',
+      fileSort: 'lines',
       insightsEntry: 'show',
       durationCurve: 'show',
       overviewAutoSteps: '200',
@@ -58,7 +58,7 @@ describe('createContextSettings defaults', () => {
     assert.equal(s.defaultTrendMode(), 'total')
     assert.equal(s.defaultDeltaBase(), 'step')
     assert.equal(s.defaultToolSort(), 'count')
-    assert.equal(s.defaultFileSort(), 'count')
+    assert.equal(s.defaultFileSort(), 'lines')
     assert.equal(s.insightsEntry(), 'show')
     assert.equal(s.defaultDurationCurve(), 'show')
     assert.equal(s.overviewAutoSteps(), '200')
@@ -297,7 +297,7 @@ describe('attach', () => {
         mode: 'total',
         deltaBase: 'step',
         toolSort: 'count',
-        fileSort: 'count',
+        fileSort: 'lines',
         insightsEntry: 'show',
         durationCurve: 'show',
         overviewAutoSteps: '200',
@@ -322,7 +322,7 @@ describe('attach', () => {
     assert.equal(s.defaultTrendMode(), 'total')
     assert.equal(s.defaultDeltaBase(), 'step')
     assert.equal(s.defaultToolSort(), 'count')
-    assert.equal(s.defaultFileSort(), 'count')
+    assert.equal(s.defaultFileSort(), 'lines')
     assert.equal(s.insightsEntry(), 'show')
     assert.equal(s.defaultDurationCurve(), 'show')
     assert.equal(s.overviewAutoSteps(), '200')
@@ -381,7 +381,7 @@ describe('attach', () => {
     const s = createContextSettings()
     s.attach(new TestSettingsScope({
       status: 'ready',
-      value: { defaultPlacement: 'all', defaultGranularity: 'step', defaultTrendMode: 'total', defaultDeltaBase: 'step', defaultToolSort: 'count', defaultFileSort: 'count', insightsEntry: 'show', overviewAutoSteps: '200', defaultOverviewRange: 'all' },
+      value: { defaultPlacement: 'all', defaultGranularity: 'step', defaultTrendMode: 'total', defaultDeltaBase: 'step', defaultToolSort: 'count', defaultFileSort: 'lines', insightsEntry: 'show', overviewAutoSteps: '200', defaultOverviewRange: 'all' },
       writable: false,
     }))
     assert.equal(s.defaultPlacement(), 'all')
@@ -389,7 +389,7 @@ describe('attach', () => {
     assert.equal(s.defaultTrendMode(), 'total')
     assert.equal(s.defaultDeltaBase(), 'step')
     assert.equal(s.defaultToolSort(), 'count')
-    assert.equal(s.defaultFileSort(), 'count')
+    assert.equal(s.defaultFileSort(), 'lines')
     assert.equal(s.insightsEntry(), 'show')
     assert.equal(s.overviewAutoSteps(), '200')
     assert.equal(s.defaultOverviewRange(), 'all')
@@ -447,9 +447,9 @@ describe('attach', () => {
     scope.emit({ status: 'ready', value: { insightsEntry: 'hide' }, writable: false })
     assert.equal(calls, 8)
     assert.equal(s.insightsEntry(), 'hide')
-    scope.emit({ status: 'ready', value: { defaultFileSort: 'lines' }, writable: false })
+    scope.emit({ status: 'ready', value: { defaultFileSort: 'count' }, writable: false })
     assert.equal(calls, 9)
-    assert.equal(s.defaultFileSort(), 'lines')
+    assert.equal(s.defaultFileSort(), 'count')
   })
 
   test('an identical scope snapshot does not notify listeners', () => {
@@ -510,7 +510,7 @@ describe('attach', () => {
       mode: 'total',
       deltaBase: 'step',
       toolSort: 'count',
-      fileSort: 'count',
+      fileSort: 'lines',
       insightsEntry: 'show',
       durationCurve: 'show',
       overviewAutoSteps: '200',

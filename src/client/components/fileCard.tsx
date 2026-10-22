@@ -86,19 +86,20 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
       filter === 'read' ? e.reads : filter === 'write' ? e.writes : filter === 'search' ? e.searches : e.ops.length
     const linesOf = (e: FileEntry): number => e.added + e.removed
     const byLatest = (a: FileEntry, b: FileEntry): number => b.ops[0].seq - a.ops[0].seq
-    const byVolume = (keyOf: (e: FileEntry) => number) => (a: FileEntry, b: FileEntry): number =>
-      keyOf(b) - keyOf(a) || byLatest(a, b)
+    const byPath = (a: FileEntry, b: FileEntry): number => (a.path < b.path ? -1 : 1)
+    const byVolume = (keyOf: (e: FileEntry) => number, tie: (a: FileEntry, b: FileEntry) => number) =>
+      (a: FileEntry, b: FileEntry): number => keyOf(b) - keyOf(a) || tie(a, b)
     const byName = (a: FileEntry, b: FileEntry): number => {
       const an = baseNameOf(displayOf(a))
       const bn = baseNameOf(displayOf(b))
-      return an !== bn ? (an < bn ? -1 : 1) : (a.path < b.path ? -1 : 1)
+      return an !== bn ? (an < bn ? -1 : 1) : byPath(a, b)
     }
     const comparators: Record<DefaultFileSort, (a: FileEntry, b: FileEntry) => number> = {
-      count: byVolume(countOf),
-      lines: byVolume(linesOf),
+      count: byVolume(countOf, byLatest),
+      lines: byVolume(linesOf, byPath),
       latest: byLatest,
       name: byName,
-      path: (a, b) => (a.path < b.path ? -1 : 1),
+      path: byPath,
     }
     const shown = activity.entries
       .filter(e => matches(e, filter) && (q === '' || displayOf(e).toLowerCase().includes(q)))
