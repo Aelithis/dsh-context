@@ -34,7 +34,7 @@ import type { StatsJump } from './statsContext'
 import { makeStatsTiming } from './statsTiming'
 import { makeStatsTokens } from './statsTokens'
 import { makeLegend, makeStackedBar } from './stackedBar'
-import { aggregateByTurn, attachMarkers, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
+import { aggregateByTurn, attachMarkers, boundaryIndex, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
 import { makeTrendOverview } from './trendOverview'
 import { stepStampOf } from './browserHelpers'
 import { cachedByData, assembleCached } from './derivedCache'
@@ -179,6 +179,8 @@ export function makeContextView(
     }, [data, sessionId, overviewAutoAt])
     const [durationCurve, setDurationCurve] = useState(() => settings.defaultDurationCurve() === 'show')
     const [focusTurn, setFocusTurn] = useState<number | null>(null)
+    // A step the trend must scroll to and hold on screen (a boundary event row's jump).
+    const [focusSeq, setFocusSeq] = useState<number | null>(null)
     const [jumpSeq, setJumpSeq] = useState<number | null>(null)
     const [hoverCat, setHoverCat] = useState<string | null>(null)
     const [focusCat, setFocusCat] = useState<string | null>(null)
@@ -582,7 +584,27 @@ export function makeContextView(
         return m
       })
     }, [data])
-    const focusInject = useCallback((ev: ContextEventRecord): void => {
+    // A boundary row only links when its landing step is still retained: a just-compacted live tail has no next
+    // request yet, and a link that cannot land would promise a jump it cannot make.
+    const canEventFocus = useCallback((ev: ContextEventRecord): boolean => (
+      ev.kind !== 'compaction' && ev.kind !== 'prune' ? true : boundaryIndex(requests, ev.seq) >= 0
+    ), [requests])
+    const focusEvent = useCallback((ev: ContextEventRecord): void => {
+      if (ev.kind === 'compaction' || ev.kind === 'prune') {
+        // A boundary event sits in the gap before the step it contributed to — the first request logged after it,
+        // where the trend draws its ✂ marker. Pin that step for the trend and the browser; the overview ribbon has
+        // no bar to scroll to, so the jump also leaves that face for step bars.
+        const idx = boundaryIndex(requests, ev.seq)
+        /* v8 ignore next 1 -- canEventFocus keeps a landless boundary row out of the link, so this guard only backs up a direct caller. */
+        if (idx < 0) return
+        const seq = requests[idx].seq
+        setOverview(false)
+        setGranularity('step')
+        setSelectedSeq(seq)
+        setFocusSeq(seq)
+        revealCard(rootRef.current, '[data-lc-trend]')
+        return
+      }
       const node = nodeOfSeq.get(ev.seq)
       const step = locateStepOf(requests, ev.seq, node?.gone)
       // Removed before any step dispatched it: there is nothing left to show.
@@ -660,7 +682,7 @@ export function makeContextView(
       onHoverTurn: handleHoverTurn,
     }
     const trendCard = (
-      <div className="lc-card">
+      <div className="lc-card" data-lc-trend>
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('trend.title')}</span>
           <span className="lc-gran lc-trend-mods" role="group">
@@ -755,12 +777,14 @@ export function makeContextView(
                     key={sessionId}
                     {...trendBase}
                     focusTurn={focusTurn}
+                    focusSeq={focusSeq}
                     adaptive={adaptive}
                     dna={dnaBands}
                     dnaAt={dnaAt}
                     onPickBand={revealBand}
                     onPickTurn={(turn) => { setGranularity('turn'); setFocusTurn(turn) }}
                     onFocusTurnHandled={() => { setFocusTurn(null) }}
+                    onFocusSeqHandled={() => { setFocusSeq(null) }}
                   />
                 )}
               <RequestDetail
@@ -859,7 +883,13 @@ export function makeContextView(
                   })}
                 </div>
               </div>
-              <EventList events={shownEvents} state={source.detailState} onRetry={source.retryDetail} onInjectFocus={focusInject} />
+              <EventList
+                events={shownEvents}
+                state={source.detailState}
+                onRetry={source.retryDetail}
+                onEventFocus={focusEvent}
+                canEventFocus={canEventFocus}
+              />
             </div>
             <FileCard activity={fileActivity} workspace={workspace} stampOf={opStampOf}
               onPreview={previewFile} onOpen={fileOpener} onLocate={locateFileOp}

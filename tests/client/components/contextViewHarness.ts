@@ -2,6 +2,7 @@
 
 import { act, createElement as h, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
+import assert from 'node:assert/strict'
 import { afterEach, vi } from 'vitest'
 import { makeContextView } from '../../../src/client/components/contextView'
 import { makeAgentHeads } from '../../../src/client/agentHeads'
@@ -10,7 +11,7 @@ import { createContextSettings } from '../../../src/client/settings'
 import type { UseChatLike } from '../../../src/client/services'
 import type { ContextTimeline } from '../../../src/shared/types'
 import { TestClientCtx, asClientCtx } from '../helpers/harness'
-import { makeKit, mount, queryAll, text } from '../helpers/kit'
+import { makeKit, mount, query, queryAll, text } from '../helpers/kit'
 
 // pluginInfo's npm-registry probe stays inert (and '0.0.0-dev' short-circuits it anyway).
 vi.stubGlobal('fetch', () => Promise.resolve({ ok: false } as Response))
@@ -100,6 +101,22 @@ export function makeScroller(): HTMLElement {
   const scroller = document.createElement('div')
   scroller.setAttribute('data-conversation-scroll', '')
   return scroller
+}
+
+/** A scrollport the reveal probes can see as operative (jsdom lays out nothing): fixed overflow metrics. */
+export function overflowingScroller(scrollHeight: number, clientHeight = 300): HTMLElement {
+  const scroller = makeScroller()
+  scroller.style.overflowY = 'auto'
+  Object.defineProperty(scroller, 'scrollHeight', { value: scrollHeight })
+  Object.defineProperty(scroller, 'clientHeight', { value: clientHeight })
+  return scroller
+}
+
+/** The events card lists newest-first: pick the row whose label carries this text, and its label link. */
+export function eventLink(container: ParentNode, label: string): HTMLElement {
+  const row = queryAll(container, '.lc-event').find(r => text(r).includes(label))
+  assert.ok(row !== undefined, `no event row labelled ${label}`)
+  return query(row, '.lc-event-jump')
 }
 
 /** Mount inside a `[data-conversation-scroll]` scroller so the view's shared-scrollport probes find it. */

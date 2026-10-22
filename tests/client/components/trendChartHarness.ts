@@ -74,10 +74,11 @@ interface Spies {
   hoverTurn: (number | null)[]
   pickTurn: number[]
   focusHandled: number
+  seqFocusHandled: number
 }
 
-function makeSpies(): { spies: Spies; handlers: Pick<TrendChartProps, 'onSelect' | 'onHover' | 'onHoverTurn' | 'onPickTurn' | 'onFocusTurnHandled'> } {
-  const spies: Spies = { select: [], hover: [], hoverTurn: [], pickTurn: [], focusHandled: 0 }
+function makeSpies(): { spies: Spies; handlers: Pick<TrendChartProps, 'onSelect' | 'onHover' | 'onHoverTurn' | 'onPickTurn' | 'onFocusTurnHandled' | 'onFocusSeqHandled'> } {
+  const spies: Spies = { select: [], hover: [], hoverTurn: [], pickTurn: [], focusHandled: 0, seqFocusHandled: 0 }
   return {
     spies,
     handlers: {
@@ -86,6 +87,7 @@ function makeSpies(): { spies: Spies; handlers: Pick<TrendChartProps, 'onSelect'
       onHoverTurn: (t) => { spies.hoverTurn.push(t) },
       onPickTurn: (t) => { spies.pickTurn.push(t) },
       onFocusTurnHandled: () => { spies.focusHandled++ },
+      onFocusSeqHandled: () => { spies.seqFocusHandled++ },
     },
   }
 }
@@ -101,6 +103,7 @@ function propsOf(requests: RequestRecord[], over: Partial<TrendChartProps> = {})
     granularity: 'step',
     mode: 'total',
     focusTurn: null,
+    focusSeq: null,
     hoverCat: null,
     ...handlers,
     ...over,

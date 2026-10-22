@@ -34,6 +34,8 @@ export interface TrendChartProps {
   granularity: 'step' | 'turn'
   mode: 'total' | 'delta'
   focusTurn: number | null
+  /** One-shot scroll request for a STEP record (a boundary event jump): center that bar and consume the request. */
+  focusSeq: number | null
   hoverCat: string | null
   /** An unrecognized key (a stale or hostile state) degrades to the unfocused chart. */
   focusCat?: string | null
@@ -50,6 +52,7 @@ export interface TrendChartProps {
   onHoverTurn: (turn: number | null) => void
   onPickTurn: (turn: number) => void
   onFocusTurnHandled: () => void
+  onFocusSeqHandled: () => void
 }
 
 /** One bar per turn: a run of equal turns collapses to its LAST record (tagged `stepCount`), its `activeMs` the steps' SUM. */
@@ -90,14 +93,17 @@ export function attachMarkers(requests: RequestRecord[], events: ContextEventRec
   const markers: (ContextEventRecord | undefined)[] = new Array<ContextEventRecord | undefined>(requests.length)
   for (const ev of events) {
     if (ev.kind !== 'compaction' && ev.kind !== 'prune') continue
-    for (let r = 0; r < requests.length; r++) {
-      if (requests[r].seq >= ev.seq) {
-        if (markers[r] === undefined) markers[r] = ev
-        break
-      }
-    }
+    const i = boundaryIndex(requests, ev.seq)
+    if (i >= 0 && markers[i] === undefined) markers[i] = ev
   }
   return markers
+}
+
+/** The index of the step a boundary event attaches to: the first request logged at or after it. -1 when the event
+ * sits past the retained log. */
+export function boundaryIndex(requests: RequestRecord[], seq: number): number {
+  for (let i = 0; i < requests.length; i++) if (requests[i].seq >= seq) return i
+  return -1
 }
 
 /** The chat→Context jump's target: the turn bar whose closing reply was clicked (the relayed seq is a turn's LAST
@@ -220,6 +226,11 @@ export function trendTipRows(
 
 export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactElement {
   const { t, fmt, fmtDuration, eventLabel, eventAt, catLabel } = kit
+
+  /** Center the bar at `idx` in the chart's viewport: where a one-shot focus lands. */
+  const centerBar = (el: HTMLDivElement, idx: number): void => {
+    el.scrollLeft = Math.max(0, idx * (BAR_W + BAR_GAP) + BAR_W / 2 - el.clientWidth / 2)
+  }
 
   const CHART_H = 112
   // Mirrored by .lc-axis-q1/.lc-axis-q3 in trendChart.css: chart top 18 + a quarter/three-quarters of the 112px bar
@@ -679,12 +690,19 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
         lastGranRef.current = props.granularity
         scrolledOnce.current = false
       }
-      // A strip-clicked focus turn centers its bar instead of the newest anchor, consumed once via onFocusTurnHandled.
-      if (props.focusTurn !== null) {
+      // A one-shot focus — a boundary event row's step, or a strip-clicked turn — centers its bar and consumes itself.
+      if (props.focusSeq !== null) {
+        const idx = requests.findIndex(r => r.seq === props.focusSeq)
+        if (idx >= 0) {
+          scrolledOnce.current = true
+          centerBar(el, idx)
+        }
+        props.onFocusSeqHandled()
+      } else if (props.focusTurn !== null) {
         const gi = groups.findIndex(g => g.turn === props.focusTurn)
         if (gi >= 0) {
           scrolledOnce.current = true
-          el.scrollLeft = Math.max(0, gi * (BAR_W + BAR_GAP) + BAR_W / 2 - el.clientWidth / 2)
+          centerBar(el, gi)
         }
         props.onFocusTurnHandled()
       } else if (!scrolledOnce.current) {
@@ -702,7 +720,7 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
       measureVisible(el)
       syncWindowRef.current(el)
       // A DNA↔stacked or total↔delta switch changes what the window maximum means, so re-measure rather than ride a stale adaptive scale.
-    }, [props.granularity, props.focusTurn, requests, adaptive, dnaDeltaOn])
+    }, [props.granularity, props.focusTurn, props.focusSeq, requests, adaptive, dnaDeltaOn])
 
     // The observer needs the LATEST measure closure (it captures `requests`/`delta`); a ref keeps it fresh
     // without tearing the observer down.

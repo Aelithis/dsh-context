@@ -18,9 +18,12 @@ export interface EventListProps {
    * retry button — an un-fetched list is not an empty one. */
   state?: DetailState
   onRetry?: () => void
-  /** Reveal an injection's own context item in the Context Browser: its label becomes a link (hover underline).
-   * Absent — every row keeps a plain label. */
-  onInjectFocus?: (ev: ContextEventRecord) => void
+  /** A jumpable row's click: an injection reveals its item, a compaction/prune pins the step it landed on. Its
+   * label becomes a link (hover underline); absent — every row keeps a plain label. */
+  onEventFocus?: (ev: ContextEventRecord) => void
+  /** Whether a jumpable row has a landing spot at all (a boundary row past the retained log has none);
+   * absent — every jumpable kind links. */
+  canEventFocus?: (ev: ContextEventRecord) => boolean
 }
 
 export function makeEventText(t: Translate): {
@@ -118,9 +121,10 @@ export function makeEventList(kit: ViewKit): (props: EventListProps) => ReactEle
           // and an index-bearing key would shift EVERY existing row's key — a full-list remount on every push.
           // Narrow cards (phone panes): the row wraps, folding the meta tail onto line 2 instead of crushing
           // the label into a scrollbar.
-          // An injection's label doubles as the link into the Context Browser (the row's own context item);
-          // every other kind keeps a plain label.
-          const reveal = ev.kind === 'inject' ? props.onInjectFocus : undefined
+          const jumpable = ev.kind === 'inject' || ev.kind === 'compaction' || ev.kind === 'prune'
+          const reveal = jumpable && (props.canEventFocus === undefined || props.canEventFocus(ev))
+            ? props.onEventFocus
+            : undefined
           return (
             <div key={ev.seq} className="lc-event @max-[380px]/lc-card:flex-wrap">
               <span className={'lc-event-icon lc-event-' + ev.kind}>{glyph}</span>

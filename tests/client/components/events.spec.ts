@@ -190,29 +190,59 @@ describe('EventList', () => {
     await m.unmount()
   })
 
-  test('an injection label links into the browser; other kinds and a handler-less list keep plain labels', async () => {
+  test('inject, compaction and prune rows link; other kinds and a handler-less list keep plain labels', async () => {
     const events = [
       ev({ seq: 1, kind: 'inject', form: 'notice', name: 'hook' }),
-      ev({ seq: 2, kind: 'prune' }),
+      ev({ seq: 2, kind: 'compaction', count: 2 }),
+      ev({ seq: 3, kind: 'prune' }),
+      ev({ seq: 4, kind: 'model', from: 'a', to: 'b' }),
     ]
     const focused: ContextEventRecord[] = []
-    const m = await mount(h(EventList, { events, onInjectFocus: e => { focused.push(e) } }))
+    const m = await mount(h(EventList, { events, onEventFocus: e => { focused.push(e) } }))
     const rows = queryAll(m.container, '.lc-event')
-    // Newest first: the prune row leads, and only the injection becomes a link.
+    // Newest first: only the model-switch row stays a plain label.
     assert.equal(rows[0].querySelector('.lc-event-jump'), null)
     assert.equal(query(rows[0], '.lc-event-label').tagName, 'SPAN')
-    const link = query(rows[1], '.lc-event-jump')
+    const prune = query(rows[1], '.lc-event-jump')
+    assert.equal(prune.tagName, 'BUTTON')
+    assert.equal(prune.textContent, 'Tool output pruned')
+    const compaction = query(rows[2], '.lc-event-jump')
+    assert.equal(compaction.tagName, 'BUTTON')
+    assert.ok(compaction.textContent?.includes('Context compacted'))
+    const link = query(rows[3], '.lc-event-jump')
     assert.equal(link.tagName, 'BUTTON')
     assert.equal(link.textContent, 'Notice · hook')
     await click(link)
-    assert.deepEqual(focused.map(e => e.seq), [1])
+    await click(compaction)
+    await click(prune)
+    assert.deepEqual(focused.map(e => e.seq), [1, 2, 3])
     await m.unmount()
 
     // No handler (a view with no browser to open): every label stays a plain span.
     const plain = await mount(h(EventList, { events }))
     assert.equal(queryAll(plain.container, '.lc-event-jump').length, 0)
-    assert.equal(queryAll(plain.container, '.lc-event-label').length, 2)
+    assert.equal(queryAll(plain.container, '.lc-event-label').length, 4)
     await plain.unmount()
+  })
+
+  test('a row the view cannot land on stays a plain label', async () => {
+    const events = [
+      ev({ seq: 1, kind: 'inject', form: 'notice', name: 'hook' }),
+      ev({ seq: 2, kind: 'compaction', count: 2 }),
+    ]
+    const focused: ContextEventRecord[] = []
+    const m = await mount(h(EventList, {
+      events,
+      onEventFocus: e => { focused.push(e) },
+      canEventFocus: e => e.kind === 'inject',
+    }))
+    const rows = queryAll(m.container, '.lc-event')
+    assert.equal(rows[0].querySelector('.lc-event-jump'), null, 'the compaction has no landing step')
+    assert.equal(query(rows[0], '.lc-event-label').tagName, 'SPAN')
+    assert.equal(query(rows[1], '.lc-event-jump').tagName, 'BUTTON')
+    await click(query(rows[1], '.lc-event-jump'))
+    assert.deepEqual(focused.map(e => e.seq), [1])
+    await m.unmount()
   })
 })
 

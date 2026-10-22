@@ -257,6 +257,17 @@ describe('TrendChart scroll anchoring', () => {
     return out
   }
 
+  /** The focus tests target a bar near the start: a viewport narrower than that bar's centered offset pins the scroll. */
+  async function narrowViewport(body: () => Promise<void>): Promise<void> {
+    const saved = viewport.clientW
+    viewport.clientW = 30
+    try {
+      await body()
+    } finally {
+      viewport.clientW = saved
+    }
+  }
+
   test('the end-anchor sticks only near the end', async () => {
     const reqs = manySteps()
     const { handlers } = makeSpies()
@@ -333,9 +344,7 @@ describe('TrendChart scroll anchoring', () => {
   })
 
   test('focusTurn scroll-centers the target turn bar once; unknown turns still consume the focus', async () => {
-    const savedW = viewport.clientW
-    viewport.clientW = 30
-    try {
+    await narrowViewport(async () => {
       const agg = aggregateByTurn([...manySteps(), ...manySteps().map(r => ({ ...r, seq: r.seq + 40, turn: (r.turn ?? 0) + 4 }))])
       assert.equal(agg.length, 8)
       const { spies, handlers } = makeSpies()
@@ -351,9 +360,26 @@ describe('TrendChart scroll anchoring', () => {
       assert.ok(spies.focusHandled > before, 'the focus is consumed even when the turn is absent')
       assert.equal(scroll.scrollLeft, 8, 'no focus target and not near the end → the scroll position holds')
       await m.unmount()
-    } finally {
-      viewport.clientW = savedW
-    }
+    })
+  })
+
+  test('focusSeq scroll-centers its exact step bar once; an absent step still consumes the focus', async () => {
+    await narrowViewport(async () => {
+      const reqs = manySteps()
+      const { spies, handlers } = makeSpies()
+      const m = await mount(h(TrendChart, propsOf(reqs, { ...handlers, focusSeq: 21 })))
+      await flush()
+      const scroll = query<LayoutEl>(m.container, '.lc-chart-scroll')
+      assert.ok(spies.seqFocusHandled >= 1)
+      assert.equal(scroll.scrollLeft, 20 * 16 + 7 - 15) // bar 21 is index 20
+
+      const before = spies.seqFocusHandled
+      await m.update(h(TrendChart, propsOf(reqs, { ...handlers, focusSeq: 999 })))
+      await flush()
+      assert.ok(spies.seqFocusHandled > before, 'the focus is consumed even when the step is absent')
+      assert.equal(scroll.scrollLeft, 20 * 16 + 7 - 15, 'no focus target and not near the end → the scroll position holds')
+      await m.unmount()
+    })
   })
 
   test('turn labels clear their shift for blocks narrower than the measured label', async () => {
