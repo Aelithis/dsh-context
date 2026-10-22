@@ -1,5 +1,3 @@
-// ContextView — the events card's injection rows reveal their own item in the Context Browser.
-
 import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { afterEach, describe, test, vi } from 'vitest'
@@ -16,8 +14,7 @@ afterEach(() => {
   resetTimelineDetailStores()
 })
 
-/** Two logged steps, an injection before each of them, one injection past the log tail, and one whose item is
- * not served at all (the dropped-window arm). */
+/** Two logged steps, an injection before each, one past the log tail, one unserved (dropped-window arm). */
 function injectTimeline(over: Partial<ContextTimeline> = {}): ContextTimeline {
   return timeline({
     requests: [

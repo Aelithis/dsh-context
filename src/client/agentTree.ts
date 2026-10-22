@@ -1,15 +1,9 @@
-/** Agent-graph derivation — the pure model behind the Agent network card. The
- * session-list snapshot carries everything the card needs, and this folds it
- * into the current session's family: the topmost known ancestor's whole subtree, per-node stats, and a depth/DFS layout. */
-
 import type { PartsPart } from './categories'
 import type { ContextBreakdown, ContextPressure, ContextTimeline, SessionCostUsage, TokenUsage } from '../shared/types'
 import { mergeCostUsage } from './cost'
 import { headlineOf, occupancyPercent, type Headline } from './headline'
 import { asRecord, contextBreakdownOf, contextPressureOf, numOf, timelineOf, tokenUsageOf } from './services'
 
-/** The outward `ctx.sessions` client face. Session navigation is NOT here: the
- * view owner's `openSession` is (services.ts `openSessionVia`). */
 export interface SessionsFaceLike {
   list?: {
     getSnapshot(): unknown
@@ -22,7 +16,6 @@ export interface AgentRow {
   displayTitle?: string
   title?: string
   parentId?: string
-  /** The durable classification of a subagent child; a fork seed carries none. */
   origin?: 'subagent'
   running: boolean
   blank: boolean
@@ -40,24 +33,18 @@ export interface AgentStats {
   head: Headline | null
   requests: number
   billed: number | null
-  /** Cumulative session-cost ledger off the timeline — the card's price estimate rides it. */
   costUsage: SessionCostUsage | null
   durationMs: number | null
   identity: AgentIdentity | null
-  /** The session's current model off the timeline head, when served. */
   model?: string
 }
 
-/** Live stats of the CURRENT session, fresher than any list row. */
 export interface AgentSelfStats {
   head: Headline | null
   billed: number | null
   requests: number
-  /** The tab's own cost ledger (the stats board's `data.cost`). */
   costUsage?: SessionCostUsage | null
-  /** The current session's whole-step time (`data.timing.wallMs`, host-folded over the
-   * complete log). Not the harness's subagent measure — that folds turn windows, and a parent
-   * session never carries a `subagentTiming` projection at all — but the only duration it has. */
+  /** The current session's whole-step time (`data.timing.wallMs`); a parent never carries `subagentTiming`. */
   durationMs?: number | null
 }
 
@@ -83,18 +70,13 @@ export interface AgentForest {
   solo: boolean
 }
 
-/** Fixed card height — mirrored by `.lc-agent-card`'s `height` in agentGraph.css, so a link's
- * exit point (card bottom) and entry point (card top) always land on the card's edge. Three
- * head lines: a teammate's roster name + 2-line duty, or a plain title. */
+/** Fixed card height, mirrored by `.lc-agent-card`'s `height` in agentGraph.css so links meet the card edge. */
 export const AGENT_CARD_H = 116
-/** Horizontal cell pitch adapts to the stage width between these bounds; each node owns one
- * cell and the card fills it minus a 12px gutter, so a card never clips a neighbor or the stage edge.
- * Every card shares one pitch — the graph reads as a grid, and a card never claims extra room. */
+/** One cell per node, the card filling it minus `CARD_GUTTER`, so no card clips a neighbor or the stage edge. */
 const SLOT_MAX = 276
 const SLOT_MIN = 190
 const CARD_GUTTER = 12
-/** Vertical pitch between depth levels: card height + a dedicated 64px link channel below it,
- * tall enough for the S-curves to read as separate strands even in a wide fan-out. */
+/** Card height plus a dedicated 64px link channel, tall enough for the S-curves to read as separate strands. */
 const LEVEL_H = AGENT_CARD_H + 64
 const PAD_Y = 48
 
@@ -114,12 +96,7 @@ export function agentRowOf(value: unknown): AgentRow | null {
   }
 }
 
-/**
- * The family edge a listed row draws — only a subagent child belongs to its parent's fleet.
- * A fork seed records the source session as `parentId` too, but its header carries no `origin`
- * (dsh forks an ordinary Session), so seed lineage is not a family edge: the fork is an
- * independent root, never a member of the source's family.
- */
+/** A family edge is a subagent child only: a fork seed carries `parentId` but no `origin`, so it roots its own family. */
 export function familyParentOf(row: AgentRow | undefined): string | undefined {
   return row !== undefined && row.origin === 'subagent' ? row.parentId : undefined
 }
@@ -144,15 +121,12 @@ export function agentDurationOf(value: unknown): number | null {
   return total > 0 ? total : null
 }
 
-/** The harness's own done signal (its subagent header popup's green dot): the last closed turn
- * after the child's descriptor finished normally. A running session is never done, whatever it
- * last turned in. */
+/** The harness's own done signal: the last closed turn after the child's descriptor finished normally. */
 export function agentTurnCompletedOf(value: unknown): boolean {
   return asRecord(value)?.lastTurnCompleted === true
 }
 
-/** Fold one row's projection values into render-ready stats. The composition
- * prefers the plugin's own `contextTimeline`; a pressure-only row still yields an occupancy ring without slices. */
+/** Fold a row's projection values into stats, preferring the plugin's own `contextTimeline`. */
 export function agentStatsOf(values: Record<string, unknown> | undefined): AgentStats {
   const timeline = timelineOf(values?.contextTimeline)
   const pressure = contextPressureOf(values?.contextPressure)
@@ -189,17 +163,13 @@ export function agentStatsOf(values: Record<string, unknown> | undefined): Agent
   }
 }
 
-/** Billed tokens off a `tokenUsage` tally; null when no tally is served. */
 function billedOf(usage: TokenUsage | null): number | null {
   return usage !== null
     ? numOf(usage.uncachedInputTokens) + numOf(usage.outputTokens) + numOf(usage.cacheReadTokens) + numOf(usage.cacheWriteTokens)
     : null
 }
 
-/** The current session's own live stats off the VIEW's projections — the Context tab and the Fleet tab both
- * render the network card from this one derivation, so the two mounts can never disagree. Unlike a listed row
- * ({@link agentStatsOf}), a top-level session carries no `subagentTiming` projection: its own whole-step time
- * is the duration it has. */
+/** The current session's live stats off the VIEW's projections; a top-level session carries no `subagentTiming`. */
 export function agentSelfOf(
   timeline: ContextTimeline,
   pressure: ContextPressure | null,
@@ -209,19 +179,13 @@ export function agentSelfOf(
   return {
     head: headlineOf(timeline, pressure, breakdown),
     billed: billedOf(usage),
-    // The split generation's slim head counts the retained steps itself; the inline generation's value serves them.
     requests: timeline.counts?.steps ?? timeline.requests.length,
     costUsage: timeline.cost ?? null,
     durationMs: timeline.timing != null && timeline.timing.wallMs > 0 ? timeline.timing.wallMs : null,
   }
 }
 
-/**
- * Spawn-order ranks from a parent row's `subagentCatalog` projection — the harness
- * header popup's own sibling order (parent catalog event order). Absent, empty, or
- * hostile values yield null and the caller keeps its activity heuristic; malformed
- * entries drop alone.
- */
+/** Spawn-order ranks from the parent's `subagentCatalog`; absent, empty, or hostile values yield null. */
 export function catalogOrderOf(values: Record<string, unknown> | undefined): Map<string, number> | null {
   const cat = values?.subagentCatalog
   if (!Array.isArray(cat)) return null
@@ -239,7 +203,6 @@ export interface AgentChild {
   row: AgentRow
 }
 
-/** Group parsed rows by the family parent each one draws (see {@link familyParentOf}). */
 export function familyChildrenOf(rows: ReadonlyMap<string, AgentRow>): Map<string, AgentChild[]> {
   const childrenOf = new Map<string, AgentChild[]>()
   for (const [id, row] of rows) {
@@ -252,15 +215,8 @@ export function familyChildrenOf(rows: ReadonlyMap<string, AgentRow>): Map<strin
   return childrenOf
 }
 
-/**
- * Build the current session's agent family: walk up the subagent `parentId` lineage to the
- * topmost known ancestor, then DFS its whole subtree (blank rows excluded). Null when there is
- * no anchor; the current session synthesizes a row when the list has not delivered it yet.
- * @param fetched - detail-channel heads for COLD rows, keyed by session id.
- *   The list block serves projection values only from the projection cache, so
- *   these fill in relatives that would otherwise list pressure-only; a row's
- *   own value always wins.
- */
+/** Build the family from the topmost known ancestor's whole subtree; `fetched` heads fill cold relatives.
+ * Null when the snapshot/current id is unusable; blank rows are excluded. */
 export function agentForestOf(
   snapshot: unknown,
   currentId: string | undefined,
@@ -295,9 +251,8 @@ export function agentForestOf(
 
   const childrenOf = familyChildrenOf(rows)
   for (const [pid, kids] of childrenOf) {
-    // Sibling order follows the parent's subagent catalog (the harness header popup's
-    // own spawn order) when cached; uncataloged children fall after cataloged ones,
-    // and catalog-less parents keep the activity heuristic untouched.
+    // Sibling order follows the parent's subagent catalog when cached; uncataloged children fall after
+    // cataloged ones, and catalog-less parents keep the heuristic.
     const order = catalogOrderOf(rows.get(pid)?.projections)
     kids.sort((a, b) => {
       const ra = order?.get(a.id)
@@ -343,9 +298,7 @@ export function agentForestOf(
       family,
       isCurrent: id === currentId,
       running: row.running,
-      // Done, by the harness popup's own rule: a stopped agent only, and the signal is the
-      // last closed subagent turn finishing normally. A session that is not a subagent never
-      // carries that projection, so its own folded steps stand in for it.
+      // Done by the harness popup's rule: a stopped agent whose last closed subagent turn finished normally.
       completed: !row.running
         && (agentTurnCompletedOf(values?.subagentTiming) || (!subagent && stats.requests > 0)),
       subagent,
@@ -370,11 +323,7 @@ export interface SubagentCostFold {
   count: number
 }
 
-/** Merge the current session's SUBAGENT subtree cost: warm rows'
- * `contextTimeline` cost first, fetched slim heads (`landed`) standing in for
- * rows with no timeline value. Blank rows are not agents (see
- * {@link familyChildrenOf} for the family edges); the current session itself is
- * never counted — the caller already holds its own usage. */
+/** Merge the SUBAGENT subtree cost: warm `contextTimeline` costs first, fetched heads for rows without one. */
 export function subagentCostFoldOf(
   snapshot: unknown,
   currentId: string | undefined,
@@ -400,8 +349,8 @@ export function subagentCostFoldOf(
       const head = landed?.get(kid.id)
       const values = kid.row.projections
       if (values?.contextTimeline === undefined) {
-        // A cold relative's usage rides its fetched slim head; until one lands
-        // the id stays a fetch target, and a landed head is final either way.
+        // A cold relative's usage rides its fetched head; until one lands the id stays a fetch target.
+        // A landed head is final either way — a failed fetch also stops the refetch.
         if (head === undefined) cold.push(kid.id)
         else if (head.cost !== undefined) parts.push(head.cost)
       } else {
@@ -434,15 +383,12 @@ export interface AgentLink {
 export interface AgentLayout {
   width: number
   height: number
-  /** Card width from the responsive layout (narrows as slots compress). */
   cardW: number
   points: AgentPoint[]
   links: AgentLink[]
 }
 
-/** Tidy top-down tree layout: siblings claim leaf slots and parents center over
- * their children. The slot pitch adapts to the stage width between SLOT_MAX and
- * SLOT_MIN; a level that still overflows wraps into bands, since vertical room is cheaper than horizontal scrolling. */
+/** Tidy top-down layout: siblings claim leaf slots, parents center; an overflowing level wraps into bands. */
 export function layoutForest(forest: AgentForest, stageWidth = 0): AgentLayout {
   // Nodes are DFS pre-order, so plain iteration appends children in visit order.
   const childrenOf = new Map<string, AgentNode[]>()
@@ -480,8 +426,7 @@ export function layoutForest(forest: AgentForest, stageWidth = 0): AgentLayout {
   const perLevel = stageWidth > 0 ? Math.max(1, Math.floor(stageWidth / SLOT_MIN)) : 0
 
   if (perLevel > 0 && leafSlots > perLevel) {
-    // Wrapped layout: bands interleaved by kinship, so after each parent band
-    // come the bands of exactly those parents' children and sibling groups never split unless one group alone exceeds the band.
+    // Wrapped bands interleave by kinship, so sibling groups never split unless one group exceeds the band.
     const bandSlot = Math.min(SLOT_MAX, stageWidth / perLevel)
     const width = perLevel * bandSlot
     const points: AgentPoint[] = []
@@ -540,8 +485,7 @@ export function layoutForest(forest: AgentForest, stageWidth = 0): AgentLayout {
   }
 }
 
-/** Family hue by level-1 subtree index: the golden angle keeps consecutive
- * families separated on the color wheel without a hand-tuned palette. */
+/** Family hue by level-1 subtree index: the golden angle keeps consecutive families separated. */
 export function familyHue(index: number): string {
   return `hsl(${Math.round(index * 137.508) % 360} 58% 52%)`
 }
@@ -561,9 +505,7 @@ function linksOf(forest: AgentForest, points: AgentPoint[]): AgentLink[] {
       running: runningIds.has(edge.to),
       /* v8 ignore next 1 -- edges only connect visited nodes. */
       color: familyHue(nodeOf.get(edge.to)?.family ?? 0),
-      // Out of the parent card's bottom edge, into the child card's top edge. A wrapped
-      // band can drop a child several rows down, where the curve passes BEHIND the rows
-      // between (the link layer paints under the cards) — it reads as depth, not a crossing.
+      // Out of the parent's bottom edge, into the child's top; a wrapped band's curve passes BEHIND the rows between.
       x1: from.x,
       y1: from.y + AGENT_CARD_H,
       x2: to.x,
@@ -573,8 +515,7 @@ function linksOf(forest: AgentForest, points: AgentPoint[]): AgentLink[] {
   return links
 }
 
-/** The hovered node's lineage: its ancestor chain plus its whole subtree — the set of
- * node ids whose links light up under lineage focus. Null for no id or an unknown one. */
+/** The hovered node's lineage: ancestor chain plus whole subtree — the links that light up under focus. */
 export function lineageOf(forest: AgentForest, id: string | null): Set<string> | null {
   if (id === null) return null
   const byId = new Map(forest.nodes.map(n => [n.id, n]))
@@ -606,14 +547,11 @@ export function lineageOf(forest: AgentForest, id: string | null): Set<string> |
 
 export interface BarSeg {
   key: string
-  /** Segment color; the free remainder is styled by the bar's track instead. */
   color: string
-  /** Share of the whole bar (0..1) — occupancy scales the composition, the free share closes it. */
   share: number
   free: boolean
 }
 
-/** Threshold color for pressure-only fills (no composition data) and the card's pct figure. */
 export function pressureColorOf(pct: number | null): string {
   if (pct === null) return 'var(--dsw-alias-border-l1)'
   if (pct >= 90) return 'var(--color-red-500)'
@@ -621,10 +559,7 @@ export function pressureColorOf(pct: number | null): string {
   return 'var(--color-green-500)'
 }
 
-/** One composition bar per agent — the chat composer ring's own semantics, flattened: the
- * composition parts, scaled to the occupancy share, fill the bar and a neutral remainder marks
- * the free window. No known window fills the whole bar; no composition falls back to a single
- * threshold-colored occupancy fill. */
+/** The composer ring's semantics flattened: parts fill the bar scaled to occupancy, a neutral remainder closes it. */
 export function barSegments(parts: PartsPart[], pct: number | null, fallbackColor: string): BarSeg[] {
   const occ = pct === null ? 1 : Math.min(100, Math.max(0, pct)) / 100
   let total = 0
@@ -657,8 +592,7 @@ export function sessionsFaceOf(ctx: { get(name: string): unknown }): SessionsFac
   return rec
 }
 
-/** Compact duration: `42s`, `3m05s`, `1h07m`. Distinct from format.ts's
- * `fmtDuration`, whose decimal seconds the inspector's fixed-width caption column cannot use. */
+/** Compact duration, distinct from `format.ts`'s `fmtDuration` (decimal seconds do not fit the caption column). */
 export function fmtDurationCompact(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return '—'
   const s = Math.round(ms / 1000)

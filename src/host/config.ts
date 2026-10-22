@@ -1,12 +1,7 @@
 /**
- * dsh-context entry configuration: the `config:` block of the `dsh-context` loader row, plus
- * the per-user display preferences.
- *
- * The schema is schemastery so both consumers accept it: cordis validates the entry config
- * through its Standard Schema face before `apply`, and the harness's Config-form generation
- * derives the Plugins page's live form from the same schema, where the namespace is the entry
- * id and only the `.volatile()` fields are served and editable. Bound edits remount the entry
- * (the folds read them at apply); preference edits commit volatile-only and never remount.
+ * Entry configuration: the `config:` block of the `dsh-context` loader row plus the per-user display preferences. The
+ * schemastery schema serves both cordis validation and the harness's Config-form generation; bound edits remount the
+ * entry (the folds read them at apply), while preference edits commit volatile-only.
  */
 
 import z from '@deepseek-ai/schemastery'
@@ -28,8 +23,8 @@ export type FoldBounds = typeof DEFAULT_BOUNDS
 
 export type Config = Partial<FoldBounds> & Partial<PluginSettings>
 
-/** Mark a field live-editable where the harness's schemastery ships `.volatile()`; a plain
- * field where the modifier is absent, so one schema serves every harness the gate admits. */
+/** Mark a field live-editable where the harness's schemastery ships `.volatile()`; a plain field where the modifier is absent, so one
+ * schema serves every harness the gate admits. */
 export function volatileField<S extends z>(field: S): S {
   const volatile = (field as unknown as { volatile?: () => S }).volatile
   return typeof volatile === 'function' ? volatile.call(field) : field
@@ -64,7 +59,6 @@ export const Config = z.object({
 })
 
 export function resolveBounds(config: Config | undefined): FoldBounds {
-  // The schema fills every default; the volatile preference fields are not fold data.
   const resolved = Config(config ?? {}) as FoldBounds & Record<string, unknown>
   return {
     maxRequestSteps: resolved.maxRequestSteps,

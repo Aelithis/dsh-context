@@ -1,6 +1,4 @@
-/** Best-effort jump to this plugin's preferences on the Plugins main panel: click the panel's sidebar
- * entry, then poll for the bundle card's open control. Every step is silent and never throws into the
- * caller's render; a shell that does not match degrades the whole jump to a no-op. */
+/** Best-effort jump to this plugin's preferences on the Plugins main panel; a shell that does not match makes it a no-op. */
 
 /** The shipped Plugins label in both locales — the main-panel entry's aria-label. */
 const PLUGIN_LABELS = new Set(['Plugins', '插件'])
@@ -16,8 +14,7 @@ function findPanelEntry(doc: Document): HTMLButtonElement | undefined {
     .find(b => PLUGIN_LABELS.has(b.getAttribute('aria-label') ?? ''))
 }
 
-/** The bundle card's open control: the one button inside the card that is not the enable switch (the
- * primitives switch carries `role="switch"`); the title button's own aria-label is localized. */
+/** The card's open control: the one button that is not the enable switch (`role="switch"`); its title aria-label is localized. */
 function findCardOpenControl(doc: Document): HTMLButtonElement | undefined {
   const card = doc.querySelector(`[data-plugin-package="${PACKAGE_KEY}"]`)
   if (card === null) return undefined

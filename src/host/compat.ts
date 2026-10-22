@@ -1,16 +1,10 @@
-/**
- * Session-projection unit contract compatibility layer.
- *
- * The installed dsh types pin the oldest supported surface (0.1.7-rc.2), whose optional
- * `wire?` fails the registry's wired-register overload, so the contract is mirrored here as
- * {@link ProjectionDefinition} to keep both halves compile-checked.
- */
+/** Session-projection unit contract compatibility layer: the installed dsh types pin the oldest supported surface (0.1.7-rc.2), whose
+ * optional `wire?` fails the registry's wired-register overload, so the contract is mirrored here. */
 
 import type { z } from 'zod'
 import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 
-/** The session-projection unit contract served by dsh 0.1.7-rc.2+ (local mirror). */
 export interface ProjectionDefinition<K extends keyof SessionProjectionMap, S> {
   key: K
   /** Validates persisted state before a checkpoint row seeds a fold; the state must stay plain JSON. */

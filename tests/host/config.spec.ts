@@ -1,7 +1,3 @@
-// The entry `Config` schema (src/host/config.ts): schemastery serves two consumers — cordis validates the `config:` block through its
-// Standard Schema face before apply, and the harness's Config-form generation derives the Plugins page's live form from it (the
-// volatile-marked preferences). Exercised through the REAL schemastery the tests install.
-
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import z from '@deepseek-ai/schemastery'
@@ -66,8 +62,7 @@ describe('Config validator (cordis Standard Schema face)', () => {
   })
 
   test('unknown keys merge through (schemastery objects are not key-strict)', () => {
-    // A deliberate relaxation of the zod `.strict()` this schema replaced:
-    // an unrecognized key rides along instead of failing the entry load.
+    // Deliberately not key-strict: an unrecognized key rides along instead of failing the entry load.
     assert.equal(deref(Config({ unknown: 1 } as unknown as Config).maxEvents), DEFAULT_BOUNDS.maxEvents)
   })
 })

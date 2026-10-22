@@ -38,7 +38,6 @@ describe('ContextView below-fold lazy mount', () => {
       useChat: (selector => selector({ legacy: { nodes: [] } })) as UseChatLike,
     }))
     try {
-      // The visible browser card and the below-fold event/file row both hold cards-shaped skeletons.
       assert.equal(queryAll(m.container, '.lc-deferred-skeleton').length, 3)
       assert.equal(queryAll(m.container, '.lc-fa-card').length, 0)
       await act(async () => {
@@ -50,7 +49,6 @@ describe('ContextView below-fold lazy mount', () => {
       assert.equal(queryAll(m.container, '.lc-deferred-skeleton').length, 0)
       assert.equal(queryAll(m.container, '.lc-fa-card').length, 1)
 
-      // A stats file-pill jump forces the lazy row: the card exists and the jump can land on it.
       await m.unmount()
       const second = await mount(h(View, {
         sessionId: 'sv-lazy-jump',

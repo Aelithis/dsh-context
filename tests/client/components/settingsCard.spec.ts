@@ -91,7 +91,6 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await click(entryItems[1]) // 'Hide'
     assert.deepEqual(calls, [['defaultPlacement', 'sidebar'], ['insightsEntry', 'hide']])
 
-    // The Fleet-tab row follows the insights entry: the two view-visibility gates sit together.
     assert.ok(text(m.container).includes(DICT_EN['settings.fleetTab']))
     assert.ok(text(selects[2]).includes(DICT_EN['showHide.show']))
     await click(selects[2])
@@ -100,18 +99,14 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await click(fleetItems[1]) // 'Hide'
     assert.deepEqual(calls, [['defaultPlacement', 'sidebar'], ['insightsEntry', 'hide'], ['fleetTab', 'hide']])
 
-    // The overview range row opens the view group, reusing the page's own preset labels.
     assert.ok(text(m.container).includes(DICT_EN['settings.overviewRange']))
     assert.ok(text(selects[3]).includes(DICT_EN['ov.range.30d']))
     assert.ok(text(selects[4]).includes(DICT_EN['gran.step']))
     assert.ok(text(selects[5]).includes(DICT_EN['gran.total']))
-    // The duration-curve row follows the trend-mode one, reusing the entry's show/hide labels.
     assert.ok(text(m.container).includes(DICT_EN['settings.durationCurve']))
     assert.ok(text(selects[6]).includes(DICT_EN['showHide.show']))
-    // The auto-overview row follows the curve one, naming its step threshold (or Off).
     assert.ok(text(m.container).includes(DICT_EN['settings.overviewAuto']))
     assert.ok(text(selects[7]).includes(stepsLabel(200)))
-    // The delta-baseline row leads the tool-sort one, reusing the toolbar's option labels.
     assert.ok(text(m.container).includes(DICT_EN['settings.deltaBase']))
     assert.ok(text(selects[8]).includes(DICT_EN['browser.base.step']))
     assert.ok(text(m.container).includes(DICT_EN['settings.toolSort']))
@@ -323,7 +318,6 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
 
     await focus(prefix)
     await typeText(prefix, 'served!')
-    // A host push lands while the row is being edited.
     await m.update(h(PluginConfigCard, {
       useContextSettings: hookFor(stateOf({ promptPrefix: 'pushed' })),
       set: (field, value) => { calls.push([field, value]) },
@@ -332,7 +326,6 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await blur(query(m.container, '.lc-settings-textarea'))
     assert.deepEqual(calls, [['promptPrefix', 'served!']])
 
-    // Idle again: the next push is followed.
     await m.update(h(PluginConfigCard, {
       useContextSettings: hookFor(stateOf({ promptPrefix: 'pushed' })),
       set: (field, value) => { calls.push([field, value]) },
@@ -346,7 +339,6 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     const m = await mount(h(PluginConfigCard, { useContextSettings: hookFor(stateOf({ placement: 'weird' as never })) }))
     const selects = queryAll(m.container, '.lc-settings-select')
     assert.ok(text(selects[0]).includes('weird'))
-    // props.set undefined: picking still closes the menu, no throw.
     await click(selects[0])
     await click(menuItems()[1])
     assert.equal(document.body.querySelector('[role="menu"]'), null)

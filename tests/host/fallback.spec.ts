@@ -1,6 +1,3 @@
-// The baseline gate's fallback units (src/host/fallback.ts) over the REAL session-projection registry:
-// the gate's value arrives through the ordinary snapshot cut, no matter what the log carries.
-
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -73,8 +70,7 @@ describe('fallback units over the real registry', () => {
 
   test('the state schema strips any cached row instead of rejecting it', () => {
     const timeline = createFallbackTimelineDefinition(CURRENT)
-    // A ver-1 row of the REAL headers unit ({headers: [...]}) or any other
-    // persisted shape seeds the gate's fold stripped to the empty state.
+    // A ver-1 row of the REAL headers unit or any other persisted shape seeds the fold stripped to the empty state.
     assert.deepEqual(timeline.stateSchema.parse({ headers: [{ seq: 1 }] }), {})
     assert.deepEqual(timeline.stateSchema.parse({ surface: [null], sums: {} }), {})
     assert.equal(timeline.stateVersion, 1)

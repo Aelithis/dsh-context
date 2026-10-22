@@ -603,6 +603,5 @@ export const DICT_ZH = {
   'ov.time.d': '{n} 天前',
 } satisfies Record<string, string>
 
-/** The key union every locale of this plugin must carry in full. */
 export type DictKey = keyof typeof DICT_ZH
 

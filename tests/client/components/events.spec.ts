@@ -88,27 +88,22 @@ describe('EventList', () => {
     const rows = queryAll(m.container, '.lc-event')
     assert.equal(rows.length, 5)
 
-    // Newest first: seq 5 leads. tokens 0 renders no token span.
     assert.ok(text(rows[0]).includes('Context Injection'))
     assert.equal(queryAll(rows[0], '.lc-event-tokens').length, 0)
 
-    // Foreign kind: EVENT_ICONS miss → '•' fallback, and the kind label resolves through the locale chain to the key itself.
     assert.equal(query(rows[1], '.lc-event-icon').textContent, '•')
     assert.equal(query(rows[1], '.lc-kind').textContent, 'kind.mystery')
 
-    // Compaction: ✂ glyph, negative token delta, no position (no turn/step).
     assert.equal(query(rows[2], '.lc-event-icon').textContent, '✂')
     const down = query(rows[2], '.lc-event-tokens')
     assert.ok(down.className.includes('lc-down'))
     assert.equal(down.textContent, '−100')
     assert.equal(queryAll(rows[2], '.lc-event-at').length, 0)
 
-    // Model switch: real IconBranchOutlineRegular svg.
     assert.ok(query(rows[3], '.lc-event-icon svg') instanceof SVGElement)
     assert.ok(text(rows[3]).includes('Model switched: a → b'))
     assert.equal(query(rows[3], '.lc-kind').textContent, 'Switch')
 
-    // Inject: real IconPlusOutlineRegular svg, positive token delta, position, time.
     assert.ok(query(rows[4], '.lc-event-icon svg') instanceof SVGElement)
     const up = query(rows[4], '.lc-event-tokens')
     assert.ok(up.className.includes('lc-up'))
@@ -128,8 +123,7 @@ describe('EventList', () => {
     assert.equal(labels[0].getAttribute('title'), '')
     assert.equal(labels[1].getAttribute('title'), '')
 
-    // Newest first: labels[0] is the prune, labels[1] the inject. Force an empty-text overflow on the prune label (the
-    // `el.textContent || ''` fallback arm) and a real overflow on the inject label, then resize.
+    // Newest first: labels[0] is the prune (the empty-text fallback arm), labels[1] the inject.
     Object.defineProperty(labels[0], 'scrollWidth', { value: 100, configurable: true })
     Object.defineProperty(labels[1], 'scrollWidth', { value: 100, configurable: true })
     labels[0].textContent = ''
@@ -168,7 +162,7 @@ describe('EventList', () => {
     const before = queryAll(m.container, '.lc-event')
     assert.equal(before.length, 2)
 
-    // A new event lands at the log tail → the row list prepends it; every old row must be the SAME DOM node
+    // A new event lands at the log tail, so the row list prepends it; every old row must stay the SAME DOM node
     // (an index-bearing key would shift all keys and remount the whole list on every push).
     await m.update(h(EventList, { events: [...base, ev({ seq: 3, kind: 'model', from: 'a', to: 'b' })] }))
     const after = queryAll(m.container, '.lc-event')
@@ -200,7 +194,6 @@ describe('EventList', () => {
     const focused: ContextEventRecord[] = []
     const m = await mount(h(EventList, { events, onEventFocus: e => { focused.push(e) } }))
     const rows = queryAll(m.container, '.lc-event')
-    // Newest first: only the model-switch row stays a plain label.
     assert.equal(rows[0].querySelector('.lc-event-jump'), null)
     assert.equal(query(rows[0], '.lc-event-label').tagName, 'SPAN')
     const prune = query(rows[1], '.lc-event-jump')
@@ -218,7 +211,6 @@ describe('EventList', () => {
     assert.deepEqual(focused.map(e => e.seq), [1, 2, 3])
     await m.unmount()
 
-    // No handler (a view with no browser to open): every label stays a plain span.
     const plain = await mount(h(EventList, { events }))
     assert.equal(queryAll(plain.container, '.lc-event-jump').length, 0)
     assert.equal(queryAll(plain.container, '.lc-event-label').length, 4)

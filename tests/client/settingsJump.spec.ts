@@ -1,17 +1,12 @@
-// openPluginSettings (src/client/settingsJump.ts): the guarded DOM jump to the plugin's preferences on the Plugins
-// main panel — panel entry first, the bundle card's open control after the page settles.
-
 import assert from 'node:assert/strict'
 import { afterEach, describe, test } from 'vitest'
 import { openPluginSettings } from '../../src/client/settingsJump'
 
-/** Immediate scheduler: captures the deferred runs in issue order. */
 function syncSchedule(): { runs: Array<() => void>; schedule: (run: () => void, ms: number) => void } {
   const runs: Array<() => void> = []
   return { runs, schedule: (run) => { runs.push(run) } }
 }
 
-/** A sidebar-style settings trigger (dialog semantics + expanded flag) — a distractor the jump must ignore. */
 function trigger(doc: Document, expanded: 'true' | 'false'): HTMLButtonElement {
   const b = doc.createElement('button')
   b.setAttribute('aria-haspopup', 'dialog')
@@ -31,7 +26,6 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     document.body.textContent = ''
   })
 
-  /** A sidebar-style Plugins panel entry (shipped aria-label). */
   function panelEntry(doc: Document, label: string): HTMLButtonElement {
     const b = doc.createElement('button')
     b.setAttribute('aria-label', label)
@@ -39,7 +33,6 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     return b
   }
 
-  /** The bundle card as the Plugins page ships it: a title button plus the enable switch. */
   function bundleCard(doc: Document, withTitle = true): { title: HTMLButtonElement; switchEl: HTMLButtonElement } {
     const li = doc.createElement('li')
     li.setAttribute('data-plugin-package', 'dsh-context')
@@ -67,7 +60,6 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     assert.equal(pClicks.count(), 1, 'the panel entry is clicked immediately')
     assert.equal(tClicks.count(), 0, 'the settings-dialog chrome is never touched')
     assert.equal(runs.length, 1, 'the card poll is scheduled')
-    // The list has not rendered the card yet: the poll keeps ticking.
     runs[0]()
     assert.equal(runs.length, 2)
     const { title, switchEl } = bundleCard(document)
@@ -106,7 +98,6 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     const { runs, schedule } = syncSchedule()
 
     openPluginSettings(document, schedule)
-    // 1 bootstrap tick + 40 poll ticks, then the chain ends.
     for (let i = 0; i < 60 && runs.length > 0; i++) runs.shift()?.()
 
     assert.equal(pClicks.count(), 1)
@@ -125,7 +116,6 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     panel.click = () => { throw new Error('detached') }
     const { runs, schedule } = syncSchedule()
     assert.doesNotThrow(() => openPluginSettings(document, schedule))
-    // The entry's failure aborts this jump entirely — the guarded path.
     assert.equal(runs.length, 0)
   })
 
@@ -134,11 +124,9 @@ describe('openPluginSettings (the Plugins main panel)', () => {
     const { runs, schedule } = syncSchedule()
     openPluginSettings(document, schedule)
     runs.shift()?.()
-    // Only a switch inside the card: no unique open control, the poll keeps ticking.
     bundleCard(document, false)
     assert.doesNotThrow(() => runs.shift()?.())
     assert.ok(runs.length > 0, 'still polling')
-    // The card's title control throws on click: contained by the poll's guard, still polling.
     document.querySelector('[data-plugin-package="dsh-context"]')?.remove()
     const { title, switchEl } = bundleCard(document)
     const switchClicks = clicks(switchEl)

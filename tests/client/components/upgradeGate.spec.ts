@@ -72,7 +72,7 @@ describe('UpgradeGate', () => {
     assert.ok(m.container.querySelector('.lc-modal-backdrop') !== null)
     await keydown('Escape')
     assert.equal(m.container.querySelector('.lc-modal-backdrop'), null)
-    // A closed gate does not react to further keys (listener detached).
+    // Listener detached: a closed gate ignores further keys.
     await keydown('Escape')
     assert.equal(m.container.querySelector('.lc-modal-backdrop'), null)
     await m.unmount()

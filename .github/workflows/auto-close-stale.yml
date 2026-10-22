@@ -27,8 +27,7 @@ jobs:
           echo "::notice::Closing open items created before ${cutoff}"
 
           for kind in issue pr; do
-            # Only API-controlled fields reach the pipe: user titles may contain
-            # tabs or newlines and must never be re-split into commands.
+            # Only API-controlled fields reach the pipe: user titles may contain tabs or newlines and must never be re-split into commands.
             stale="$(gh "$kind" list --repo "$GITHUB_REPOSITORY" --state open --limit 1000 \
               --json number,createdAt \
               --jq ".[] | select(.createdAt < \"${cutoff}\") | \"\(.number)\t\(.createdAt)\"")"

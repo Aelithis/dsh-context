@@ -77,9 +77,8 @@ describe('ContextView — chat→Context jump', () => {
       return { top } as DOMRect
     })
 
-    // The jump remount: restore applies 42, then the jump resolves and the
-    // reveal scrolls the composition card to the scrollport's top (42 + 350).
-    // jsdom reports 0 for both — the scroller must overflow to be operative.
+    // The remount restores 42, then the reveal scrolls the card to the scrollport top: 42 + 350.
+    // jsdom reports 0 for both, so the scroller must overflow to be operative.
     requestContextFocus('sv-jumpscroll', 4)
     const scroller2 = document.createElement('div')
     scroller2.setAttribute('data-conversation-scroll', '')
@@ -114,8 +113,8 @@ describe('ContextView — the stats board\'s pill jumps', () => {
     scroller.style.overflowY = 'auto'
     Object.defineProperty(scroller, 'scrollHeight', { value: 900 })
     Object.defineProperty(scroller, 'clientHeight', { value: 300 })
-    // jsdom lays out nothing: fixed viewport tops make each reveal's rect delta deterministic, shifted by the scroll the
-    // reveal itself applies — the same live geometry a real page reports (450 − 100, then 700 − 100 on top of that).
+    // jsdom lays out nothing: fixed viewport tops make each reveal's rect delta deterministic (450 − 100),
+    // shifted by the scroll the reveal itself applies (then 700 − 100).
     const gBCR = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
       const inScroller = !this.hasAttribute('data-conversation-scroll')
       const top = this.hasAttribute('data-conversation-scroll') ? 100
@@ -171,7 +170,6 @@ describe('ContextView — the events card\'s boundary rows', () => {
 
   test('a click pins the step the compaction landed on, aligns the browser, and reveals the trend card', async () => {
     const scroller = overflowingScroller(1200)
-    // jsdom lays out nothing: fixed viewport tops make the reveal's rect delta deterministic (450 − 100).
     const gBCR = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
       const top = this.hasAttribute('data-conversation-scroll') ? 100
         : this.hasAttribute('data-lc-trend') ? 450 : 0
