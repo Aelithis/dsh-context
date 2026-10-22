@@ -5,7 +5,7 @@ import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { Config } from './config'
 import { resolveBounds } from './config'
-import type { ProjectionDefinition } from './compat'
+import type { WiredProjection } from './projection'
 import type { ContextTimeline } from '../shared/types'
 import { applyTimeline } from './fold'
 import { createTimelineState } from './foldState'
@@ -258,11 +258,11 @@ const timelineStateSchema = z.object({
  * nothing and the Context tab waits on its loading screen forever; `slim` picks the wire generation PER SERVE as a
  * liveness probe — the split is view-only, both generations validate against one schema over the same state.
  */
-export function createContextTimelineDefinition(config: Config, slim: () => boolean): ProjectionDefinition<'contextTimeline', TimelineState> {
+export function createContextTimelineDefinition(config: Config, slim: () => boolean): WiredProjection<'contextTimeline', TimelineState> {
   const bounds = resolveBounds(config)
   const view = (state: TimelineState): ContextTimeline =>
     slim() ? buildTimelineHead(state) : buildTimelineView(state, bounds)
-  const definition: ProjectionDefinition<'contextTimeline', TimelineState> = {
+  const definition: WiredProjection<'contextTimeline', TimelineState> = {
     key: 'contextTimeline',
     stateSchema: timelineStateSchema,
     wire: { viewSchema: contextTimelineSchema, view },

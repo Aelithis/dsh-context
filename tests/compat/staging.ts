@@ -63,6 +63,8 @@ function hostDepsOf(baseline: Baseline): Record<string, string> {
   return {
     '@deepseek-ai/cordis': baseline.cordis,
     '@deepseek-ai/dsh-session': baseline.session,
+    // The staged admission gate evaluates dsh's own semver ranges.
+    semver: '^7.8.5',
   }
 }
 
@@ -79,6 +81,40 @@ export function ensureHostDeps(baseline: Baseline): void {
   if (missing.length === 0) return
   const run = spawnSync('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error'], { cwd: dir, encoding: 'utf8' })
   if (run.status !== 0) throw new Error(`npm install ${JSON.stringify(deps)} failed: ${(run.stderr ?? '').trim().slice(0, 300)}`)
+}
+
+/** The tag's own admission gate evaluated over this package's manifest: its release and the dropped 0.1.7 line. */
+export interface AdmissionReport {
+  baseline: { admitted: boolean; requirements: Record<string, string> | null }
+  dropped: { admitted: boolean; requirements: Record<string, string> | null }
+}
+
+function admissionSource(manifestUrl: string, supportedRuntime: string, droppedRuntime: string): string {
+  return `
+import { readFileSync } from 'node:fs'
+import { evaluatePluginCompatibility } from './boot/plugin-compatibility.ts'
+const manifest = JSON.parse(readFileSync(new URL(${JSON.stringify(manifestUrl)}), 'utf8'))
+const evaluate = version => {
+  const issue = evaluatePluginCompatibility(manifest, {}, version)
+  return { admitted: issue === undefined, requirements: issue === undefined ? null : (issue.requirements ?? issue.peers) }
+}
+process.stdout.write('ADMISSION-JSON ' + JSON.stringify({
+  baseline: evaluate(${JSON.stringify(supportedRuntime)}),
+  dropped: evaluate(${JSON.stringify(droppedRuntime)}),
+}) + '\\n')
+`
+}
+
+/** Run the tag's real admission gate over this repo's manifest: its own release and the dropped 0.1.7 line. */
+export function evaluateAdmission(baseline: Baseline): AdmissionReport {
+  ensureHostDeps(baseline)
+  stageFile(baseline, 'packages/boot/app-boot/src/plugin-compatibility.ts', join('boot', 'plugin-compatibility.ts'))
+  const driver = join(STAGE, baseline.id, 'admission.mjs')
+  writeFileSync(driver, admissionSource(`file://${join(REPO, 'package.json')}`, baseline.version, '0.1.7-rc.2'))
+  const run = spawnSync(process.execPath, [driver], { cwd: STAGE, encoding: 'utf8', timeout: 60_000 })
+  const line = (run.stdout ?? '').split('\n').find(l => l.startsWith('ADMISSION-JSON '))
+  if (line === undefined) throw new Error(`admission driver failed: ${(run.stderr ?? run.stdout ?? '').trim().slice(0, 400)}`)
+  return JSON.parse(line.slice('ADMISSION-JSON '.length)) as AdmissionReport
 }
 
 export interface DriverReport {
@@ -100,7 +136,7 @@ export interface DriverReport {
 
 /** The staged host driver: runs INSIDE the baseline's staging dir, applies the plugin's real host entry into
  * the tag's real registry, and drives a canonical log through its own snapshot / checkpoint / restore paths. */
-function driverSource(pluginUrl: string, developerMessages: boolean): string {
+function driverSource(pluginUrl: string): string {
   return `
 import { Context } from '@deepseek-ai/cordis'
 import { SessionProjectionRegistry } from './registry/index.ts'
@@ -139,38 +175,35 @@ const snapshot = registry.snapshot(session)
 const gate = snapshotJsonValue(registry.checkpoint(session))
 const cold = registry.restore({}, log, 0, session.header)
 
-// Tool-registry messages exist only in the supported V4 baselines.
 let developerTokens = null
 let developerRequestTokens = null
 let developerRestoreMatches = false
-if (${developerMessages}) {
-  const ctxC = new Context()
-  const registryC = new SessionProjectionRegistry(ctxC)
-  ctxC.sessionProjections = registryC
-  plugin.apply(ctxC, {})
-  const sessionC = { seq: 0, header: { id: 'registry-change-session', cwd: '/tmp' }, events: [] }
-  ctxC.emit('session/created', sessionC)
-  const registryLog = [
-    ev(0, 'request/header', { header: { tools: [{ name: 'read_file', description: 'read a file', parameters: { type: 'object' } }] }, reason: 'change' }),
-    ev(1, 'user/message', { content: [{ type: 'text', text: 'hello' }] }),
-    ev(2, 'developer/message', { turn: 1, step: 1, headerSeq: 0, message: { role: 'developer', source: { kind: 'tool-registry' }, content: [{ type: 'tool-addition', toolName: 'read_file' }, { type: 'tool-removal', toolName: 'shell' }] } }),
-    ev(3, 'assistant/message', { turn: 1, step: 1, message: { content: [{ type: 'text', text: 'reply' }] } }),
-  ]
-  drive(ctxC, sessionC, registryLog)
-  const values = registryC.snapshot(sessionC).values
-  const node = values.contextTimeline.nodes.find(n => n.seq === 2)
-  developerTokens = node ? node.tokens : null
-  developerRequestTokens = values.contextTimeline.requests[0].inject
-  const rows = snapshotJsonValue(registryC.checkpoint(sessionC))
-  const warm = registryC.restore(rows, registryLog, 0, sessionC.header)
-  // Preserve log offsets while reproducing the old fold's ignored event.
-  const oldLog = registryLog.map(e => e.type === 'developer/message' ? { ...e, type: 'todo/write' } : e)
-  const oldRows = registryC.restore({}, oldLog, 0, sessionC.header).checkpoint
-  oldRows.contextTimeline.ver = 24
-  const rebuilt = registryC.restore(oldRows, registryLog, 0, sessionC.header)
-  developerRestoreMatches = JSON.stringify(warm.snapshot.values) === JSON.stringify(values)
-    && JSON.stringify(rebuilt.snapshot.values) === JSON.stringify(values)
-}
+const ctxC = new Context()
+const registryC = new SessionProjectionRegistry(ctxC)
+ctxC.sessionProjections = registryC
+plugin.apply(ctxC, {})
+const sessionC = { seq: 0, header: { id: 'registry-change-session', cwd: '/tmp' }, events: [] }
+ctxC.emit('session/created', sessionC)
+const registryLog = [
+  ev(0, 'request/header', { header: { tools: [{ name: 'read_file', description: 'read a file', parameters: { type: 'object' } }] }, reason: 'change' }),
+  ev(1, 'user/message', { content: [{ type: 'text', text: 'hello' }] }),
+  ev(2, 'developer/message', { turn: 1, step: 1, headerSeq: 0, message: { role: 'developer', source: { kind: 'tool-registry' }, content: [{ type: 'tool-addition', toolName: 'read_file' }, { type: 'tool-removal', toolName: 'shell' }] } }),
+  ev(3, 'assistant/message', { turn: 1, step: 1, message: { content: [{ type: 'text', text: 'reply' }] } }),
+]
+drive(ctxC, sessionC, registryLog)
+const values = registryC.snapshot(sessionC).values
+const node = values.contextTimeline.nodes.find(n => n.seq === 2)
+developerTokens = node ? node.tokens : null
+developerRequestTokens = values.contextTimeline.requests[0].inject
+const rows = snapshotJsonValue(registryC.checkpoint(sessionC))
+const warm = registryC.restore(rows, registryLog, 0, sessionC.header)
+// Preserve log offsets while reproducing the old fold's ignored event.
+const oldLog = registryLog.map(e => e.type === 'developer/message' ? { ...e, type: 'todo/write' } : e)
+const oldRows = registryC.restore({}, oldLog, 0, sessionC.header).checkpoint
+oldRows.contextTimeline.ver = 24
+const rebuilt = registryC.restore(oldRows, registryLog, 0, sessionC.header)
+developerRestoreMatches = JSON.stringify(warm.snapshot.values) === JSON.stringify(values)
+  && JSON.stringify(rebuilt.snapshot.values) === JSON.stringify(values)
 
 // Probe A: hostile provider usage on the REAL registry. A mis-accounting gateway's figures (negative
 // uncached input, fractions, string buckets, a NaN) ride the durable log legally; served values must stay schema-valid.
@@ -263,7 +296,7 @@ export function runDriver(baseline: Baseline): DriverReport {
   // The 0.2.1 line's values package grew a sibling the staged entry re-exports by relative path.
   stageFileIfPresent(baseline, 'packages/util/values/src/partial-json.ts', join('dsh', 'partial-json.ts'))
   const driver = join(STAGE, baseline.id, 'driver.mjs')
-  writeFileSync(driver, driverSource(`file://${join(REPO, 'lib', 'index.js')}`, baseline.foldEventTypes.includes('developer/message')))
+  writeFileSync(driver, driverSource(`file://${join(REPO, 'lib', 'index.js')}`))
   const run = spawnSync(process.execPath, [driver], { cwd: STAGE, encoding: 'utf8', timeout: 60_000 })
   const line = (run.stdout ?? '').split('\n').find(l => l.startsWith('DRIVER-JSON '))
   if (line === undefined) {

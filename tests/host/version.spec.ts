@@ -118,11 +118,11 @@ beforeAll(() => {
   shadow('empty', '@deepseek-ai/dsh-session-projection')
   shadow('empty', '@deepseek-ai/dsh-session')
   writeScratchHome('running-supported', '@deepseek-ai/dsh-session',
-    JSON.stringify({ name: '@deepseek-ai/dsh-session', version: '0.1.7-rc.2', exports: { '.': './lib/index.js' } }),
+    JSON.stringify({ name: '@deepseek-ai/dsh-session', version: '0.2.0-rc.2', exports: { '.': './lib/index.js' } }),
     { path: 'lib/index.js' })
-  // The just-dropped line: below the baseline since the floor moved to 0.1.7-rc.2, so the gate must trip on it.
+  // The just-dropped line: below the baseline since the floor moved to 0.2.0-rc.2, so the gate must trip on it.
   writeScratchHome('running-old', '@deepseek-ai/dsh-session',
-    JSON.stringify({ name: '@deepseek-ai/dsh-session', version: '0.1.5-rc.1', exports: { '.': './lib/index.js' } }),
+    JSON.stringify({ name: '@deepseek-ai/dsh-session', version: '0.1.7-rc.2', exports: { '.': './lib/index.js' } }),
     { path: 'lib/index.js' })
   writeScratchHome('running-decoy', '@deepseek-ai/dsh-session',
     JSON.stringify({ name: '@deepseek-ai/dsh-decoy', version: '9.9.9', exports: { '.': './lib/index.js' } }),
@@ -137,51 +137,52 @@ afterAll(() => {
 
 describe('detectHarnessVersion — running anchor', () => {
   test('outranks a stale home mirror (issue #59: a healthy Desktop harness)', () => {
-    assert.equal(detectHarnessVersion(ctxWithHome(homeResolver('old')), runningResolver('running-supported', scratch), ELSEWHERE), '0.1.7-rc.2')
+    assert.equal(detectHarnessVersion(ctxWithHome(homeResolver('old')), runningResolver('running-supported', scratch), ELSEWHERE), '0.2.0-rc.2')
   })
 
   test('a below-baseline running tree still trips the gate over a newer mirror', () => {
-    assert.equal(detectHarnessVersion(ctxWithHome(homeResolver('future')), runningResolver('running-old', scratch), ELSEWHERE), '0.1.5-rc.1')
+    assert.equal(detectHarnessVersion(ctxWithHome(homeResolver('future')), runningResolver('running-old', scratch), ELSEWHERE), '0.1.7-rc.2')
   })
 
   test('discards a witness inside this package own closure for the home anchor', () => {
     // A `link:`-installed dev checkout resolves its own pinned devDependencies: that closure is not the harness, so
     // the home mirror answers instead (the default package root performs the discard).
     const ctx = ctxWithHome(homeResolver('old'))
-    assert.equal(detectHarnessVersion(ctx, runningResolver('module-skips-cli')), '0.1.5-rc.1')
+    assert.equal(detectHarnessVersion(ctx, runningResolver('module-skips-cli')), '0.1.7-rc.2')
   })
 
   test('never probes the CLI package from the running anchor', () => {
     // The fixture pins the CLI at 0.0.1 but the libraries at the baseline: only a library answer may come back.
     const ctx = ctxWithHome(scratchResolver('empty'))
-    assert.equal(detectHarnessVersion(ctx, runningResolver('module-skips-cli'), ELSEWHERE), '0.1.7-rc.2')
+    assert.equal(detectHarnessVersion(ctx, runningResolver('module-skips-cli'), ELSEWHERE), '0.2.0-rc.2')
   })
 
   test('a resolving witness with no readable version falls through to home', () => {
     // The library resolves, so the witness is trusted, but its manifest name never matches: home answers.
     const ctx = ctxWithHome(homeResolver('future'))
-    assert.equal(detectHarnessVersion(ctx, runningResolver('running-decoy', scratch), ELSEWHERE), '0.2.0')
+    assert.equal(detectHarnessVersion(ctx, runningResolver('running-decoy', scratch), ELSEWHERE), '0.3.0-rc.1')
   })
 
   test('a non-file running URL is no answer', () => {
     const ctx = ctxWithHome(homeResolver('future'))
-    assert.equal(detectHarnessVersion(ctx, fixedUrl('data:text/javascript,'), ELSEWHERE), '0.2.0')
+    assert.equal(detectHarnessVersion(ctx, fixedUrl('data:text/javascript,'), ELSEWHERE), '0.3.0-rc.1')
   })
 
   test('classifies the plugin root and its parent correctly', () => {
     // A witness equal to the plugin root is inside it (`relative` is empty); a witness one level above is reached through `..`.
     const ctx = ctxWithHome(homeResolver('future'))
-    assert.equal(detectHarnessVersion(ctx, fixedUrl(pathToFileURL(ELSEWHERE).href), ELSEWHERE), '0.2.0')
-    assert.equal(detectHarnessVersion(ctx, fixedUrl(pathToFileURL(ELSEWHERE).href), join(ELSEWHERE, 'inner')), '0.2.0')
+    assert.equal(detectHarnessVersion(ctx, fixedUrl(pathToFileURL(ELSEWHERE).href), ELSEWHERE), '0.3.0-rc.1')
+    assert.equal(detectHarnessVersion(ctx, fixedUrl(pathToFileURL(ELSEWHERE).href), join(ELSEWHERE, 'inner')), '0.3.0-rc.1')
   })
 })
 
 describe('detectHarnessVersion — home anchor', () => {
   test('reads the CLI package manifest of the running installation', () => {
     const ctx = (home: string) => ctxWithHome(homeResolver(home))
-    assert.equal(detectHarnessVersion(ctx('old'), NO_RUNNING), '0.1.5-rc.1')
-    assert.equal(detectHarnessVersion(ctx('baseline'), NO_RUNNING), '0.1.7-rc.2')
-    assert.equal(detectHarnessVersion(ctx('future'), NO_RUNNING), '0.2.0')
+    // `old` is the just-dropped 0.1.7 line: still readable, but no longer accepted by the gate.
+    assert.equal(detectHarnessVersion(ctx('old'), NO_RUNNING), '0.1.7-rc.2')
+    assert.equal(detectHarnessVersion(ctx('baseline'), NO_RUNNING), '0.2.0-rc.2')
+    assert.equal(detectHarnessVersion(ctx('future'), NO_RUNNING), '0.3.0-rc.1')
     assert.equal(detectHarnessVersion(ctx('dev'), NO_RUNNING), '0.0.0-dev')
   })
 

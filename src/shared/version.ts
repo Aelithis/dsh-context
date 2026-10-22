@@ -1,6 +1,6 @@
 /** The harness-version gate's shared arithmetic: the supported baseline (mirrors docs/compatibility.md) and the compare behind it. */
 
-export const BASELINE_DSH_VERSION = '0.1.7-rc.2'
+export const BASELINE_DSH_VERSION = '0.2.0-rc.2'
 
 function channelRank(channel: 'alpha' | 'beta' | 'rc'): number {
   return channel === 'rc' ? 3 : channel === 'beta' ? 2 : 1

@@ -7,7 +7,7 @@
 
 import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from './compat'
+import type { WiredProjection } from './projection'
 import type { ContextHeaders, HeaderRecord, HeaderTool } from '../shared/types'
 import { estimateToolSchema } from './pricing'
 import { estimateSystemTokens } from '../shared/estimate'
@@ -105,7 +105,7 @@ function recordOf(event: SessionEvent): StoredHeaderRecord | null {
 /** @param resolve - best-effort tool-to-plugin attribution; fills a missing `plugin` at view time. */
 export function createContextHeadersDefinition(
   resolve?: (name: string) => string | undefined,
-): ProjectionDefinition<'contextHeaders', HeadersState> {
+): WiredProjection<'contextHeaders', HeadersState> {
   // The view strips legacy v1 content here; the system text is priced once per read.
   const view = (state: HeadersState): ContextHeaders => ({
     headers: state.headers.map((h): HeaderRecord => {
@@ -125,7 +125,7 @@ export function createContextHeadersDefinition(
       return record
     }),
   })
-  const definition: ProjectionDefinition<'contextHeaders', HeadersState> = {
+  const definition: WiredProjection<'contextHeaders', HeadersState> = {
     key: 'contextHeaders',
     stateSchema: contextHeadersStateSchema,
     wire: { viewSchema: contextHeadersSchema, view },

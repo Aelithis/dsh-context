@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
+import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import { createContextActivityDefinition } from '../../../src/host/activity'
 import { createContextHeadersDefinition } from '../../../src/host/headers'
 import { createContextTimelineDefinition } from '../../../src/host/timeline'
 import {
@@ -17,6 +19,9 @@ import {
 } from '../helpers/events'
 import { assertStatesPlainJson, driveTimeline } from '../helpers/projection'
 import type { TimelineEvent } from '../../../src/host/fold'
+import type { TimelineState } from '../../../src/host/foldState'
+import type { HeadersState } from '../../../src/host/headers'
+import type { ActivityState } from '../../../src/host/activity'
 import { RegistryDriver, RegistryViolationError } from './registryDriver'
 import type { Checkpoint, SessionLike } from './registryDriver'
 
@@ -99,6 +104,17 @@ describe('registry contract — the semantics every supported line shares', () =
     assert.ok(driver.checkpointJson(session) !== undefined)
     const cold = driver.restore({}, log, 0, session.header)
     assert.deepEqual(cold.values, driver.snapshot(session).values)
+  })
+
+  test('the local unit contract stays assignable to the harness projection contract', () => {
+    const timeline: ProjectionDefinition<'contextTimeline', TimelineState> = createContextTimelineDefinition({}, () => false)
+    const headers: ProjectionDefinition<'contextHeaders', HeadersState> = createContextHeadersDefinition()
+    const activity: ProjectionDefinition<'contextActivity', ActivityState> = createContextActivityDefinition()
+    for (const definition of [timeline, headers, activity]) {
+      assert.ok(definition.wire !== undefined, 'every unit serves a client view')
+      const state = (definition.init as () => unknown)()
+      assert.equal(definition.wire.viewSchema.safeParse(definition.wire.view(state as never)).success, true)
+    }
   })
 
   test('init tolerates the registry call shape: the header and inherited-count arguments go unobserved', () => {

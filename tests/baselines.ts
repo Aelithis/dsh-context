@@ -2,7 +2,7 @@
 // and by the per-tag `compat` project that boots the BUILT plugin on real sources.
 
 /** Must stay in lockstep with the BASELINES entries below. */
-export type BaselineId = 'v0.1.7-rc.2' | 'v0.2.0-rc.2' | 'v0.2.1-rc.2'
+export type BaselineId = 'v0.2.0-rc.2' | 'v0.2.1-rc.2'
 
 export interface ClientSeam {
   imageFaceMethod: string
@@ -75,6 +75,8 @@ export interface ClientSeam {
 export interface Baseline {
   id: BaselineId
   tag: string
+  /** The dsh release version the tag names; the admission gate's runtime version. */
+  version: string
   cordis: string
   /** The `dsh-session` release this line vendors; the staged sources import runtime values from it, so the driver resolves to the tag's
    * own generation. */
@@ -138,6 +140,7 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
   return {
     id,
     tag,
+    version: tag.replace(/^dsh-v/, ''),
     cordis: line.cordis ?? '4.0.4',
     session,
     foldEventTypes: [
@@ -275,11 +278,8 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
 }
 
 export const BASELINES: readonly Baseline[] = [
-  // The oldest supported line, V4: the floor because it is the first 0.1.7-line release with a complete npm
-  // dependency closure (docs/compatibility.md §1); rc.2 adds `startsSeries` (inert) and `developer/message` events.
-  baseline('v0.1.7-rc.2', 'dsh-v0.1.7-rc.2', '0.1.7-rc.2'),
-  // The 0.2.0 line continues the V4 Config-form generation with every seam spelled exactly as at `0.1.7-rc.2`;
-  // cordis stays 4.0.4.
+  // The oldest supported line, V4: the floor because its npm dependency closure is complete (docs/compatibility.md
+  // §1); every seam below is spelled at this tag, and cordis stays 4.0.4.
   baseline('v0.2.0-rc.2', 'dsh-v0.2.0-rc.2', '0.2.0-rc.2'),
   // Two facts differ from 0.2.0: cordis 4.0.5, and the `web-deepseek-api` stock entry the balance fold falls back to.
   baseline('v0.2.1-rc.2', 'dsh-v0.2.1-rc.2', '0.2.1-rc.2', {

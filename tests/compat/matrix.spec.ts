@@ -62,13 +62,18 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       assert.equal(report.coldMatches, true)
     })
 
-    if (baseline.foldEventTypes.includes('developer/message')) {
-      test('host: developer messages contribute to requests and survive warm restore and v24 cache rebuild', () => {
-        assert.equal(report.developerTokens, 35)
-        assert.equal(report.developerRequestTokens, 35)
-        assert.equal(report.developerRestoreMatches, true)
-      })
-    }
+    test('host: developer messages contribute to requests and survive warm restore and v24 cache rebuild', () => {
+      assert.equal(report.developerTokens, 35)
+      assert.equal(report.developerRequestTokens, 35)
+      assert.equal(report.developerRestoreMatches, true)
+    })
+
+    test('admission: the tag gate admits this manifest and refuses the dropped 0.1.7 line', () => {
+      const admission = staging.evaluateAdmission(baseline)
+      assert.deepEqual(admission.baseline, { admitted: true, requirements: null }, 'a supported release needs no exemption')
+      assert.equal(admission.dropped.admitted, false, 'the dropped 0.1.7 line is refused')
+      assert.ok(Object.keys(admission.dropped.requirements ?? {}).length > 0, 'the refusal names its unmet requirement')
+    })
 
     test('host: hostile gateway usage keeps the served view schema-valid (issue #44)', () => {
       assert.equal(report.hostileSnapshotOk, true)

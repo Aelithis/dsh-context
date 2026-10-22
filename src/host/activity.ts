@@ -3,7 +3,7 @@
 
 import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from './compat'
+import type { WiredProjection } from './projection'
 import { skillNameOf } from './fold'
 import { addBilledUsage, copyCostUsage, durOf, tokenCountOf } from './foldMetering'
 import type { BilledUsage, UsageLike } from './foldMetering'
@@ -289,7 +289,7 @@ export function applyActivity(state: ActivityState, event: SessionEvent): Activi
 }
 
 /** `stateVersion` 5: rows folded before the turn cursor, tool timings and step wall time read version-stale and cold-refold. */
-export function createContextActivityDefinition(): ProjectionDefinition<'contextActivity', ActivityState> {
+export function createContextActivityDefinition(): WiredProjection<'contextActivity', ActivityState> {
   return {
     key: 'contextActivity',
     stateSchema: activityStateSchema,

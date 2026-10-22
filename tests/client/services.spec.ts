@@ -274,9 +274,9 @@ describe('timelineOf', () => {
   })
 
   test('the unsupported gate record survives the sanitizing slow path only when well-formed', () => {
-    const kept = timelineOf({ current: 1, unsupported: { current: '0.1.1-rc.2', minimum: '0.1.7-rc.2' } })
+    const kept = timelineOf({ current: 1, unsupported: { current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' } })
     assert.ok(kept !== null)
-    assert.deepEqual(kept.unsupported, { current: '0.1.1-rc.2', minimum: '0.1.7-rc.2' })
+    assert.deepEqual(kept.unsupported, { current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' })
     for (const bad of ['x', null, {}, { current: 1, minimum: 'm' }, { current: 'c' }]) {
       const out = timelineOf({ current: 1, unsupported: bad })
       assert.ok(out !== null)
@@ -351,7 +351,7 @@ describe('timelineOf', () => {
 
 describe('unsupportedOf', () => {
   test('well-formed records pass through as plain data', () => {
-    assert.deepEqual(unsupportedOf({ current: '0.1.1-rc.2', minimum: '0.1.7-rc.2' }), { current: '0.1.1-rc.2', minimum: '0.1.7-rc.2' })
+    assert.deepEqual(unsupportedOf({ current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' }), { current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' })
   })
 
   test('non-records and wrong-typed fields degrade to null', () => {

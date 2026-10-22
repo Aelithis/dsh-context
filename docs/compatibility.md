@@ -6,13 +6,15 @@ The rules dsh-context must hold on every supported `@deepseek-ai/dsh` release, a
 
 **Law.** Record only what no other artifact carries; delete what code, tests, or git history already say. Verify against the dsh sources before acting — source wins over this page. Less is ALWAYS better.
 
-Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
+Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
 
 ## 1 · Supported set
 
 *What the plugin declares it works on.*
 
-1. **Support exactly `0.1.7-rc.2`, `0.2.0-rc.2` and `0.2.1-rc.2`** — all the V4 durable-log generation. The floor is `0.1.7-rc.2` because it is the first `0.1.7`-line release with a complete npm dependency closure; anything older gets §2's fallback composition with an upgrade prompt, never a fold.
+1. **Support exactly `0.2.0-rc.2` and `0.2.1-rc.2`** — the `0.2.0` line from rc.2 and the `0.2.1` line from rc.2, both the V4 durable-log generation (declared in `dsh.compatibility.dshReleases`, baselined in `tests/baselines.ts`). The runtime-gate floor is the single `0.2.0-rc.2` release, and its published npm dependency closure is verified complete (a fresh `npm install @deepseek-ai/dsh@0.2.0-rc.2` in a disposable project exits 0 with the full `@deepseek-ai/*` closure). The `0.1.7` line is dropped; its users must move to a supported release. Releases older than the floor are refused by the harness gate where it runs (§2), or get §2's fallback composition with an upgrade prompt where it does not — never a fold.
+
+- **Limitation — preview admission:** the single floor admits semantically newer releases the matrix never stages (a supported line's pre-rc.2 previews, or a later line); by design they get the real folds forward-compatibly, while the exact `dsh.compatibility.dshReleases` records — not the range — carry the store's install evidence.
 
 ## 2 · Admission
 
@@ -20,11 +22,11 @@ Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-r
 
 **Harness-side**
 
-1. **dsh ≥ `0.1.7` enforces a plugin's `@deepseek-ai/dsh*` peer ranges** at startup and install (semver, `includePrerelease: true`; exemption `dsh plugin allow-version`). This plugin's peers are all `>=0.1.7-rc.2` — no exemption on any supported line. (dsh: `packages/boot/app-boot/src/plugin-compatibility.ts`, `apps/cli/src/plugin.ts`)
+1. **The harness refuses an unmet manifest before install and before profile import** — the gate landed in the `0.1.7` line at tag `dsh-v0.1.7-rc.1`; no earlier build has one. Which declaration it reads is line-specific: from `0.2.1-alpha.4` (announced by the `v0.2.1-alpha.3` upgrade guide for the next release) a declared `engines.dsh` decides alone and peers are ignored; the `0.2.0` line, the gated `0.1.7` builds, and `0.2.1` before alpha.4 read only the `@deepseek-ai/dsh*` peers (semver, `includePrerelease: true`). Both declarations must stay: each is the sole gate on one supported line, so together they admit every supported release and refuse the `0.1.7` line wherever the gate runs — no exact-version exemption is needed. (dsh: `packages/boot/app-boot/src/plugin-compatibility.ts`, `packages/boot/app-boot/src/compatibility-preflight.ts`, `packages/boot/plugin-manager/src/operations.ts`, `apps/cli/src/plugin.ts`)
 
 **Plugin-side**
 
-2. **Enforce the floor again at runtime** — a pre-`0.1.7` harness has no gate and would still load the plugin. Below the floor: zeroed fallback units plus an upgrade modal. Version undetectable: FAIL OPEN into the real units — a probe misfire must never blank a working deployment, and the home mirror (last-booted profile) never outranks the running module tree. (`src/host/version.ts`, `src/host/fallback.ts`, `src/shared/version.ts`)
+2. **Enforce the floor again at runtime** — the fallback stays as defense for loads the harness gate cannot stop: a build that predates the gate has none, and an exact-version exemption force-loads a gated harness below the floor. Below `0.2.0-rc.2`: zeroed fallback units plus an upgrade modal. Version undetectable: FAIL OPEN into the real units — a probe misfire must never blank a working deployment, and the home mirror (last-booted profile) never outranks the running module tree. (`src/host/version.ts`, `src/host/fallback.ts`, `src/shared/version.ts`)
 3. **Feature-detect `.volatile()` at schema build time**, so the same bundle loads — preferences inert — on a below-floor harness whose schemastery predates it. (`src/host/config.ts`)
 
 ## 3 · Fold
@@ -72,7 +74,7 @@ Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.1.7-rc.2` / `0.2.0-r
 2. **Mount at most once per page** (issue #137) — the client-plugin runner force-assigns a fresh shadowing priority to every registration, so the slot registry's same-priority duplicate guard never fires across a double mount. Read the raw ledger; mount nothing when `context-jump` is already seated; the read fails open. (dsh: `packages/client/ui-renderer/src/client/registry.ts` `SlotRegistry.entries`; probe `ledger`)
 3. **Session jump uses the sidebar's own verb**, `uiWorkspace.openSession(SessionTarget)` — never the sessions service's `open(id)`, removed by the `0.1.6` selection refactor (issue #90). (dsh: `packages/client/ui-workspace/src/client/navigation.ts`; probe `sessionNav`)
 4. **The member card's open prefers the right Sidebar's subagent chat**, addressed by the row's own direct parent — a face that is absent or leaves the address unclaimed keeps rule 3's whole-view jump. (dsh: `packages/client/ui-subagent/src/client/sidebar-chat/index.tsx`, `packages/client/ui-sidebar-right/src/client/service.ts`)
-5. **The settings jump uses the Plugins panel's own navigator**, `pluginNavigation.openBundle(packageName)` — never a DOM walk over its chrome: `0.2.1`'s contributed `plugins.tab` slot remembers its selection, so the card the walk seeks is absent while another tab is open, and the navigator resets that tab to Installed (the pre-`0.2.1` lines ship no contributed tabs). (dsh: `packages/client/ui-plugin-manager/src/client/index.ts`; probe `pluginsNav`)
+5. **The settings jump uses the Plugins panel's own navigator**, `pluginNavigation.openBundle(packageName)` — never a DOM walk over its chrome: `0.2.1`'s contributed `plugins.tab` slot remembers its selection, so the card the walk seeks is absent while another tab is open, and the navigator resets that tab to Installed (the `0.2.0` line ships no contributed tabs). (dsh: `packages/client/ui-plugin-manager/src/client/index.ts`; probe `pluginsNav`)
 
 **Boundary**
 

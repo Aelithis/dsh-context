@@ -266,7 +266,7 @@ describe('the baseline gate', () => {
 
     const timeline = ctx.sessionProjections.snapshot(session).values.contextTimeline
     assert.ok(timeline !== undefined, 'the fallback unit still delivers (no eternal loading)')
-    assert.deepEqual(timeline.unsupported, { current: '0.1.5-rc.1', minimum: BASELINE_DSH_VERSION })
+    assert.deepEqual(timeline.unsupported, { current: '0.1.7-rc.2', minimum: BASELINE_DSH_VERSION })
     assert.equal(timeline.current.total, 0, 'the log is NOT folded below the baseline')
     assert.equal(timeline.nodes.length, 0, 'real appends leave no surface nodes')
     assert.equal(timeline.model, undefined, 'no model metadata either')

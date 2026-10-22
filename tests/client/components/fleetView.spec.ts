@@ -90,7 +90,7 @@ describe('FleetView — the agent family on its own page', () => {
     const View = makeView(ctx)
     const m = await mount(h(View, {
       sessionId: 'sv-gate',
-      useProjection: projectionsFor(timeline({ unsupported: { current: '0.1.0', minimum: '0.2.0' } })),
+      useProjection: projectionsFor(timeline({ unsupported: { current: '0.1.0', minimum: '0.2.0-rc.2' } })),
     }))
 
     assert.ok(query(m.container, '.lc-gate-card') !== null, 'the gate names the unsupported harness here as well')

@@ -5,7 +5,7 @@
 
 import { z } from 'zod'
 import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
-import type { ProjectionDefinition } from './compat'
+import type { WiredProjection } from './projection'
 import { BASELINE_DSH_VERSION } from '../shared/version'
 import { contextActivitySchema } from './activity'
 import { contextHeadersSchema } from './headers'
@@ -15,16 +15,16 @@ import { contextTimelineSchema } from './timeline'
 const fallbackStateSchema = z.object({})
 type FallbackState = z.infer<typeof fallbackStateSchema>
 
-interface LegacyDefinitionShape<V> {
-  schema: z.ZodType<V>
-  view(state: FallbackState): V
+type FallbackDefinition<K extends keyof SessionProjectionMap> = WiredProjection<K, FallbackState> & {
+  schema: z.ZodType<SessionProjectionMap[K]>
+  view(state: FallbackState): SessionProjectionMap[K]
 }
 
 function fallbackDefinition<K extends 'contextTimeline' | 'contextHeaders' | 'contextActivity'>(
   key: K,
   wireSchema: z.ZodType<SessionProjectionMap[K]>,
   value: SessionProjectionMap[K],
-): ProjectionDefinition<K, FallbackState> & LegacyDefinitionShape<SessionProjectionMap[K]> {
+): FallbackDefinition<K> {
   const view = (): SessionProjectionMap[K] => value
   return {
     key,

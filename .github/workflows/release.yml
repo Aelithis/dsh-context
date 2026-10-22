@@ -18,8 +18,8 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Check the DeeSeek Harness plugin
-        # `next` = the newest published generation (0.2.0-rc.2), whose npm dependency closure is complete;
-        # `latest` still serves the other supported line (0.1.7-rc.2).
+        # `dshVersion` defaults to `latest`, which now serves the newest supported release (0.2.1-rc.2);
+        # both dsh dist-tags (`latest` and `next`) resolve there.
         uses: bowenliang123/dsh-plugin-checker@v1
 
       # No `packageManager` field in this plugin's package.json, so both workflows pin the version explicitly.
@@ -54,7 +54,6 @@ jobs:
           git init -q
           git remote add origin https://github.com/deepseek-ai/deepseek-harness.git
           git fetch --depth 1 -q origin \
-            refs/tags/dsh-v0.1.7-rc.2:refs/tags/dsh-v0.1.7-rc.2 \
             refs/tags/dsh-v0.2.0-rc.2:refs/tags/dsh-v0.2.0-rc.2 \
             refs/tags/dsh-v0.2.1-rc.2:refs/tags/dsh-v0.2.1-rc.2
 

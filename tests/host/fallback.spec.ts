@@ -7,7 +7,8 @@ import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { createFallbackActivityDefinition, createFallbackHeadersDefinition, createFallbackTimelineDefinition } from '../../src/host/fallback'
 import { BASELINE_DSH_VERSION } from '../../src/shared/version'
 
-const CURRENT = '0.1.1-rc.2'
+// One rc below the raised floor: the version a just-below-floor deployment reports.
+const CURRENT = '0.2.0-rc.1'
 
 async function boot() {
   const ctx = new Context()
