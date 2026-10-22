@@ -38,8 +38,8 @@ Complete ALL of these before ANY commit:
 - Clean up generated temporary files and temporary or unhelpful comments.
 - Run all these review in subagents. When analysis are all finished, INDEPENDENTLY verify each of its suggestions and consider to / not to follow them.
   - **Self-review**: re-examine all changes made.
-  - **Spec And Standards**: apply the [code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) skill.
-  - **Over-engineering**: apply the [ponytail-review](https://github.com/DietrichGebert/ponytail/blob/main/skills/ponytail-review/SKILL.md) skill.
+  - **Spec And Standards**: MUST load and apply the [code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) skill.
+  - **Over-engineering**: MUST load and apply the [ponytail-review](https://github.com/DietrichGebert/ponytail/blob/main/skills/ponytail-review/SKILL.md) skill.
 - Run `pnpm run check`: it runs `pnpm run lint`, `pnpm run typecheck` and `pnpm run coverage` concurrently, prints each tool's COMPLETE output, and fails when any of them does (the same logs stay in `.tmp/check-logs/`).
   - Fix every lint and type error, and ensure 100% per-file coverage. Please capture the ALL content of the full output without truncation or tailing.
     - Example for per-file 100% coverage output:
