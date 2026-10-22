@@ -1,10 +1,12 @@
-import { createElement as h, useState } from 'react'
+import { act, createElement as h, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import assert from 'node:assert/strict'
-import { describe, test } from 'vitest'
+import { describe, test, vi } from 'vitest'
 import type { CatFocus, ContextBrowserProps } from '../../../src/client/components/browser'
 import type { ContextHeaders } from '../../../src/shared/types'
 import { click, flush, hover, mount, query, queryAll, surfaceNode, text, tipRows, unhover, type Mounted } from '../helpers/kit'
-import { Browser, catRow, kit, props, req, tl, typeToolSearch, withEpochContent } from './browserHarness'
+import { Browser, catRow, filterStat, kit, props, req, tl, typeToolSearch, withEpochContent } from './browserHarness'
 
 describe('ContextBrowser DNA mode and the open-category bar pin', () => {
   const dnaHeaders: ContextHeaders = {
@@ -67,6 +69,24 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.deepEqual(calls, [false])
     assert.equal(bands(m).length, 7, 'still on until the parent re-renders the prop')
     await m.unmount()
+  })
+
+  test('the filter summary is populated before the DNA feed leaves its first-paint skeleton', async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    const silent = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      flushSync(() => {
+        root.render(h(Browser, props({ data: dnaData, headers: dnaHeaders, dna: true, onDnaChange: () => {} })))
+      })
+      assert.ok(query(container, '.lc-br-flat[aria-hidden="true"]'), 'the ready effect has not run yet')
+      assert.equal(text(query(container, '.lc-br-filter-stat')), '×6 ≈275')
+    } finally {
+      await act(async () => { root.unmount() })
+      container.remove()
+      silent.mockRestore()
+    }
   })
 
   test('the toggle redraws the composition bar as one band per item, in prompt order', async () => {    const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
@@ -210,14 +230,18 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
   test('the DNA feed text lens filters message rows, the tools group, and the system row', async () => {
     const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
     await click(dnaButton(m))
+    assert.equal(filterStat(m), '×6 ≈275')
     await typeToolSearch(m, 'bash')
     const rows = flatRows(m)
     assert.equal(rows.length, 2, 'the matching tool result and the tools group stay')
     assert.ok(text(rows[0]).includes('#2') && text(rows[1]).includes('Tool Schemas'))
+    assert.equal(filterStat(m), '×2 ≈105')
     await typeToolSearch(m, 'zzz')
+    assert.equal(filterStat(m), '×0 ≈0')
     assert.ok(text(query(m.container, '.lc-br-flat')).includes('No rows match'))
     await typeToolSearch(m, '')
     assert.equal(flatRows(m).length, 6)
+    assert.equal(filterStat(m), '×6 ≈275')
     await m.unmount()
   })
 
@@ -234,6 +258,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     const rows = flatRows(m)
     assert.equal(rows.length, 1, 'the tools group stays on a plugin-only match')
     assert.ok(text(rows[0]).includes('Tool Schemas'))
+    assert.equal(filterStat(m), '×1 ≈75')
     await m.unmount()
   })
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { UNKNOWN_TOOL_SOURCE, type ContextHeaders, type HeaderEpochContent } from '../../../src/shared/types'
 import { click, flush, mount, query, queryAll, surfaceNode, text, type Mounted } from '../helpers/kit'
-import { Browser, catRow, elemRows, pickStep, props, req, settings, tl, typeToolSearch } from './browserHarness'
+import { Browser, catRow, elemRows, filterStat, pickStep, props, req, settings, tl, typeToolSearch } from './browserHarness'
 
 describe('ContextBrowser tool schemas', () => {
   const headers: ContextHeaders = {
@@ -135,20 +135,35 @@ describe('ContextBrowser tool schemas', () => {
     assert.equal(sortBtns.length, 3)
     assert.ok(sortBtns[0].className.includes('lc-gran-on'), 'size is the default sort')
     const names = () => elemRows(m).map(r => text(query(r, '.lc-br-preview')))
+    assert.equal(filterStat(m), '×9 ≈248')
 
     await typeToolSearch(m, 'gamma')
     assert.deepEqual(names(), ['gamma'])
+    assert.equal(filterStat(m), '×1 ≈37')
     await typeToolSearch(m, 'everything')
     assert.deepEqual(names(), ['mega'])
+    assert.equal(filterStat(m), '×1 ≈92')
     await typeToolSearch(m, 'the a param')
     assert.deepEqual(names(), ['mega'])
     await typeToolSearch(m, 'github')
     assert.deepEqual(names(), ['omega'])
+    assert.equal(filterStat(m), '×1 ≈5')
+    await typeToolSearch(m, 'properties')
+    assert.equal(elemRows(m).length, 6)
+    assert.equal(filterStat(m), '×6 ≈229')
+    await typeToolSearch(m, ':')
+    assert.deepEqual(names(), ['mega', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'omega'])
+    assert.equal(filterStat(m), '×8 ≈242', 'a larger subset reports a larger share of the block total')
+    await typeToolSearch(m, 'e')
+    assert.equal(elemRows(m).length, 9)
+    assert.equal(filterStat(m), '×9 ≈248', 'a query that keeps the whole set still mirrors the block total')
     await typeToolSearch(m, 'zzz')
     assert.equal(elemRows(m).length, 0)
+    assert.equal(filterStat(m), '×0 ≈0')
     assert.ok(text(m.container).includes('No tools match the current filter'))
     await typeToolSearch(m, '')
     assert.equal(elemRows(m).length, 9)
+    assert.equal(filterStat(m), '×9 ≈248')
 
     await click(sortBtns[2])
     assert.ok(sortBtns[2].className.includes('lc-gran-on'))

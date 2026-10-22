@@ -8,20 +8,20 @@ import type { DnaItem } from '../dna'
 import type { ContentFetcher, ConversationNodeLike, HeaderFetcher } from '../services'
 import type { ContextSettings, DefaultDeltaBase, DefaultToolSort } from '../settings'
 import type { ViewKit } from '../viewkit'
-import { blockSummaryOf, callNamesOf, callSummaryOf } from '../callSummary'
 import type { DetailState } from '../timelineSource'
 import { makeDetailNote } from './detailNote'
 import { makeNodeText } from './nodes'
 import { turnStepsOf } from './trendChart'
 import { fetchMissNote, useFetchOnMiss } from './fetchOnMiss'
-import { attachmentsIn } from '../../shared/attachment'
+import { makeNodeRowOf, rowMatches } from './browserRows'
+import type { NodeRow } from './browserRows'
 import { makeAttachmentSection } from './attachments'
 import { makeRichText } from './richText'
 import type { StackedBarProps } from './stackedBar'
 import type { AttachmentOpener, ImageLoader } from '../services'
-import { TextSection, schemaTextOf, RowToolbar, ToolSchema, toolErrOf } from './browserToolCard'
+import { TextSection, schemaTextOf, RowToolbar, ToolSchema } from './browserToolCard'
 import { revealRowInCard } from '../revealScroll'
-import { NodeContent, byCatOf, nodeNameOf, msgKindsOf, reasoningTextOf, ROW_KINDS } from './browserNodes'
+import { NodeContent, byCatOf, msgKindsOf, ROW_KINDS } from './browserNodes'
 import type { RowKind } from './browserNodes'
 import { DNA_MIN_BAND, countOf, lastOfTurn, stepStampOf } from './browserHelpers'
 import type { CatFocus } from './browserHelpers'
@@ -489,67 +489,7 @@ export function makeContextBrowser(
       ))
     }
 
-    /** One message row's display facts, shared by the category bodies and the DNA flat feed, so the text
-     * filter scans exactly what the rows show — at derivation time, not per keystroke. */
-    const nodeRowOf = (n: SurfaceNode) => {
-      const conv = bySeq.get(n.seq)
-      // A `skill`-tool load reclassifies into the `skill` bucket but stays a tool result — same failure rule.
-      const rowErr = (n.cat === 'tool' || n.cat === 'skill') && toolErrOf(n, conv).err
-      let tag: string | null = null
-      let tagNames: string[] | null = null
-      let preview = nodeText(n)
-      const id = nodeNameOf(n)
-      if (n.cat === 'tool') {
-        tag = n.tool ?? '?'
-        tagNames = n.tool !== undefined ? [n.tool] : null
-        preview = callSummaryOf(conv) ?? t('node.toolResult')
-      } else if (n.cat === 'skill') {
-        tag = n.skill !== undefined ? t('node.skillTag', { name: n.skill }) : t('form.' + (n.form || 'context'))
-        preview = (n.skill === undefined && id !== '' ? id : null)
-          ?? (n.text !== undefined && n.text !== '' ? n.text : null)
-          ?? callSummaryOf(conv) ?? preview
-      } else if (n.cat === 'assistant') {
-        // The fold stamps `calls` only on TEXT-LESS replies; a reply carrying both text and calls recovers its breadcrumb through the join.
-        const names = Array.isArray(n.calls) && n.calls.length > 0 ? n.calls : callNamesOf(conv)
-        if (names.length > 0) {
-          tag = names.join(' › ')
-          tagNames = names
-          preview = (n.text !== undefined && n.text !== '' ? n.text : null)
-            ?? blockSummaryOf(conv)
-            ?? t('node.empty')
-        } else if (n.text === undefined || n.text === '') {
-          preview = blockSummaryOf(conv) ?? preview
-        }
-      } else if (n.cat === 'user') {
-        const attCount = attachmentsIn(conv?.content).length
-        if (attCount > 0 && openElem !== `n${n.seq}`) {
-          tag = t('attach.title') + (attCount > 1 ? ' ×' + String(attCount) : '')
-        }
-      } else {
-        tag = t('form.' + (n.form || 'context'))
-        if (id !== '') {
-          preview = id
-        } else if (n.text !== undefined && n.text !== '') {
-          preview = n.form === 'snapshot' ? t('node.snapshot') + n.text : n.text
-        }
-      }
-      return {
-        n,
-        conv,
-        rowErr,
-        tag,
-        tagNames,
-        preview,
-        reasoning: n.cat === 'assistant' ? reasoningTextOf(conv) : '',
-        kinds: msgKindsOf(n, conv),
-      }
-    }
-    type NodeRow = ReturnType<typeof nodeRowOf>
-
-    const rowMatches = (r: NodeRow, q: string): boolean =>
-      (r.tag ?? '').toLowerCase().includes(q) || r.preview.toLowerCase().includes(q)
-      || (typeof r.n.text === 'string' && r.n.text.toLowerCase().includes(q))
-      || r.reasoning.toLowerCase().includes(q)
+    const nodeRowOf = makeNodeRowOf(kit, nodeText, bySeq, openElem)
 
     /** One expandable message row — the category bodies' and the flat feed's shared renderer; `tag` composes the
      * row's chips and `onHover` lights the row's own band on the bar. */
@@ -633,8 +573,20 @@ export function makeContextBrowser(
             : toolSort === 'size'
               ? b.tokens - a.tokens
               : (a.name < b.name ? -1 : 1))
+        const allPrices = view.header.tools.reduce((sum, tool) => sum + tool.tokens, 0)
+        const shownPrices = shown.reduce((sum, tool) => sum + tool.tokens, 0)
+        // The category's block estimate is authoritative; allocate it across the shown tools by their relative prices.
+        /* v8 ignore next 1 -- a non-null header with no tools cannot open this category; the guard keeps the division finite. */
+        const shownTokens = allPrices > 0 ? Math.round(breakdown.tools * shownPrices / allPrices) : 0
         const toolctl = (
-          <RowToolbar value={rowQuery} placeholder={t('tool.search')} tip={t('tool.sortTip')} onChange={setRowQuery}>
+          <RowToolbar
+            value={rowQuery}
+            placeholder={t('tool.search')}
+            count={shown.length}
+            tokens={shownTokens}
+            tip={t('tool.sortTip')}
+            onChange={setRowQuery}
+          >
             {(['size', 'count', 'name'] as const).map(k => (
               <button
                 key={k}
@@ -698,10 +650,29 @@ export function makeContextBrowser(
         : rows.filter(r =>
           (rowKind === null || r.kinds[rowKind])
           && (q === '' || rowMatches(r, q)))
+      // A complete set mirrors the category row's meter total; a filtered subset has only the shown rows to sum.
+      const shownTokens = shown.length === rows.length
+        ? breakdown[c as Category] || 0
+        : shown.reduce((sum, r) => sum + r.n.tokens, 0)
       const rowctl = kindCounts === null
-        ? <RowToolbar value={rowQuery} placeholder={t('browser.search.' + c)} onChange={setRowQuery} />
+        ? (
+          <RowToolbar
+            value={rowQuery}
+            placeholder={t('browser.search.' + c)}
+            count={shown.length}
+            tokens={shownTokens}
+            onChange={setRowQuery}
+          />
+        )
         : (
-          <RowToolbar value={rowQuery} placeholder={t('browser.search.' + c)} tip={t('browser.kindTip')} onChange={setRowQuery}>
+          <RowToolbar
+            value={rowQuery}
+            placeholder={t('browser.search.' + c)}
+            count={shown.length}
+            tokens={shownTokens}
+            tip={t('browser.kindTip')}
+            onChange={setRowQuery}
+          >
             {kindCounts.map(({ k, n }) => (
               <button
                 key={k}
@@ -758,11 +729,6 @@ export function makeContextBrowser(
         breakdown.system, undefined, systemBodyOf(sys), false, null, stampFor(sys.seq),
         { onHover: (over) => { setRowDnaKey(over ? 'system' : null) } })
 
-    /** The DNA feed: every assembled item as one flat row list, newest row first; header groups close the list. */
-    const flatToolbar = (): ReactElement => (
-      <RowToolbar value={rowQuery} placeholder={t('browser.search.flat')} onChange={setRowQuery} />
-    )
-
     /* v8 ignore start -- jsdom has no layout/ResizeObserver: the wide gate and the first-paint skeleton are live-only. */
     useEffect(() => {
       if (!dna) {
@@ -787,14 +753,16 @@ export function makeContextBrowser(
     }
     /** Only the visible feed slice becomes React elements: a long session carries over a thousand rows, and
      *  building them all just to render ~30 was the DNA toggle's dominant cost. */
-    const flatRows = (): { entries: FlatEntry[]; tail: ReactElement[]; empty: boolean } => {
+    const flatRows = (): { entries: FlatEntry[]; tail: ReactElement[]; count: number; tokens: number } => {
       const q = rowQuery.trim().toLowerCase()
       // Positions count ascending in reading order; reversing the array must not renumber them.
       const entries: FlatEntry[] = []
+      let tokens = 0
       for (let i = view.nodes.length - 1; i >= 0; i--) {
         const r = nodeRowOf(view.nodes[i])
         if (q !== '' && !rowMatches(r, q)) continue
         entries.push({ r, pos: i + 1 })
+        tokens += r.n.tokens
       }
       // An empty q matches everything (String.includes('') is true), so the lens needs no short-circuit arms.
       // A header-less surface (no epoch served) renders message bands only, so its feed carries no header rows.
@@ -804,18 +772,34 @@ export function makeContextBrowser(
       const sysText = sys !== null ? headerContent.get(sys.seq)?.system ?? '' : ''
       const sysHit = sys !== null && (systemPreviewOf(sys).toLowerCase().includes(q) || sysText.toLowerCase().includes(q))
       const tail: ReactElement[] = []
-      if (view.header !== null && toolsHit) tail.push(toolsGroupRow(view.header))
-      if (sys !== null && sysHit) tail.push(systemRow(sys))
+      if (view.header !== null && toolsHit) {
+        tail.push(toolsGroupRow(view.header))
+        tokens += breakdown.tools
+      }
+      if (sys !== null && sysHit) {
+        tail.push(systemRow(sys))
+        tokens += breakdown.system
+      }
       const keys = new Map<string, number>()
       for (let i = 0; i < entries.length; i++) keys.set('n' + String(entries[i].r.n.seq), i)
       flatIndexRef.current = keys
-      return { entries, tail, empty: entries.length === 0 && tail.length === 0 }
+      return { entries, tail, count: entries.length + tail.length, tokens }
     }
-    const flatRowsModel = dna && flatReady ? flatRows() : null
+    const flatRowsModel = dna ? flatRows() : null
     // 28px row + 2px flat gap: the pad formula reproduces the full feed height while only the viewport renders.
     const flatRange = useRowWindow(scrollRef, flatRowsModel?.entries.length ?? 0, 30, dna && flatReady && flatWide && openElem === null)
     // A non-DNA render never shows this model; the local keeps the JSX branch-free (the DNA branch owns the rows).
-    const flat = flatRowsModel ?? { entries: [] as FlatEntry[], tail: [] as ReactElement[], empty: true }
+    const flat = flatRowsModel ?? { entries: [] as FlatEntry[], tail: [] as ReactElement[], count: 0, tokens: 0 }
+    /** The DNA feed: every assembled item as one flat row list, newest row first; header groups close the list. */
+    const flatToolbar = (): ReactElement => (
+      <RowToolbar
+        value={rowQuery}
+        placeholder={t('browser.search.flat')}
+        count={flat.count}
+        tokens={flat.tokens}
+        onChange={setRowQuery}
+      />
+    )
 
     return (
       <div className="lc-card lc-br" ref={rootRef}>
@@ -944,7 +928,7 @@ export function makeContextBrowser(
                     : null}
                   {/* Header groups are the feed's tail: render them AFTER the bottom pad so they stay at the end. */}
                   {flat.tail}
-                  {flat.empty ? <div className="lc-br-note">{t('browser.rowNoMatch')}</div> : null}
+                  {flat.count === 0 ? <div className="lc-br-note">{t('browser.rowNoMatch')}</div> : null}
                 </div>
               ))
             : (

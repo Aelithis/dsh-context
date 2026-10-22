@@ -5,7 +5,7 @@ import type { ContextBrowserProps } from '../../../src/client/components/browser
 import type { ContextHeaders } from '../../../src/shared/types'
 import type { ConversationNodeLike, ImageLoader } from '../../../src/client/services'
 import { click, flush, mount, query, queryAll, surfaceNode, text } from '../helpers/kit'
-import { Browser, catRow, elemRows, kit, props, tl, typeToolSearch } from './browserHarness'
+import { Browser, catRow, elemRows, filterStat, kit, props, tl, typeToolSearch } from './browserHarness'
 
 describe('ContextBrowser message categories', () => {
   const convNodes: ConversationNodeLike[] = [
@@ -158,19 +158,25 @@ describe('ContextBrowser message categories', () => {
     const input = query<HTMLInputElement>(m.container, '.lc-br-tool-search')
     assert.equal(input.placeholder, 'Filter by message text…')
     const previews = () => elemRows(m).map(r => text(query(r, '.lc-br-preview')))
+    assert.equal(filterStat(m), '×8 ≈40')
     await typeToolSearch(m, 'summary')
     assert.deepEqual(previews(), ['empty summary', 'summary node'])
+    assert.equal(filterStat(m), '×2 ≈12')
     await typeToolSearch(m, 'zzz')
     assert.equal(elemRows(m).length, 0)
+    assert.equal(filterStat(m), '×0 ≈0')
     assert.ok(text(m.container).includes('No rows match the current filter'))
     assert.equal(queryAll(m.container, '.lc-br-tool-search').length, 1)
     await typeToolSearch(m, '')
     assert.equal(elemRows(m).length, 8)
+    assert.equal(filterStat(m), '×8 ≈40')
 
     await click(catRow(m, 'assistant'))
     assert.equal(query<HTMLInputElement>(m.container, '.lc-br-tool-search').value, '', 'another category opens unfiltered')
+    assert.equal(filterStat(m), '×8 ≈60')
     await typeToolSearch(m, 'bash')
     assert.deepEqual(previews(), ['full cascade', 'done all'])
+    assert.equal(filterStat(m), '×2 ≈28')
     await m.unmount()
   })
 

@@ -4,7 +4,7 @@ import { makeContextBrowser, type ContextBrowserProps } from '../../../src/clien
 import { makeStackedBar } from '../../../src/client/components/stackedBar'
 import { createContextSettings } from '../../../src/client/settings'
 import type { ContextHeaders, ContextTimeline, HeaderEpochContent, RequestRecord } from '../../../src/shared/types'
-import { makeKit, query, queryAll, type Mounted } from '../helpers/kit'
+import { makeKit, query, queryAll, text, type Mounted } from '../helpers/kit'
 
 export const kit = makeKit()
 export const settings = createContextSettings()
@@ -45,6 +45,10 @@ export function catRow(m: Mounted, cat: keyof typeof ROW): HTMLElement {
 
 export function elemRows(m: Mounted): HTMLElement[] {
   return queryAll(m.container, '.lc-br-elem-row')
+}
+
+export function filterStat(m: Mounted): string {
+  return text(query(m.container, '.lc-br-filter-stat'))
 }
 
 /** Native setter + input event, so React's controlled-input tracker sees the change. */

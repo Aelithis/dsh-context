@@ -9,6 +9,7 @@ import type { RichKit } from './richText'
 import { Section } from './section'
 import { typeOf, paramsOf } from './browserSchema'
 import type { ParamSchema } from './browserSchema'
+import { fmt } from '../format'
 
 function ParamRow(props: {
   name: string
@@ -78,6 +79,8 @@ export function schemaTextOf(schema: unknown): string {
 export function RowToolbar(props: {
   value: string
   placeholder: string
+  count: number
+  tokens: number
   tip?: string
   onChange: (v: string) => void
   children?: ReactNode
@@ -90,6 +93,7 @@ export function RowToolbar(props: {
         placeholder={props.placeholder}
         onChange={(ev: ChangeEvent<HTMLInputElement>) => { props.onChange(ev.target.value) }}
       />
+      <span className="lc-br-filter-stat">{'×' + fmt(props.count) + ' ≈' + fmt(props.tokens)}</span>
       {props.children !== undefined
         ? <span className="lc-gran" role="group" title={props.tip}>{props.children}</span>
         : null}
