@@ -203,11 +203,12 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     const sortItems = menuItems()
     assert.deepEqual(sortItems.map(i => text(i)), [
       DICT_EN['files.sort.count'],
+      DICT_EN['files.sort.lines'],
       DICT_EN['files.sort.latest'],
       DICT_EN['files.sort.path'],
       DICT_EN['files.sort.name'],
     ])
-    await click(sortItems[3]) // 'By name'
+    await click(sortItems[4]) // 'By name'
     assert.deepEqual(calls, [
       ['defaultPlacement', 'sidebar'],
       ['insightsEntry', 'hide'],

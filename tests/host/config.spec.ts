@@ -96,8 +96,9 @@ describe('preference fields (the Config-form generation surface)', () => {
   })
 
   test('a stored preference survives the resolve', () => {
-    const resolved = Config({ defaultPlacement: 'sidebar', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' })
+    const resolved = Config({ defaultPlacement: 'sidebar', defaultFileSort: 'lines', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' })
     assert.equal(deref(resolved.defaultPlacement), 'sidebar')
+    assert.equal(deref(resolved.defaultFileSort), 'lines')
     assert.equal(deref(resolved.insightsEntry), 'hide')
     assert.equal(deref(resolved.overviewAutoSteps), 'off')
     assert.equal(deref(resolved.defaultOverviewRange), '7d')

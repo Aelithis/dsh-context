@@ -47,7 +47,7 @@ export const Config = z.object({
   defaultTrendMode: volatileField(z.union(['total', 'delta']).default('total').loose()),
   defaultDeltaBase: volatileField(z.union(['step', 'turn']).default('step').loose()),
   defaultToolSort: volatileField(z.union(['size', 'count', 'name']).default('count').loose()),
-  defaultFileSort: volatileField(z.union(['count', 'latest', 'path', 'name']).default('count').loose()),
+  defaultFileSort: volatileField(z.union(['count', 'lines', 'latest', 'path', 'name']).default('count').loose()),
   insightsEntry: volatileField(z.union(['show', 'hide']).default('show').loose()),
   defaultDurationCurve: volatileField(z.union(['show', 'hide']).default('show').loose()),
   overviewAutoSteps: volatileField(z.union(['100', '200', '300', 'off']).default('200').loose()),

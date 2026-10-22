@@ -213,6 +213,7 @@ function PreferenceRows(props: { t: Translate; state: SettingsState; set?: Setti
           disabled={disabled}
           options={[
             { id: 'count', label: t('files.sort.count') },
+            { id: 'lines', label: t('files.sort.lines') },
             { id: 'latest', label: t('files.sort.latest') },
             { id: 'path', label: t('files.sort.path') },
             { id: 'name', label: t('files.sort.name') },

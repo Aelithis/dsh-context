@@ -447,6 +447,9 @@ describe('attach', () => {
     scope.emit({ status: 'ready', value: { insightsEntry: 'hide' }, writable: false })
     assert.equal(calls, 8)
     assert.equal(s.insightsEntry(), 'hide')
+    scope.emit({ status: 'ready', value: { defaultFileSort: 'lines' }, writable: false })
+    assert.equal(calls, 9)
+    assert.equal(s.defaultFileSort(), 'lines')
   })
 
   test('an identical scope snapshot does not notify listeners', () => {
