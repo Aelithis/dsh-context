@@ -36,8 +36,7 @@ Complete ALL of these before ANY commit:
 - Close out the to-do list, ensuring every item is completed, cleaned up or explicitly closed.
 - Review the full diff independently: every change necessary, correct, and not over-engineered.
 - Clean up generated temporary files and temporary or unhelpful comments.
-- Run all these review in subagents. When analysis are all finished, INDEPENDENTLY verify each of its suggestions and consider to / not to follow them.
-  - **Self-review**: re-examine all changes made.
+- Self review changes and Run all these review in subagents. When analysis are all finished, INDEPENDENTLY verify each of its suggestions and consider to / not to follow them.
   - **Spec And Standards**: MUST load and use 2 independent subagents to apply the [code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) skill.
   - **Over-engineering**: MUST load and apply the [ponytail-review](https://github.com/DietrichGebert/ponytail/blob/main/skills/ponytail-review/SKILL.md) skill.
 - Run `pnpm run check`: it runs `pnpm run lint`, `pnpm run typecheck` and `pnpm run coverage` concurrently, prints each tool's COMPLETE output, and fails when any of them does (the same logs stay in `.tmp/check-logs/`).
