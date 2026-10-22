@@ -115,8 +115,9 @@
    stay decorative. */
 .lc-fit-layer { position: absolute; top: 18px; left: 0; right: 0; height: 112px; pointer-events: none; }
 .lc-chart-fit .lc-bar-marker { pointer-events: auto; }
-/* The hover/selection rules: brand for the picked record, label-primary for the pinned one. */
-.lc-fit-cursor { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--dsw-alias-brand-primary); pointer-events: none; }
+/* The hover/selection rules: brand for the picked record, label-primary for the pinned one. z-index 2 clears the
+   ribbon svg's own z-index 1 (`.lc-duration`). */
+.lc-fit-cursor { position: absolute; top: 0; bottom: 0; z-index: 2; width: 0; border-left: 1px solid var(--dsw-alias-brand-primary); pointer-events: none; }
 .lc-fit-pin { border-left-color: var(--dsw-alias-label-primary); }
 /* Hover-dim wash over the plot's other turns (the bars' opacity dim, applied as a cover). */
 .lc-fit-wash { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, transparent); pointer-events: none; }
