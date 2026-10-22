@@ -2,12 +2,11 @@
 .lc-br-dna-ctl { margin-left: 0; flex: none; }
 /* The card is a fixed-head flex column: the title row, composition bar, notices, the DNA lens and the block
    map never scroll; only the rows region below them scrolls, in every host — the capped tab column
-   (browserCapOf), the /context modal's filled dialog (modal.css). The region's wheel never chains past its
-   ends, so the page (and the fixed zone with it) only moves when the pointer leaves it; its small floor
-   keeps a readable slice while the map folds under pane pressure. */
+   (browserCapOf), the /context modal's filled dialog (modal.css); its small floor keeps a readable slice
+   while the map folds under pane pressure. */
 .lc-br { display: flex; flex-direction: column; min-height: 0; }
 .lc-br-head { flex: none; }
-.lc-br-scroll { flex: 1 1 auto; min-height: 28px; overflow-y: auto; overscroll-behavior: contain; }
+.lc-br-scroll { flex: 1 1 auto; min-height: 28px; overflow-y: auto; overscroll-behavior-x: contain; }
 /* The fixed head's DNA lens keeps the feed's 10px bar-to-lens rhythm. */
 .lc-br-head .lc-br-toolctl { margin-top: 10px; }
 /* The divider scales with its band (`min(0.5px, 12.5%)` of its own width): long sessions pin hundreds of bands at ≤1px, where a fixed divider would cover the whole band. A gradient layer, because a fixed inset box-shadow cannot scale. */

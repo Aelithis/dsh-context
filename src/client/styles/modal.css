@@ -21,6 +21,8 @@
 .lc-modal-fill:has(.lc-map) .lc-modal-body > .lc-br { flex: 1 1 0; }
 .lc-modal-fill:has(.lc-map) .lc-br-scroll { flex: 1 1 0; }
 .lc-modal-fill:has(.lc-map) .lc-map { flex: 0 1 auto; max-height: none; }
+/* The /context dialog is an overlay: its rows region keeps the wheel contained so it can never move the page behind the mask. */
+.lc-modal-card .lc-br-scroll { overscroll-behavior: contain; }
 
 /* ---- the baseline-gate dialog (upgradeGate.tsx) ---- */
 .lc-gate-card { width: min(440px, calc(100vw - 48px)); }
