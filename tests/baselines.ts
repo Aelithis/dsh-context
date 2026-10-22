@@ -29,6 +29,17 @@ export interface ClientSeam {
     sessionsFile: string
     sessionsOpen: boolean
   }
+  /** The Plugins-panel navigator the settings jump rides: `pluginNavigation.openBundle` (the panel's own verb, never a DOM
+   * walk), plus the `0.2.1` contributed-tab machinery whose remembered selection it resets. */
+  pluginsNav: {
+    file: string
+    needle: string
+    tabReset: boolean
+    tabResetNeedle: string
+    tabsSlot: boolean
+    tabsSlotFile: string
+    tabsSlotNeedle: string
+  }
   /** The first-level panel seam: the layout's keyed `main` slot and the sidebar's `sidebar.panellist` list, addressed by one shared id. */
   insightPage: {
     panellistFile: string
@@ -183,6 +194,15 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
         workspaceNeedle: 'openSession(target: SessionTarget): void',
         sessionsFile: 'packages/api/session-controller/src/client/contract/sessions.ts',
         sessionsOpen: false,
+      },
+      pluginsNav: {
+        file: 'packages/client/ui-plugin-manager/src/client/index.ts',
+        needle: "'pluginNavigation', {",
+        tabReset: id === 'v0.2.1-rc.2',
+        tabResetNeedle: 'instance.actions.setTab',
+        tabsSlot: id === 'v0.2.1-rc.2',
+        tabsSlotFile: 'packages/client/ui-plugin-manager/src/client/slot-contract.ts',
+        tabsSlotNeedle: "'plugins.tab'",
       },
       insightPage: {
         panellistFile: 'packages/client/ui-sidebar/src/client/contract/slots.ts',

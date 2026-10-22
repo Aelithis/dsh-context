@@ -2,6 +2,7 @@ import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { afterEach, describe, test, vi } from 'vitest'
 import type { makePluginInfo as makePluginInfoFn } from '../../../src/client/components/pluginInfo'
+import { TestClientCtx, asClientCtx } from '../helpers/harness'
 import { flush, makeKit, mount, query, queryAll, text } from '../helpers/kit'
 
 const kit = makeKit()
@@ -12,13 +13,13 @@ function stubFetchOk(body: { version?: unknown }) {
   return fetchMock
 }
 
-async function loadPluginInfo(version?: string): Promise<ReturnType<typeof makePluginInfoFn>> {
+async function loadPluginInfo(version?: string, ctx = new TestClientCtx()): Promise<ReturnType<typeof makePluginInfoFn>> {
   vi.resetModules()
   if (version === undefined) delete (globalThis as Record<string, unknown>).__DSH_CTX_VERSION__
   else (globalThis as Record<string, unknown>).__DSH_CTX_VERSION__ = version
   await import('../../../src/client/latestVersion')
   const mod = await import('../../../src/client/components/pluginInfo')
-  return mod.makePluginInfo(kit)
+  return mod.makePluginInfo(kit, asClientCtx(ctx))
 }
 
 afterEach(() => {
@@ -29,7 +30,9 @@ afterEach(() => {
 describe('PluginInfo', () => {
   test('dev build renders the static rows and never checks the registry', async () => {
     const fetchMock = stubFetchOk({ version: '9.9.9' })
-    const PluginInfo = await loadPluginInfo() // PLUGIN_VERSION = 0.0.0-dev
+    const opened: string[] = []
+    const ctx = new TestClientCtx({ services: { pluginNavigation: { openBundle: (name: string) => { opened.push(name) } } } })
+    const PluginInfo = await loadPluginInfo(undefined, ctx) // PLUGIN_VERSION = 0.0.0-dev
     const m = await mount(h(PluginInfo, {}))
     await flush()
     assert.equal(fetchMock.mock.calls.length, 0)
@@ -53,8 +56,8 @@ describe('PluginInfo', () => {
     assert.equal(hint.getAttribute('target'), '_blank')
     assert.equal(hint.getAttribute('rel'), 'noreferrer')
     assert.equal(queryAll(m.container, '.lc-pi-update').length, 0)
-    // Without harness chrome in the jsdom document the guarded jump no-ops, so the click is safe.
-    assert.doesNotThrow(() => rows[2].click())
+    rows[2].click()
+    assert.deepEqual(opened, ['dsh-context'], 'the settings row jumps through the Plugins panel navigator')
     await m.unmount()
   })
 

@@ -4,6 +4,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ComponentType } from 'react'
 import type { AttachmentRef } from '../shared/attachment'
 import { estimateSystemTokens } from '../shared/estimate'
+import { PLUGIN_NAME } from './meta'
 import type { ActivityDay, ContextActivity, ContextBreakdown, ContextHeaders, ContextPressure, ContextTimeline, CostModelUsage, HeaderEpochContent, SystemPromptNode, TimingTotals, TokenUsage, ToolTimingTotals } from '../shared/types'
 
 export interface LocaleService {
@@ -750,6 +751,16 @@ export function openSessionVia(ctx: ClientCtx, id: string): void {
     const workspace = asRecord(ctx.get('uiWorkspace'))
     const open = workspace?.openSession
     if (typeof open === 'function') open.call(workspace, id)
+  } catch { /* absent or hostile face — the jump is best-effort */ }
+}
+
+/** Jump to this bundle's page on the Plugins panel through the panel's own navigator: it selects the panel and resets the
+ * remembered tab, so a contributed `plugins.tab` left selected cannot swallow the jump (docs/compatibility.md §5.5). */
+export function openPluginSettings(ctx: ClientCtx): void {
+  try {
+    const navigation = asRecord(ctx.get('pluginNavigation'))
+    const open = navigation?.openBundle
+    if (typeof open === 'function') open.call(navigation, PLUGIN_NAME)
   } catch { /* absent or hostile face — the jump is best-effort */ }
 }
 

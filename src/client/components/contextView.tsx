@@ -129,7 +129,7 @@ export function makeContextView(
   const StatsContext = makeStatsContext(kit, makeSubagentCost(ctx, heads))
   const StatsTiming = makeStatsTiming(kit, Donut)
   const StatsTokens = makeStatsTokens(kit, Donut)
-  const PluginInfo = makePluginInfo(kit)
+  const PluginInfo = makePluginInfo(kit, ctx)
   const UpgradeGate = makeUpgradeGate(kit)
   const DetailNote = makeDetailNote(kit)
   const ContextBrowser = makeContextBrowser(kit, StackedBar, settings)

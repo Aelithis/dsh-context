@@ -3,7 +3,7 @@ import { IconSettings } from '../primitives'
 import { siDeepseek, siGithub, type SimpleIcon } from 'simple-icons'
 import { useNewerVersion } from '../latestVersion'
 import { PLUGIN_NAME, PLUGIN_REPO, PLUGIN_REPO_SHORT, PLUGIN_VERSION } from '../meta'
-import { openPluginSettings } from '../settingsJump'
+import { openPluginSettings, type ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
 
 // simple-icons marks fill their 24-unit box; the -2 inset restores the harness SiteGlyph's ~8% margin.
@@ -15,7 +15,7 @@ function SiteMark({ icon }: { icon: SimpleIcon }): ReactElement {
   )
 }
 
-export function makePluginInfo(kit: ViewKit): () => ReactElement {
+export function makePluginInfo(kit: ViewKit, ctx: ClientCtx): () => ReactElement {
   const { t } = kit
   // `title` carries the untruncated value the row's ellipsis may cut.
   const row = (icon: ReactElement, label: string, value: ReactNode, href: string, hint: string) => (
@@ -41,8 +41,7 @@ export function makePluginInfo(kit: ViewKit): () => ReactElement {
         <div className="lc-pi-grid">
           {row(<SiteMark icon={siDeepseek} />, t('plugin.name'), nameValue, PLUGIN_REPO, update !== null ? nameText + ' ↑ v' + update : nameText)}
           {row(<SiteMark icon={siGithub} />, t('plugin.github'), PLUGIN_REPO_SHORT, PLUGIN_REPO, PLUGIN_REPO_SHORT)}
-          {/* Best-effort: `openPluginSettings` silently no-ops when the host chrome doesn't match. */}
-          <button type="button" className="lc-pi-row lc-pi-row-btn group/pi" onClick={() => { openPluginSettings() }}>
+          <button type="button" className="lc-pi-row lc-pi-row-btn group/pi" onClick={() => { openPluginSettings(ctx) }}>
             <div className="lc-pi-label"><IconSettings size={12} className="lc-pi-labelicon" />{t('plugin.settings')}</div>
             <div className="lc-pi-value group-hover/pi:underline" title={t('plugin.settingsOpen')}>{t('plugin.settingsOpen')}</div>
           </button>

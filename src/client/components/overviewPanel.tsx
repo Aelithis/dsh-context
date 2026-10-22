@@ -12,9 +12,8 @@ import {
   UNGROUPED_KEY, workspacesSnapshotOf,
   type DayRange, type OverviewCoverage, type OverviewRange, type OverviewRow, type OverviewSort, type SkillSort,
 } from '../overview'
-import { openSessionVia, type ClientCtx } from '../services'
+import { openPluginSettings, openSessionVia, type ClientCtx } from '../services'
 import { readSkillCatalog } from '../skills'
-import { openPluginSettings } from '../settingsJump'
 import type { ContextSettings } from '../settings'
 import type { SkillInfo } from '../../shared/types'
 import { dayKeyOf } from '../../shared/days'
@@ -169,7 +168,7 @@ export function makeOverviewPanel(
           <div className="lc-ov-pagecontent">
             <div className="lc-ov-pagehead" data-window-drag>
               <h1 className="lc-ov-pagetitle">{t('ov.title')}</h1>
-              <button type="button" className="lc-ov-settings" title={t('plugin.settingsOpen')} onClick={() => { openPluginSettings() }}>
+              <button type="button" className="lc-ov-settings" title={t('plugin.settingsOpen')} onClick={() => { openPluginSettings(ctx) }}>
                 <IconSettings size={14} />{t('plugin.settings')}
               </button>
               {/* Renders nothing until a live figure lands, so the heading row never reflows for it. */}

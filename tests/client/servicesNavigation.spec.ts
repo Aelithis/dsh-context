@@ -4,6 +4,7 @@ import {
   canOpenPathsOf,
   openChildAsideVia,
   openPathVia,
+  openPluginSettings,
   openResourceVia,
   openSessionVia,
   subagentChatAddressOf,
@@ -139,6 +140,42 @@ describe('openSessionVia', () => {
     openSessionVia(ctxWith({ uiWorkspace: { openSession: () => { throw new Error('boom') } } }), 's6')
     openSessionVia(ctxWith({ uiWorkspace: { get openSession() { throw new Error('boom') } } }), 's6')
     openSessionVia({ get: () => { throw new Error('boom') } } as unknown as ClientCtx, 's6')
+  })
+})
+
+describe('openPluginSettings', () => {
+
+  test('opens this bundle\'s page through the panel\'s own verb, which resets the remembered tab', () => {
+    const opened: string[] = []
+    openPluginSettings(ctxWith({ pluginNavigation: { openBundle: (name: string) => { opened.push(name) } } }))
+    assert.deepEqual(opened, ['dsh-context'])
+  })
+
+  test('the verb is invoked bound to its service instance', () => {
+    let seen: unknown
+    const face = {
+      target: 'bundle',
+      openBundle(this: { target: string }, name: string) { seen = `${this.target}:${name}` },
+    }
+    openPluginSettings(ctxWith({ pluginNavigation: face }))
+    assert.equal(seen, 'bundle:dsh-context')
+  })
+
+  test('a shell without the Plugins panel module, or a verb-less face, swallows silently', () => {
+    for (const ctx of [
+      ctxWith({}),
+      ctxWith({ pluginNavigation: null }),
+      ctxWith({ pluginNavigation: {} }),
+      ctxWith({ pluginNavigation: { openBundle: 7 } }),
+    ]) openPluginSettings(ctx)
+  })
+
+  test('a hostile face never throws into the click handler', () => {
+    for (const ctx of [
+      ctxWith({ pluginNavigation: { openBundle: () => { throw new Error('boom') } } }),
+      ctxWith({ pluginNavigation: { get openBundle() { throw new Error('boom') } } }),
+      { get: () => { throw new Error('boom') } } as unknown as ClientCtx,
+    ]) openPluginSettings(ctx)
   })
 })
 

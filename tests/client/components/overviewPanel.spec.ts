@@ -9,7 +9,7 @@ import { createContextSettings, type ContextSettings } from '../../../src/client
 import type { DefaultOverviewRange } from '../../../src/shared/types'
 import { dayKeyOf } from '../../../src/shared/days'
 import { TestClientCtx, asClientCtx } from '../helpers/harness'
-import { click, flush, hover, makeKit, mount, query, queryAll, text, unhover, until, type Mounted } from '../helpers/kit'
+import { click, flush, hover, makeKit, mount, query, queryAll, text, unhover, type Mounted } from '../helpers/kit'
 
 const PROVIDERS = {
   deepseek: { models: { 'deepseek-v4-flash': { cost: { input: 1, output: 2, cache_read: 0.1 } } } },
@@ -554,35 +554,20 @@ describe('OverviewPanel', () => {
   })
 
   test('the settings chip beside the title runs the preferences jump', async () => {
-    const clicks: string[] = []
-    const chrome = document.createElement('div')
-    chrome.innerHTML = `
-      <button aria-label="Plugins"></button>
-      <div data-plugin-package="dsh-context">
-        <button role="switch"></button>
-        <button>Context</button>
-      </div>`
-    for (const b of [...chrome.querySelectorAll('button')]) {
-      b.addEventListener('click', () => { clicks.push(b.getAttribute('aria-label') ?? (b.textContent ?? '')) })
-    }
-    document.body.appendChild(chrome)
-    try {
-      const ctx = makeCtx()
-      const { m } = await openPanel(ctx)
-      const chip = query<HTMLButtonElement>(m.container, '.lc-ov-settings')
-      assert.equal(chip.textContent, 'Plugin Settings')
-      assert.equal(chip.title, 'Open plugin settings')
-      const head = query(m.container, '.lc-ov-pagehead')
-      assert.equal(head.children[0].className, 'lc-ov-pagetitle')
-      assert.equal(head.children[1], chip)
-      await click(chip)
-      assert.deepEqual(clicks, ['Plugins'], 'the jump clicked the Plugins panel entry synchronously')
-      await until(() => clicks.length > 1, 'the jump never reached the bundle card open control')
-      assert.equal(clicks[1], 'Context')
-      await m.unmount()
-    } finally {
-      chrome.remove()
-    }
+    const opened: string[] = []
+    const ctx = new TestClientCtx({
+      services: { sessions: {}, pluginNavigation: { openBundle: (name: string) => { opened.push(name) } } },
+    })
+    const { m } = await openPanel(ctx)
+    const chip = query<HTMLButtonElement>(m.container, '.lc-ov-settings')
+    assert.equal(chip.textContent, 'Plugin Settings')
+    assert.equal(chip.title, 'Open plugin settings')
+    const head = query(m.container, '.lc-ov-pagehead')
+    assert.equal(head.children[0].className, 'lc-ov-pagetitle')
+    assert.equal(head.children[1], chip)
+    await click(chip)
+    assert.deepEqual(opened, ['dsh-context'], 'the chip jumps through the Plugins panel navigator')
+    await m.unmount()
   })
 
   test('hovering a heat cell portals its tip to <body>; leaving hides it', async () => {

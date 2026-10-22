@@ -235,6 +235,27 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       )
     })
 
+    test('client: the Plugins-panel navigator the settings jump rides', () => {
+      // The verb itself; then the tab reset that makes the jump land on the configuration page once a contributed
+      // `plugins.tab` has claimed the remembered selection — present only where that slot exists.
+      const nav = baseline.client.pluginsNav
+      assert.equal(
+        staging.dshHasString(baseline.tag, nav.needle, nav.file),
+        true,
+        'the panel-owned openBundle verb (pluginNavigation)',
+      )
+      assert.equal(
+        staging.dshHasString(baseline.tag, nav.tabResetNeedle, nav.file),
+        nav.tabReset,
+        'the navigator resets the remembered tab to Installed',
+      )
+      assert.equal(
+        staging.dshHasString(baseline.tag, nav.tabsSlotNeedle, nav.tabsSlotFile),
+        nav.tabsSlot,
+        'the contributed-tab slot the reset guards',
+      )
+    })
+
     test('client: the first-level insight page seam (keyed main panel + sidebar panel list)', () => {
       const page = baseline.client.insightPage
       assert.equal(staging.dshHasString(baseline.tag, page.panellistNeedle, page.panellistFile), true, 'the sidebar panel-list seat')
