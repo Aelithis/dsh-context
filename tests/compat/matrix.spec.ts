@@ -16,15 +16,17 @@ if (reasons.length > 0) {
 // Always runnable (no checkout needed): every specifier the built bundle requires must be seeded by EACH
 // baseline's platform module table — an unanswered require is a guaranteed boot crash on that generation.
 describe('compat matrix — the per-baseline fold vocabularies', () => {
-  test('every event family the fold switches on is declared by every baseline', () => {
+  test('every event family the fold switches on is declared by the baselines', () => {
     const folded = staging.foldEventTypesFromSource()
-    for (const baseline of BASELINES) {
-      assert.deepEqual(
-        folded.filter(type => !baseline.foldEventTypes.includes(type)),
-        [],
-        `${baseline.id} would fold an event family no baseline probes`,
-      )
-    }
+    // A fold case must name a REAL event of some supported line (a typo lands here); a line-specific event
+    // (the job/* pair is 0.2.1-only) is declared on its own baseline — the per-tag vocabulary probe proves
+    // each declared family exists in that tag's real sources.
+    const declared = new Set(BASELINES.flatMap(b => b.foldEventTypes))
+    assert.deepEqual(
+      folded.filter(type => !declared.has(type)),
+      [],
+      'a fold case no baseline declares',
+    )
   })
 })
 

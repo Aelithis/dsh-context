@@ -95,6 +95,51 @@ const fileOpSchema = z.object({
   gone: z.number().int().nonnegative().optional(),
 }).strict()
 
+const commandSchema = z.object({
+  seq: z.number().int().nonnegative(),
+  resultSeq: z.number().int().nonnegative().optional(),
+  time: z.number(),
+  tool: z.string(),
+  cmd: z.string(),
+  cmdTruncated: z.literal(true).optional(),
+  description: z.string().optional(),
+  cwd: z.string().optional(),
+  timeoutMs: z.number().positive().optional(),
+  background: z.literal(true).optional(),
+  sandbox: z.string().optional(),
+  codeMode: z.literal(true).optional(),
+  parent: z.number().int().nonnegative().optional(),
+  turn: z.number().optional(),
+  step: z.number().optional(),
+  start: z.number(),
+  end: z.number().optional(),
+  status: z.enum(['running', 'completed', 'failed', 'killed']),
+  exit: z.number().int().optional(),
+  exitInferred: z.literal(true).optional(),
+  signal: z.string().optional(),
+  timedOut: z.literal(true).optional(),
+  stopped: z.literal(true).optional(),
+  denied: z.literal(true).optional(),
+  err: z.boolean(),
+  outChars: z.number().int().nonnegative().optional(),
+  outTruncated: z.literal(true).optional(),
+  stderr: z.literal(true).optional(),
+  derived: z.literal(true).optional(),
+  gone: z.number().int().nonnegative().optional(),
+}).strict()
+
+/** The persisted record adds the fold's pairing key, stripped by the wire builders. */
+const commandStateSchema = commandSchema.extend({
+  call: z.string().optional(),
+}).strict()
+
+const commandStatsSchema = z.object({
+  runs: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  ms: z.number().nonnegative(),
+  bg: z.number().int().nonnegative(),
+}).strict()
+
 const timingSpanSchema = z.object({
   kind: z.enum(['ttft', 'reasoning', 'text', 'toolarg', 'tools', 'other']),
   start: z.number(),
@@ -204,6 +249,9 @@ export const contextTimelineSchema = z.object({
   archiveFloor: z.number().int().nonnegative().optional(),
   fileOps: z.array(fileOpSchema).optional(),
   fileOpsFloor: z.number().int().nonnegative().optional(),
+  commands: z.array(commandSchema).optional(),
+  commandsFloor: z.number().int().nonnegative().optional(),
+  commandStats: commandStatsSchema.optional(),
   spans: z.array(timingSpanSchema).optional(),
 }).strict() as unknown as z.ZodType<ContextTimeline>
 
@@ -248,6 +296,10 @@ const timelineStateSchema = z.object({
   detailRev: z.number().int().nonnegative().optional(),
   fileOps: z.array(fileOpSchema),
   fileOpsFloor: z.number().int().nonnegative().optional(),
+  commands: z.array(commandStateSchema),
+  commandsFloor: z.number().int().nonnegative().optional(),
+  commandStats: commandStatsSchema.optional(),
+  pendingCodeCmds: z.record(z.string(), z.array(commandStateSchema)).optional(),
   spans: z.array(timingSpanSchema),
   stepSpans: z.array(timingSpanSchema).optional(),
   pendingCodeOps: z.record(z.string(), z.array(fileOpSchema)).optional(),
@@ -270,7 +322,7 @@ export function createContextTimelineDefinition(config: Config, slim: () => bool
     apply: (state: TimelineState, event: SessionEvent) => applyTimeline(state, event as Parameters<typeof applyTimeline>[1], bounds),
     // Bump on any persisted-shape or fold-semantics change, which refolds cached rows; never for a backfillable or serve-time-derived
     // field, since invalidating in-generation rows orphans idle sessions with no refresh channel.
-    stateVersion: 28,
+    stateVersion: 29,
   }
   return definition
 }

@@ -1,10 +1,17 @@
 /** The fold's served values — the slim wire head, the on-demand detail payload, and the inline view. Every field is a copy, so a served
  * value never aliases persisted state. */
 
-import type { ContextTimelineDetail, Snapshot, ToolTimingTotals } from '../shared/types'
+import type { CommandRecord, ContextTimelineDetail, Snapshot, ToolTimingTotals } from '../shared/types'
 import { copyCostUsage } from './foldMetering'
 import type { FoldBounds } from './config'
-import type { TimelineState } from './foldState'
+import type { CommandStateRecord, TimelineState } from './foldState'
+
+/** The served command record: the fold's pairing key (`call`) never crosses the wire. */
+function serveCommand(rec: CommandStateRecord): CommandRecord {
+  const copy: CommandStateRecord = { ...rec }
+  delete copy.call
+  return copy
+}
 
 /** Served value fields are COPIES — the served value must never alias persisted state. Optional scalars use conditional spread, because
  * one `undefined`-valued property can fail the whole lossless-JSON push. */
@@ -65,6 +72,9 @@ function detailCollectionsOf(state: TimelineState, bounds: FoldBounds): Omit<Con
     archive: state.archived.map(n => ({ ...n })),
     fileOps: state.fileOps.map(o => ({ ...o })),
     ...(state.fileOpsFloor !== undefined ? { fileOpsFloor: state.fileOpsFloor } : {}),
+    commands: state.commands.map(serveCommand),
+    ...(state.commandsFloor !== undefined ? { commandsFloor: state.commandsFloor } : {}),
+    ...(state.commandStats !== undefined ? { commandStats: { ...state.commandStats } } : {}),
     spans: state.spans.map(s => ({ ...s })),
   }
   // Injections land on the surface FIRST, so a plain tail would drop their identity while their tokens keep counting;

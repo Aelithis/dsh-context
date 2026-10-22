@@ -6,7 +6,7 @@ The rules dsh-context must hold on every supported `@deepseek-ai/dsh` release, a
 
 **Law.** Record only what no other artifact carries; delete what code, tests, or git history already say. Verify against the dsh sources before acting — source wins over this page. Less is ALWAYS better.
 
-Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
+Last verified: **2026-10-23** (dsh-context `0.74.0`, dsh `0.2.0-rc.2` / `0.2.1-rc.2` tag trees).
 
 ## 1 · Supported set
 
@@ -39,6 +39,7 @@ Last verified: **2026-10-22** (dsh-context `0.74.0`, dsh `0.2.0-rc.2` / `0.2.1-r
 2. **Trust the migration guarantee; carry no legacy readers.** Every read path the plugin rides (live open, persistence handles, `sessionQuery.observeSession`) migrates pre-V4 logs to V4; an unconvertible log is refused with `SessionFormatUnsupportedError`, never served raw. Pre-V4 spellings exist nowhere in this repo. (dsh: `packages/session/session-format-v3-to-v4`, `packages/session/session-format-catalog`, `packages/session/session-persistence/src/errors.ts`, `packages/session-query/session-query/src/documents.ts`)
 3. **`developer/message` folds into injected context** — request composition, live surface, archives; never human inputs; an empty-content event keeps its surface node at zero tokens where the harness's `deriveEventMessage` projects null. (`src/host/fold.ts`)
 4. **Read tool-result errors from `message.isError` alone** — the generation admits event-level `data.error` only alongside it; a hostile envelope-only row degrades to unflagged, never a throw. (`src/host/fold.ts`)
+5. **The command log folds `tool/call` + `tool/result` on every line and `job/registered` / `job/settled` only where they exist** — the `0.2.0` line logs no job events, so timing/exit derive from the event envelopes and result-text markers (`derived: true`); the `0.2.1` line's job events then refine them. A background hand-off ack (`started background job …` / `[still running …; moved to background job …]` plus its fixed guidance sentence) is no outcome: without job events the run stays `running` forever (dispatched, outcome unrecorded), and its tally waits for the terminal transition. (dsh: the `job/*` `SessionEventMap` declarations in `packages/jobs/jobs/src/types.ts` exist only at the `0.2.1` tags; `packages/shell/tool-bash/src/render.ts` and `packages/shell/tool-bash-persistent/src/index.ts` marker vocabularies; `src/shared/commands.ts`, `src/host/fold.ts`)
 
 **Totality**
 

@@ -296,6 +296,9 @@ describe('timelineOf', () => {
       answers: 3,
       fileOps: [{ seq: 2, path: 'a.ts', kind: 'read', tool: 'read', err: false, added: 0, removed: 0 }],
       fileOpsFloor: 5,
+      commands: [{ seq: 3, time: 1, tool: 'bash', cmd: 'ls', start: 1, status: 'completed', err: false }],
+      commandsFloor: 2,
+      commandStats: { runs: 7, failed: 1, ms: 900, bg: 1 },
       spans: [{ kind: 'ttft', start: 0, end: 100 }, null],
     }
     const out = timelineOf(head)
@@ -310,7 +313,13 @@ describe('timelineOf', () => {
     assert.deepEqual(out.archive, [])
     assert.equal(out.fileOps?.length, 1, 'the op log survives the head sanitize')
     assert.equal(out.fileOpsFloor, 5)
+    assert.equal(out.commands?.length, 1, 'the command log survives the head sanitize')
+    assert.equal(out.commandsFloor, 2)
+    assert.deepEqual(out.commandStats, { runs: 7, failed: 1, ms: 900, bg: 1 })
     assert.equal(out.spans?.length, 1, 'the strip spans survive, junk entries dropped')
+    // A shapeless stats object drops out (the panel then counts the retained list instead).
+    const noStats = timelineOf({ current, commandStats: 'junk' })
+    assert.ok(noStats !== null && !('commandStats' in noStats))
   })
 
   test('the slim head fields re-prove: partial counts zero per field, shapeless last/detailRev drop', () => {

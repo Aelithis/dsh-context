@@ -23,7 +23,7 @@ function stubIntersection(): { callbacks: ObserverCallback[]; restore: () => voi
 describe('ContextView below-fold lazy mount', () => {
   afterEach(() => { vi.unstubAllGlobals() })
 
-  test('keeps two skeletons until the row nears the viewport, then mounts both cards', async () => {
+  test('keeps the skeletons until the rows near the viewport, then mounts every card', async () => {
     const observer = stubIntersection()
     const idle: (() => void)[] = []
     vi.stubGlobal('requestIdleCallback', (callback: () => void) => { idle.push(callback); return 1 })
@@ -38,16 +38,18 @@ describe('ContextView below-fold lazy mount', () => {
       useChat: (selector => selector({ legacy: { nodes: [] } })) as UseChatLike,
     }))
     try {
-      assert.equal(queryAll(m.container, '.lc-deferred-skeleton').length, 3)
+      // Two below-fold row skeletons, the command panel's, and the browser's.
+      assert.equal(queryAll(m.container, '.lc-deferred-skeleton').length, 4)
       assert.equal(queryAll(m.container, '.lc-fa-card').length, 0)
       await act(async () => {
         for (const callback of observer.callbacks) callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
       })
-      assert.equal(idle.length, 2)
+      assert.equal(idle.length, 3)
       await act(async () => { for (const run of idle) run() })
       await flush()
       assert.equal(queryAll(m.container, '.lc-deferred-skeleton').length, 0)
       assert.equal(queryAll(m.container, '.lc-fa-card').length, 1)
+      assert.equal(queryAll(m.container, '.lc-cmd-card').length, 1)
 
       await m.unmount()
       const second = await mount(h(View, {

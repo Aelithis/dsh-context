@@ -17,8 +17,20 @@ import type { ContentBlock, MessageSource } from './pricing'
 import { deriveEventMessage } from '@deepseek-ai/dsh-session'
 import { decodeSpansOfStream, decodeTallyOfStream, firstTokenTimeOfStream, replaceRangeOf } from './logShapes'
 import { opBearingTool, opsOfCall, parseCallArgs, rawArgsNeeded } from '../shared/fileOps'
+import { commandArgsOf, commandTool, markersOfText, outcomeOfMarkers } from '../shared/commands'
+import {
+  commandRecordOf,
+  findCommandIndex,
+  jobCallIdOf,
+  jobOutcomePatch,
+  patchBufferedCommand,
+  resultPatchOf,
+  resultTextsOf,
+  setCommand,
+  tallyRun,
+} from './foldCommands'
 import { countTurnRuns, trimState } from './foldState'
-import type { TimelineEvent, TimelineState } from './foldState'
+import type { CommandStateRecord, TimelineEvent, TimelineState } from './foldState'
 import { accumulateCost, addDecode, bumpToolTotals, DECODE_KINDS, durOf, ensureTiming, tokenCountOf } from './foldMetering'
 import type { UsageLike } from './foldMetering'
 
@@ -57,6 +69,9 @@ function pushSystem(st: TimelineState, node: SystemPromptNode): void {
 
 /** A hostile log that dispatches without settling the parent run_code cannot grow the persisted state past this. */
 const PENDING_CODE_OPS_MAX = 200
+
+/** The command-record sibling of PENDING_CODE_OPS_MAX (nested dispatches buffered per unsettled run_code root). */
+const PENDING_CODE_CMDS_MAX = 200
 
 /** JSON-stringify an unknown payload; a hostile (cyclic) value yields no args. */
 function argsRawOf(value: unknown): string | undefined {
@@ -251,9 +266,9 @@ const ASK_USER_TOOL = 'ask_user_question'
 
 /** The collections a fold branch may mutate IN PLACE. A branch names exactly its own mutations in `ensure`; unlisted
  * containers are never written in place — every touch REPLACES the property — so they stay shared with persisted state. */
-type CloneKey = 'surface' | 'sums' | 'requests' | 'events' | 'archived' | 'callNames' | 'fileOps' | 'timing'
+type CloneKey = 'surface' | 'sums' | 'requests' | 'events' | 'archived' | 'callNames' | 'fileOps' | 'timing' | 'commands'
 
-const CLONE_ALL: readonly CloneKey[] = ['surface', 'sums', 'requests', 'events', 'archived', 'callNames', 'fileOps', 'timing']
+const CLONE_ALL: readonly CloneKey[] = ['surface', 'sums', 'requests', 'events', 'archived', 'callNames', 'fileOps', 'timing', 'commands']
 
 export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds: FoldBounds): TimelineState {
   let st: TimelineState | undefined
@@ -269,6 +284,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
       else if (key === 'archived') st.archived = [...state.archived]
       else if (key === 'callNames') st.callNames = { ...state.callNames }
       else if (key === 'fileOps') st.fileOps = [...state.fileOps]
+      else if (key === 'commands') st.commands = [...state.commands]
       // Absent `timing` stays absent: an own `undefined`-valued property fails every cache write.
       else if (state.timing !== undefined) st.timing = { ...state.timing, tools: { ...state.timing.tools } }
     }
@@ -335,16 +351,97 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
       }
       case 'tool/call': {
         if (data && typeof data.callId === 'string' && typeof data.name === 'string') {
-          const s = ensure(['callNames'])
+          const cmdTool = commandTool(data.name)
+          const s = ensure(cmdTool === null ? ['callNames'] : ['callNames', 'commands'])
           // Arguments are kept ONLY where read (an op-bearing tool, or the run_code root the flush reads), keeping a
-          // large bash/pwsh call out of the persisted state.
+          // large bash/pwsh call out of the persisted state — the command record below parses its own at the event.
           const argsRaw = rawArgsNeeded(data.name) ? argsRawOf(data.arguments) : undefined
           s.callNames[data.callId] = {
             name: data.name,
             start: event.time,
             ...(argsRaw !== undefined ? { argsRaw } : {}),
           }
+          if (cmdTool !== null) {
+            const parsed = commandArgsOf(cmdTool, data.arguments, bounds.maxCommandChars)
+            if (parsed !== null) {
+              s.commands.push(commandRecordOf({
+                seq: event.seq,
+                time: event.time,
+                tool: cmdTool,
+                parsed,
+                turn: data.turn,
+                step: data.step,
+                call: data.callId,
+              }))
+              bumpDetailRev(s)
+            }
+          }
         }
+        break
+      }
+      case 'job/registered': {
+        // Precise spawn instant for a running command (job events exist only on the 0.2.1 line; absent elsewhere).
+        const callId = jobCallIdOf(data)
+        const startedAt = data?.startedAt
+        if (callId === undefined || typeof startedAt !== 'number' || !Number.isFinite(startedAt)) return state
+        const index = findCommandIndex(state.commands, callId)
+        if (index >= 0) {
+          const s = ensure(['commands'])
+          s.commands[index] = { ...s.commands[index], start: startedAt }
+          bumpDetailRev(s)
+          break
+        }
+        // A nested record still buffered behind its run_code root takes the stamp too (unserved: no detail bump).
+        if (state.pendingCodeCmds === undefined) return state
+        const s = ensure([])
+        if (!patchBufferedCommand(s, state.pendingCodeCmds, callId, rec => ({ ...rec, start: startedAt }))) return state
+        break
+      }
+      case 'job/settled': {
+        // The terminal job record: precise end + outcome. A nonzero command exit reports as `completed` with the code
+        // in the detail (the shell tools never map it to `failed`); `failed` is reserved for infrastructure.
+        const callId = jobCallIdOf(data)
+        const finishedAt = data?.finishedAt
+        const status = data?.status
+        if (callId === undefined || typeof finishedAt !== 'number' || !Number.isFinite(finishedAt)) return state
+        if (status !== 'completed' && status !== 'killed' && status !== 'failed') return state
+        const index = findCommandIndex(state.commands, callId)
+        if (index >= 0) {
+          const s = ensure(['commands'])
+          setCommand(s, index, jobOutcomePatch(s.commands[index], status, finishedAt, data?.detail))
+          bumpDetailRev(s)
+          break
+        }
+        // A buffered nested record settles here and tallies at its flush (terminal records tally on entering the log).
+        const pendingCmds = state.pendingCodeCmds
+        if (pendingCmds === undefined) return state
+        const s = ensure([])
+        if (!patchBufferedCommand(s, pendingCmds, callId, rec => jobOutcomePatch(rec, status, finishedAt, data?.detail))) return state
+        break
+      }
+      case 'tool/ptc-dispatch-start': {
+        // A nested command starts inside a run_code program: buffer it under the root until the root's result folds
+        // (the parent seq — the record's locate target — is unknowable before then), same lifecycle as pendingCodeOps.
+        const rootCallId = data?.rootCallId
+        const subCallId = data?.subCallId
+        const cmdTool = commandTool(typeof data?.name === 'string' ? data.name : undefined)
+        if (typeof rootCallId !== 'string' || typeof subCallId !== 'string' || cmdTool === null) return state
+        const parsed = commandArgsOf(cmdTool, data?.arguments, bounds.maxCommandChars)
+        if (parsed === null) return state
+        const pending = state.pendingCodeCmds ?? {}
+        let total = 0
+        for (const k in pending) total += pending[k].length
+        if (total + 1 > PENDING_CODE_CMDS_MAX) return state
+        const rec: CommandStateRecord = commandRecordOf({
+          seq: event.seq,
+          time: event.time,
+          tool: cmdTool,
+          parsed,
+          codeMode: true,
+          call: subCallId,
+        })
+        const s = ensure([])
+        s.pendingCodeCmds = { ...pending, [rootCallId]: [...(pending[rootCallId] ?? []), rec] }
         break
       }
       case 'tool/ptc-dispatch': {
@@ -353,6 +450,9 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
         const rootCallId = data?.rootCallId
         const name = data?.name
         if (typeof rootCallId === 'string' && typeof name === 'string') {
+          const subCallId = data?.subCallId
+          const bufferedCmds = typeof subCallId === 'string' ? state.pendingCodeCmds?.[rootCallId] : undefined
+          const cmdIndex = bufferedCmds?.findIndex(r => r.call === subCallId) ?? -1
           const argsRaw = opBearingTool(name) ? argsRawOf(data?.arguments) : undefined
           const ops = opsOfCall({
             seq: event.seq,
@@ -361,9 +461,35 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
             argsRaw,
             err: data?.isError === true,
           })
-          if (ops.length > 0) {
+          if (ops.length > 0 || (bufferedCmds !== undefined && cmdIndex >= 0)) {
             const s = ensure([])
-            bufferCodeOps(s, rootCallId, ops)
+            if (ops.length > 0) bufferCodeOps(s, rootCallId, ops)
+            if (bufferedCmds !== undefined && cmdIndex >= 0) {
+              // The nested settle: outcome off the rendered content's markers, timing off the two dispatch events.
+              const prev = bufferedCmds[cmdIndex]
+              const texts = resultTextsOf(data?.content)
+              const markers = markersOfText(texts.at(-1) ?? '')
+              const isError = data?.isError === true
+              const next: CommandStateRecord = {
+                ...prev,
+                ...resultPatchOf(texts, markers),
+                err: isError,
+              }
+              if (markers.backgroundAck === true) {
+                next.background = true
+              } else {
+                const outcome = outcomeOfMarkers(markers, isError)
+                next.status = outcome.status
+                if (outcome.exit !== undefined) next.exit = outcome.exit
+                if (outcome.exitInferred === true) next.exitInferred = true
+                next.end = event.time
+                next.derived = true
+              }
+              const list = [...bufferedCmds]
+              list[cmdIndex] = next
+              // `bufferedCmds` non-empty implies the map exists; a spread of it needs no fallback branch.
+              s.pendingCodeCmds = { ...state.pendingCodeCmds, [rootCallId]: list }
+            }
           }
         }
         break
@@ -509,7 +635,8 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
         const srcId = msgSource?.callId
         const pendingEntry = typeof srcId === 'string' ? state.callNames[srcId] : undefined
         const buffered = typeof srcId === 'string' ? state.pendingCodeOps?.[srcId] : undefined
-        const s = ensure(['surface', 'sums', 'archived', 'events', 'fileOps', 'timing'])
+        const bufferedCmds = typeof srcId === 'string' ? state.pendingCodeCmds?.[srcId] : undefined
+        const s = ensure(['surface', 'sums', 'archived', 'events', 'fileOps', 'timing', 'commands'])
         bumpDetailRev(s)
         const node = applySurface(s, event, event.type, toolMsg)
         // An answered question prompt is a human input too; an unpaired/foreign result carries no tool name.
@@ -529,6 +656,43 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
             err: toolMsg?.isError === true,
           })
           pushFileOps(s, ops)
+          // The command's own settle: the rendered text's markers give the outcome, the envelope the end instant. A
+          // background hand-off ack is no outcome — the run stays open until a job/settled lands (or stays "dispatched"
+          // on hosts without job events).
+          if (typeof srcId === 'string' && commandTool(pendingEntry.name) !== null) {
+            const index = findCommandIndex(s.commands, srcId)
+            if (index >= 0) {
+              const prev = s.commands[index]
+              const texts = resultTextsOf(toolMsg?.content)
+              const markers = markersOfText(texts.at(-1) ?? '')
+              const isError = toolMsg?.isError === true
+              const next: CommandStateRecord = {
+                ...prev,
+                ...resultPatchOf(texts, markers),
+                resultSeq: event.seq,
+                err: isError,
+              }
+              if (markers.exit !== undefined) delete next.exitInferred
+              const metaCwd = (data?.meta as { cwd?: unknown } | null | undefined)?.cwd
+              if (typeof metaCwd === 'string' && metaCwd !== '') next.cwd = metaCwd
+              // Only the hand-off ack keeps the run open: a background-flagged call whose result carries no ack (an
+              // infrastructure error, a denial) settles through the normal outcome path.
+              if (markers.backgroundAck === true) {
+                next.background = true
+              } else if (prev.status === 'running') {
+                const outcome = outcomeOfMarkers(markers, isError)
+                next.status = outcome.status
+                // A code program has no shell exit code; the exit fields stay absent for it.
+                if (prev.tool !== 'run_code') {
+                  if (outcome.exit !== undefined) next.exit = outcome.exit
+                  if (outcome.exitInferred === true) next.exitInferred = true
+                }
+                next.end = event.time
+                next.derived = true
+              }
+              setCommand(s, index, next)
+            }
+          }
         }
         if (buffered !== undefined && buffered.length > 0) {
           // The run_code root settles: nested ops land with `parent` = this result's row, plus the program description.
@@ -544,6 +708,21 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
           }
           if (Object.keys(kept).length > 0) s.pendingCodeOps = kept
           else delete s.pendingCodeOps
+        }
+        if (bufferedCmds !== undefined && bufferedCmds.length > 0) {
+          // Nested command records flush on the root's result with `parent` as their locate target; a dispatch that
+          // settled inside the buffer tallies on entering the log, a still-running one tallies at its job/settled.
+          for (const rec of bufferedCmds) {
+            const next: CommandStateRecord = { ...rec, parent: event.seq }
+            s.commands.push(next)
+            if (next.status !== 'running') tallyRun(s, next)
+          }
+          const kept: Record<string, CommandStateRecord[]> = {}
+          for (const k in s.pendingCodeCmds) {
+            if (k !== srcId) kept[k] = s.pendingCodeCmds[k]
+          }
+          if (Object.keys(kept).length > 0) s.pendingCodeCmds = kept
+          else delete s.pendingCodeCmds
         }
         // A skill load's tool result is harness-injected context with its own bucket: its price moves from `tool` to
         // `skill`. The rendered wrapper identifies it even when the tool/call event is trimmed.

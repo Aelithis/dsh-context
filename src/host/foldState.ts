@@ -1,8 +1,14 @@
 /** The timeline fold's persisted state shape, event envelope, construction and retention bounds — the plain JSON the projection cache
  * checkpoints. `fold.ts` owns the reducer that writes it. */
 
-import type { Category, ContextEventRecord, FileOpRecord, RequestRecord, SessionCostUsage, SurfaceNode, SystemPromptNode, TimingSpan, TimingTotals } from '../shared/types'
+import type { Category, CommandRecord, CommandStats, ContextEventRecord, FileOpRecord, RequestRecord, SessionCostUsage, SurfaceNode, SystemPromptNode, TimingSpan, TimingTotals } from '../shared/types'
 import type { FoldBounds } from './config'
+
+/** The state's command record: the wire record plus the callId the fold pairs result/job events on. Never served —
+ * `foldWire` strips it (optional precisely so the strip is a plain `delete`). */
+export interface CommandStateRecord extends CommandRecord {
+  call?: string
+}
 
 /** The core `SessionEvent` union carries only core types; plugin-merged vocabulary (the `compaction/*` family, declared by
  * `dsh-compaction`) is absent, and the fold must not depend on those packages — so it widens here. */
@@ -83,6 +89,15 @@ export interface TimelineState {
   fileOps: FileOpRecord[]
   /** The newest dropped op's seq (the card's coverage floor for the served op log). */
   fileOpsFloor?: number
+  /** The command log, in call order (creation at `tool/call`, settle in place at `tool/result`/`job/settled`). */
+  commands: CommandStateRecord[]
+  /** The newest dropped command record's seq (the panel's coverage floor). */
+  commandsFloor?: number
+  /** Whole-log execution tallies; each record contributes exactly once, at its running → terminal transition. */
+  commandStats?: CommandStats
+  /** Nested Code-Mode command records buffered by their top run_code call id until the parent's result folds
+   * (same lifecycle as `pendingCodeOps`). */
+  pendingCodeCmds?: Record<string, CommandStateRecord[]>
   /** Nested Code-Mode ops buffered by their top run_code call id until the parent's result folds (the dispatch events land BEFORE it).
    * Bounded by PENDING_CODE_OPS_MAX, so a hostile log that never settles a run_code cannot grow it. */
   pendingCodeOps?: Record<string, FileOpRecord[]>
@@ -136,6 +151,28 @@ export function trimState(st: TimelineState, bounds: FoldBounds): void {
     st.fileOpsFloor = Math.max(st.fileOpsFloor ?? 0, st.fileOps[drop - 1].seq)
     st.fileOps = st.fileOps.slice(drop)
   }
+  if (st.commands.length > bounds.maxCommands) {
+    let excess = st.commands.length - bounds.maxCommands
+    let floor = 0
+    // Oldest SETTLED records drop first; a running record (an in-flight or background-dispatched call) is kept.
+    const kept: CommandStateRecord[] = []
+    for (const rec of st.commands) {
+      if (excess > 0 && rec.status !== 'running') {
+        excess--
+        floor = Math.max(floor, rec.seq)
+        continue
+      }
+      kept.push(rec)
+    }
+    // A hostile log of never-settling calls can still overflow: then the oldest running records drop too.
+    if (kept.length > bounds.maxCommands) {
+      const extra = kept.length - bounds.maxCommands
+      for (const rec of kept.slice(0, extra)) floor = Math.max(floor, rec.seq)
+      kept.splice(0, extra)
+    }
+    st.commandsFloor = Math.max(st.commandsFloor ?? 0, floor)
+    st.commands = kept
+  }
   if (st.archived.length > 0) {
     let drop = 0
     // The entries leave in removal order, so the last dropped one's `gone` is the newest dropped seq.
@@ -170,6 +207,7 @@ export function createTimelineState(): TimelineState {
     archived: [],
     callNames: {},
     fileOps: [],
+    commands: [],
     spans: [],
   }
 }

@@ -245,6 +245,11 @@ export interface Snapshot {
   /** The fold-derived file-op log and trim floor: INLINE value and detail payload only, never the slim head. */
   fileOps?: FileOpRecord[]
   fileOpsFloor?: number
+  /** The fold-derived command log and its trim floor/coverage honesty, same channel as `fileOps`. */
+  commands?: CommandRecord[]
+  commandsFloor?: number
+  /** Whole-log execution tallies behind the command panel's title; survives list trimming. */
+  commandStats?: CommandStats
   /** INLINE value and detail payload only; absent on rows folded before the collection existed. */
   spans?: TimingSpan[]
 }
@@ -265,8 +270,79 @@ export interface ContextTimelineDetail {
   fileOps?: FileOpRecord[]
   /** The newest dropped op's seq when the op log trimmed (coverage honesty, same family as `archiveFloor`). */
   fileOpsFloor?: number
+  /** The command log (shared/commands.ts); nested Code-Mode dispatches flush on their parent `run_code` result. */
+  commands?: CommandRecord[]
+  /** The newest dropped record's seq when the command log trimmed. */
+  commandsFloor?: number
+  commandStats?: CommandStats
   /** The completed steps' time slices in log order, positioned by their real instants. Absent = no strip. */
   spans?: TimingSpan[]
+}
+
+export type CommandStatus = 'running' | 'completed' | 'failed' | 'killed'
+
+/** One shell/code execution, folded from `tool/call` (creation) paired with `tool/result` and — on hosts that log them —
+ * `job/registered` / `job/settled` (precise timing and outcome). Without job events the timing/exit are envelope-derived
+ * (`derived: true`). Nested Code-Mode dispatches carry `parent` (their run_code result's seq, the locate target).
+ * `gone` is client-joined, not host-stamped. */
+export interface CommandRecord {
+  /** The call event's seq — the record's stable identity. */
+  seq: number
+  /** The result event's seq — the surface node a reveal targets. Absent while running and on nested Code-Mode records
+   * (those reveal on `parent`). */
+  resultSeq?: number
+  /** The call event's instant — the list's chronological anchor. */
+  time: number
+  tool: string
+  /** The command text (a run_code record carries the program's source), capped at the fold's maxCommandChars. */
+  cmd: string
+  cmdTruncated?: true
+  /** The model-authored intent (bash/pwsh require it; persistent shells and run_code may omit it). */
+  description?: string
+  /** The result meta's cwd when logged, else the workdir argument; absent = the session's cwd. */
+  cwd?: string
+  timeoutMs?: number
+  /** Dispatched to the background (an acked result with no outcome yet shows running until a `job/settled` lands). */
+  background?: true
+  /** The requested sandbox escalation, when the call carried one. */
+  sandbox?: string
+  /** A nested Code-Mode dispatch record. */
+  codeMode?: true
+  parent?: number
+  turn?: number
+  step?: number
+  /** job.startedAt when registered, else the call instant. */
+  start: number
+  /** job.finishedAt when settled, else the result instant; absent while running. */
+  end?: number
+  status: CommandStatus
+  /** Explicit exit code from a marker or job detail; absent = unknown (never fabricate a 0). */
+  exit?: number
+  /** The exit 0 was inferred from the ABSENCE of any marker (the shell tools omit the marker on a clean exit). */
+  exitInferred?: true
+  signal?: string
+  timedOut?: true
+  stopped?: true
+  denied?: true
+  /** The result message's isError (an infrastructure failure, not a command failure). */
+  err: boolean
+  outChars?: number
+  outTruncated?: true
+  stderr?: true
+  /** Timing/exit derive from event envelopes — no job events on this log (parallel calls can overstate durations). */
+  derived?: true
+  gone?: number
+}
+
+/** Whole-log execution tallies, maintained at each record's terminal settle so list trimming never skews them. */
+export interface CommandStats {
+  runs: number
+  /** Failed OR killed terminal outcomes. */
+  failed: number
+  /** Summed execution ms over records with both endpoints known (concurrent runs double-count wall time). */
+  ms: number
+  /** Runs dispatched to the background. */
+  bg: number
 }
 
 /** Folded from the durable tool lifecycle (`tool/call` + `tool/result`, or a nested `tool/ptc-dispatch`); line deltas are estimates off

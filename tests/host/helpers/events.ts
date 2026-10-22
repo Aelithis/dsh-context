@@ -45,8 +45,20 @@ export function toolCall(seq: number, opts: {
   arguments?: string
   turn?: number
   step?: number
+  time?: number
 }): TimelineEvent {
-  return { type: 'tool/call', seq, time: at(), data: { callId: opts.callId, name: opts.name, arguments: opts.arguments ?? '{}' } }
+  return {
+    type: 'tool/call',
+    seq,
+    time: at(opts.time),
+    data: {
+      callId: opts.callId,
+      name: opts.name,
+      arguments: opts.arguments ?? '{}',
+      ...(opts.turn !== undefined ? { turn: opts.turn } : {}),
+      ...(opts.step !== undefined ? { step: opts.step } : {}),
+    },
+  }
 }
 
 export function stepStart(seq: number, opts: { time?: number } = {}): TimelineEvent {
@@ -154,6 +166,80 @@ export function foreign(seq: number, type = 'todo/write'): TimelineEvent {
   return { type, seq, time: at(), data: {} }
 }
 
+/** A nested PTC (Code Mode) dispatch STARTING inside a run_code program. */
+export function codeDispatchStart(seq: number, opts: {
+  rootCallId?: unknown
+  parentCallId?: unknown
+  subCallId?: unknown
+  name?: unknown
+  arguments?: unknown
+  time?: number
+}): TimelineEvent {
+  return {
+    type: 'tool/ptc-dispatch-start',
+    seq,
+    time: at(opts.time),
+    data: {
+      rootCallId: opts.rootCallId,
+      parentCallId: opts.parentCallId ?? opts.rootCallId,
+      subCallId: opts.subCallId ?? `${String(opts.rootCallId)}:code:0`,
+      name: opts.name,
+      arguments: opts.arguments,
+    },
+  }
+}
+
+/** A job registration (the 0.2.1 line's precise spawn instant). */
+export function jobRegistered(seq: number, opts: {
+  jobId?: unknown
+  callId?: unknown
+  startedAt?: unknown
+  time?: number
+}): TimelineEvent {
+  return {
+    type: 'job/registered',
+    seq,
+    time: at(opts.time),
+    data: {
+      jobId: opts.jobId ?? 'job-1',
+      owner: 'session',
+      kind: 'bash',
+      label: 'cmd',
+      startedAt: opts.startedAt,
+      toolCall: { callId: opts.callId, rootCallId: opts.callId },
+    },
+  }
+}
+
+/** A job settlement (the 0.2.1 line's precise outcome). */
+export function jobSettled(seq: number, opts: {
+  jobId?: unknown
+  callId?: unknown
+  finishedAt?: unknown
+  status?: unknown
+  detail?: unknown
+  time?: number
+}): TimelineEvent {
+  return {
+    type: 'job/settled',
+    seq,
+    time: at(opts.time),
+    data: {
+      jobId: opts.jobId ?? 'job-1',
+      owner: 'session',
+      kind: 'bash',
+      label: 'cmd',
+      startedAt: 0,
+      toolCall: { callId: opts.callId, rootCallId: opts.callId },
+      finishedAt: opts.finishedAt,
+      status: opts.status ?? 'completed',
+      cause: 'producer',
+      producerReported: true,
+      detail: opts.detail,
+    },
+  }
+}
+
 /** A nested PTC (Code Mode) dispatch settling inside a run_code program. */
 export function codeDispatch(seq: number, opts: {
   rootCallId?: unknown
@@ -162,6 +248,7 @@ export function codeDispatch(seq: number, opts: {
   name?: unknown
   arguments?: unknown
   isError?: unknown
+  content?: unknown
   time?: number
 }): TimelineEvent {
   return {
@@ -175,7 +262,7 @@ export function codeDispatch(seq: number, opts: {
       name: opts.name,
       arguments: opts.arguments,
       isError: opts.isError ?? false,
-      content: [],
+      content: opts.content ?? [],
     },
   }
 }

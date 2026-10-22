@@ -191,7 +191,8 @@ function objectsOf<T>(value: unknown): T[] {
 /** The collection/floor block shared by the full snapshot (timelineOf) and the split detail (timelineSource.ts). */
 export function collectionsOf(data: Record<string, unknown>): Pick<ContextTimeline,
   'requests' | 'events' | 'nodes' | 'droppedNodes' | 'archive'
-  | 'surfaceFloor' | 'archiveFloor' | 'fileOps' | 'fileOpsFloor' | 'spans'> {
+  | 'surfaceFloor' | 'archiveFloor' | 'fileOps' | 'fileOpsFloor' | 'commands' | 'commandsFloor' | 'commandStats' | 'spans'> {
+  const commandStats = commandStatsOf(data.commandStats)
   return {
     requests: objectsOf(data.requests),
     events: objectsOf(data.events),
@@ -202,7 +203,22 @@ export function collectionsOf(data: Record<string, unknown>): Pick<ContextTimeli
     ...(typeof data.archiveFloor === 'number' ? { archiveFloor: data.archiveFloor } : {}),
     ...(data.fileOps !== undefined ? { fileOps: objectsOf(data.fileOps) } : {}),
     ...(typeof data.fileOpsFloor === 'number' ? { fileOpsFloor: data.fileOpsFloor } : {}),
+    ...(data.commands !== undefined ? { commands: objectsOf(data.commands) } : {}),
+    ...(typeof data.commandsFloor === 'number' ? { commandsFloor: data.commandsFloor } : {}),
+    ...(commandStats !== undefined ? { commandStats } : {}),
     ...(data.spans !== undefined ? { spans: objectsOf(data.spans) } : {}),
+  }
+}
+
+/** A non-record drops out; wrong-typed fields zero out. */
+function commandStatsOf(value: unknown): ContextTimeline['commandStats'] | undefined {
+  const data = asRecord(value)
+  if (data === null) return undefined
+  return {
+    runs: numOf(data.runs),
+    failed: numOf(data.failed),
+    ms: numOf(data.ms),
+    bg: numOf(data.bg),
   }
 }
 

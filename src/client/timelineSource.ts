@@ -305,6 +305,9 @@ export function useTimelineSource(props: SessionStandardProps): TimelineSource {
       ...(detail.archiveFloor !== undefined ? { archiveFloor: detail.archiveFloor } : {}),
       ...(detail.fileOps !== undefined ? { fileOps: detail.fileOps } : {}),
       ...(detail.fileOpsFloor !== undefined ? { fileOpsFloor: detail.fileOpsFloor } : {}),
+      ...(detail.commands !== undefined ? { commands: detail.commands } : {}),
+      ...(detail.commandsFloor !== undefined ? { commandsFloor: detail.commandsFloor } : {}),
+      ...(detail.commandStats !== undefined ? { commandStats: detail.commandStats } : {}),
       ...(detail.spans !== undefined ? { spans: detail.spans } : {}),
     }
     return { data, detailState: 'ready', retryDetail: retry }

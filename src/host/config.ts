@@ -16,6 +16,9 @@ export const DEFAULT_BOUNDS = {
   maxNodes: 2000,
   maxArchiveNodes: 400,
   maxFileOps: 400,
+  maxCommands: 400,
+  /** The command text caps per record; the card offers the full text through the browser's message body. */
+  maxCommandChars: 4096,
 }
 
 /** The resolved fold bounds; derived from {@link DEFAULT_BOUNDS} so the two cannot drift. */
@@ -41,6 +44,8 @@ export const Config = z.object({
   maxNodes: count(DEFAULT_BOUNDS.maxNodes),
   maxArchiveNodes: count(DEFAULT_BOUNDS.maxArchiveNodes),
   maxFileOps: count(DEFAULT_BOUNDS.maxFileOps),
+  maxCommands: count(DEFAULT_BOUNDS.maxCommands),
+  maxCommandChars: count(DEFAULT_BOUNDS.maxCommandChars),
   // Loose: a stale persisted value degrades to the default instead of failing the entry.
   defaultPlacement: volatileField(z.union(['all', 'tab', 'sidebar']).default('all').loose()),
   defaultGranularity: volatileField(z.union(['step', 'turn']).default('step').loose()),
@@ -67,5 +72,7 @@ export function resolveBounds(config: Config | undefined): FoldBounds {
     maxNodes: resolved.maxNodes,
     maxArchiveNodes: resolved.maxArchiveNodes,
     maxFileOps: resolved.maxFileOps,
+    maxCommands: resolved.maxCommands,
+    maxCommandChars: resolved.maxCommandChars,
   }
 }

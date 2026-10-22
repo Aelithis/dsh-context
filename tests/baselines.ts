@@ -136,7 +136,7 @@ export interface Baseline {
   }
 }
 
-function baseline(id: BaselineId, tag: string, session: string, line: { cordis?: string; stockIds?: readonly string[] } = {}): Baseline {
+function baseline(id: BaselineId, tag: string, session: string, line: { cordis?: string; stockIds?: readonly string[]; extraFoldEvents?: readonly string[] } = {}): Baseline {
   return {
     id,
     tag,
@@ -146,9 +146,10 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
     foldEventTypes: [
       'request/header', 'request/context', 'step/start', 'step/end',
       'user/message', 'developer/message', 'tool/call', 'tool/result', 'assistant/message', 'assistant/attempt',
-      'tool/ptc-dispatch',
+      'tool/ptc-dispatch', 'tool/ptc-dispatch-start',
       'plan/mode', 'compaction/summary', 'compaction/prune', 'system/message',
       'approval/asked', 'approval/decided', 'session/end-seed',
+      ...(line.extraFoldEvents ?? []),
     ],
     client: {
       imageFaceMethod: 'imageUrl',
@@ -282,8 +283,11 @@ export const BASELINES: readonly Baseline[] = [
   // §1); every seam below is spelled at this tag, and cordis stays 4.0.4.
   baseline('v0.2.0-rc.2', 'dsh-v0.2.0-rc.2', '0.2.0-rc.2'),
   // Two facts differ from 0.2.0: cordis 4.0.5, and the `web-deepseek-api` stock entry the balance fold falls back to.
+  // The durable job events (`job/registered` / `job/settled`) exist only on this line — the command log degrades to
+  // envelope-derived timing without them.
   baseline('v0.2.1-rc.2', 'dsh-v0.2.1-rc.2', '0.2.1-rc.2', {
     cordis: '4.0.5',
     stockIds: ['llm-deepseek', 'web-search-deepseek', 'web-deepseek-api'],
+    extraFoldEvents: ['job/registered', 'job/settled'],
   }),
 ]

@@ -13,6 +13,8 @@ import { canOpenPathsOf, openPathVia, openResourceVia, workspaceOf } from '../se
 import { makeAttachmentOpener } from '../attachmentSource'
 import { activityOf, activityOfOps, locateStepOf, previewAddressOf, surfaceSeqOf } from '../fileActivity'
 import type { FileEntry, FileOp } from '../fileActivity'
+import { commandsOf, surfaceSeqOf as commandSurfaceSeqOf } from '../commands'
+import type { Command } from '../commands'
 import type { ContextSettings } from '../settings'
 import { overviewThresholdOf } from '../settings'
 import type { ViewKit } from '../viewkit'
@@ -26,6 +28,7 @@ import { makeCurrentComposition } from './currentComposition'
 import { makeEventList } from './events'
 import { makeFileCard } from './fileCard'
 import type { FileFilter } from './fileCard'
+import { makeCommandPanel } from './commandPanel'
 import { makePluginInfo } from './pluginInfo'
 import { makeUpgradeGate } from './upgradeGate'
 import { makeRequestDetail } from './requestDetail'
@@ -126,6 +129,7 @@ export function makeContextView(
   const RequestDetail = makeRequestDetail(kit, StackedBar, Legend)
   const EventList = makeEventList(kit)
   const FileCard = makeFileCard(kit, settings)
+  const CommandPanel = makeCommandPanel(kit)
   const StatsContext = makeStatsContext(kit, makeSubagentCost(ctx, heads))
   const StatsTiming = makeStatsTiming(kit, Donut)
   const StatsTokens = makeStatsTokens(kit, Donut)
@@ -280,6 +284,8 @@ export function makeContextView(
     // Below-the-fold cards: keep the first commit to the cards the reader sees, then mount the event/file row in an
     // idle slice once it nears the conversation viewport; the two skeleton cards reserve the row height.
     const [belowFoldRef, belowFoldMounted] = useLazyMount(filterFocus !== null)
+    // The command panel sits below the event/file row as its own full-width lazy block.
+    const [cmdsRef, cmdsMounted] = useLazyMount()
     // The browser card is visible but heavy (assembled rows for the current step): paint its card-shaped skeleton in
     // the first commit, then fill it in the next idle slice so the open's commit stays small.
     const [browserRef, browserMounted] = useLazyMount()
@@ -501,6 +507,13 @@ export function makeContextView(
       [data, briefList, convOf],
     )
     const toolTally = useMemo(() => (data ? cachedByData(data, 'toolTally', () => toolTallyOf(data.nodes)) : []), [data])
+    // The command log joins `gone` off the archive once per projection (the panel sorts/filters the joined list);
+    // a row folded before the collection existed serves no `commands` and the panel shows its empty state.
+    const commandList = useMemo(() => {
+      if (data === null || data.commands === undefined) return []
+      const records = data.commands
+      return cachedByData(data, 'commands', () => commandsOf(records, data.archive))
+    }, [data])
     const workspace = typeof ctx.get === 'function' ? workspaceOf(ctx, typeof sessionId === 'string' ? sessionId : undefined) : undefined
     // The capability is an async RPC answer, so file names stay inert until the probe settles.
     const [canOpenPaths, setCanOpenPaths] = useState(false)
@@ -535,6 +548,18 @@ export function makeContextView(
       const step = locateStepOf(requests, seq, op.gone)
       if (step === null) return
       setNodeFocus({ step, key: 'n' + String(seq), cat: 'tool' })
+    }, [requests])
+    // A command row reveals its RESULT message in the browser (a nested Code-Mode run reveals its run_code parent);
+    // the panel sits below the fold, so the jump also brings the browser into view when it is offscreen.
+    const locateCommand = useCallback((rec: Command): void => {
+      const seq = commandSurfaceSeqOf(rec)
+      /* v8 ignore next 1 -- the panel renders the reveal affordance only when a surface target exists,
+         so this guard only backs up a direct call. */
+      if (seq === undefined) return
+      const step = locateStepOf(requests, seq, rec.gone)
+      if (step === null) return
+      setNodeFocus({ step, key: 'n' + String(seq), cat: 'tool' })
+      revealBrowserIfOffscreen(rootRef.current)
     }, [requests])
     // A response node (seq === the request's) first appears in the NEXT step's surface, or the live surface on the last bar.
     const locateNode = useCallback((node: SurfaceNode, isResponse: boolean): void => {
@@ -866,6 +891,17 @@ export function makeContextView(
             <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)] lc-deferred-skeleton" style={{ minHeight: 450 }} aria-hidden="true" />
             <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)] lc-deferred-skeleton" style={{ minHeight: 450 }} aria-hidden="true" />
           </>)}
+        </div>
+
+        <div className="lc-cols" ref={cmdsRef}>
+          {cmdsMounted ? (
+            /* Keyed like the trend faces: a session switch resets the panel's filter/query/expanded-row state. */
+            <CommandPanel key={sessionId} commands={commandList} stats={data.commandStats} floor={data.commandsFloor}
+              workspace={workspace} stampOf={opStampOf} onLocate={locateCommand}
+              state={source.detailState} onRetry={source.retryDetail} />
+          ) : (
+            <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)] lc-deferred-skeleton" style={{ minHeight: 320 }} aria-hidden="true" />
+          )}
         </div>
 
         {/* The card's standalone home is the Fleet tab; the right Sidebar's panel is too narrow to split, so it keeps the card inline. */}
