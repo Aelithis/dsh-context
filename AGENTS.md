@@ -23,14 +23,9 @@ A DeepSeek Harness plugin for context insight, actions, and management.
 - Keep code and tests small, loosely coupled, and modular; avoid duplication.
 - After updating tests, firstly run `pnpm exec vitest run tests/<area>/<name>.spec.ts -t "<test case name>"` (regex, use `"a|b"`) to iterate on the touched test cases.
 - Ensure every source code file or test code file has less than 1000 lines.
-- Add comments only for major decisions or significant value, and update or delete outdated ones when modifying the code.
-- Comments guideline:
-  - Cleanup all the unnecessary, unhelpful or deprecated comments
-  - Cleanup all comments that related code already self-explains or self-constructs, even crossing multiple files and modules.
-  - ONLY use necessary comments for critical major decisions or significant value that cannot be self-explained by the code itself or the dsh code
-  - Use precise, clear, and concise language in comments, avoiding vague or ambiguous statements.
-  - Less comments is always better: avoid over-explaining or repeating what the code already expresses.
-  - Always try to cleanup or remove comments
+- Comments: default to none. Never add one unless it records a non-obvious decision, constraint, or invariant the code cannot express — if you cannot name that reason, do not write it.
+- Never narrate what the code does, restate names or types, or explain the change you just made.
+- When touching code, delete or shrink comments that repeat the code, state the obvious, or are outdated; reducing the comment count is always welcome.
 - Write comments, documentation, PR descriptions, and commit messages in English.
 - Generate one-time temp files in the `.tmp` directory and clean them up right after use.
 
