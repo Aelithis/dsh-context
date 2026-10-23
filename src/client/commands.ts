@@ -2,7 +2,8 @@
  * reads (preview text, duration, filter/sort) the card maps over. */
 
 import type { CommandRecord, CommandStats, SurfaceNode } from '../shared/types'
-import { firstLineOf, headProgramOf, hideableCdPrefix } from '../shared/commands'
+import { firstLineOf, headProgramOf, hideableCdPrefix, shapeOfCmd } from '../shared/commands'
+import type { CommandShape } from '../shared/commands'
 
 export type Command = CommandRecord
 export type CommandFilter = 'all' | 'failed' | 'slow' | 'background'
@@ -42,6 +43,23 @@ export function previewOf(rec: CommandRecord, workspace: string | undefined): st
   return previewTextOf(rec.cmd, workspace)
 }
 
+/** One record's display facts, derived ONCE per served list: the shell parse, the preview and the shape badges all
+ * scan the command text, and the panel re-renders on every keystroke and projection refresh. */
+export interface CommandView {
+  rec: CommandRecord
+  program: string
+  preview: string
+  shape: CommandShape
+}
+
+function viewOf(rec: CommandRecord, workspace: string | undefined): CommandView {
+  return { rec, program: programOf(rec), preview: previewOf(rec, workspace), shape: shapeOfCmd(rec.cmd) }
+}
+
+export function viewsOf(records: readonly CommandRecord[], workspace: string | undefined): CommandView[] {
+  return records.map(rec => viewOf(rec, workspace))
+}
+
 export function matchesFilter(rec: CommandRecord, filter: CommandFilter): boolean {
   if (filter === 'failed') return rec.status === 'failed' || rec.status === 'killed'
   if (filter === 'slow') {
@@ -52,13 +70,13 @@ export function matchesFilter(rec: CommandRecord, filter: CommandFilter): boolea
   return true
 }
 
-export function matchesQuery(rec: CommandRecord, q: string): boolean {
+export function matchesQuery(rec: CommandRecord, q: string, program: string = programOf(rec)): boolean {
   if (q === '') return true
   const needle = q.toLowerCase()
   if (rec.cmd.toLowerCase().includes(needle)) return true
   if (rec.description !== undefined && rec.description.toLowerCase().includes(needle)) return true
   if (rec.cwd !== undefined && rec.cwd.toLowerCase().includes(needle)) return true
-  return programOf(rec).toLowerCase().includes(needle)
+  return program.toLowerCase().includes(needle)
 }
 
 export function byLatest(a: CommandRecord, b: CommandRecord): number {
@@ -100,12 +118,9 @@ export interface ProgramCount {
 
 /** The rail's program ranking over the RETAINED list (the floor note already scopes a trimmed log): every program,
  * most-run first with a stable name tie-break. */
-export function programsOf(records: readonly CommandRecord[]): ProgramCount[] {
+export function programsOf(views: readonly CommandView[]): ProgramCount[] {
   const counts = new Map<string, number>()
-  for (const rec of records) {
-    const name = programOf(rec)
-    counts.set(name, (counts.get(name) ?? 0) + 1)
-  }
+  for (const view of views) counts.set(view.program, (counts.get(view.program) ?? 0) + 1)
   return [...counts.entries()]
     .map(([name, n]) => ({ name, n }))
     .sort((a, b) => (b.n - a.n) || (a.name < b.name ? -1 : 1))
@@ -123,20 +138,20 @@ export interface CommandAttention {
   background?: number
 }
 
-export function attentionOf(records: readonly CommandRecord[]): CommandAttention {
+export function attentionOf(views: readonly CommandView[]): CommandAttention {
   const out: CommandAttention = {}
   let slowest: { cmd: string; ms: number } | undefined
   const failByProgram = new Map<string, number>()
   const repeats = new Map<string, number>()
   let background = 0
-  for (const rec of records) {
+  for (const view of views) {
+    const rec = view.rec
     const d = durationOf(rec)
     if (rec.status !== 'running' && d !== undefined && d >= 1000 && (slowest === undefined || d > slowest.ms)) {
       slowest = { cmd: rec.cmd, ms: d }
     }
     if (rec.status === 'failed' || rec.status === 'killed') {
-      const p = programOf(rec)
-      failByProgram.set(p, (failByProgram.get(p) ?? 0) + 1)
+      failByProgram.set(view.program, (failByProgram.get(view.program) ?? 0) + 1)
     }
     if (rec.background === true) background++
     if (rec.status !== 'running') repeats.set(rec.cmd, (repeats.get(rec.cmd) ?? 0) + 1)

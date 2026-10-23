@@ -13,6 +13,7 @@ import {
   programOf,
   programsOf,
   surfaceSeqOf,
+  viewsOf,
   tallyOfCommands,
 } from '../../src/client/commands'
 import type { Command } from '../../src/client/commands'
@@ -79,6 +80,25 @@ describe('previewOf', () => {
     assert.equal(previewOf(cmd(1, { cmd: 'cd /elsewhere && git status' }), '/repo'), 'cd /elsewhere && git status')
     assert.equal(previewOf(cmd(1, { cmd: 'cd /repo && python3 - <<\'PY\'\nbody\nPY' }), '/repo'), 'python3 - <<\'PY\'')
     assert.equal(previewOf(cmd(1), undefined), 'git status')
+  })
+})
+
+describe('viewsOf — one derivation per record', () => {
+  test('carries the program, the preview and the shape badges', () => {
+    const views = viewsOf([
+      cmd(1, { cmd: "cd /repo && python3 - <<'PY'\nprint(1)\nPY" }),
+      cmd(2, { tool: 'run_code', cmd: 'await x()', status: 'running' }),
+    ], '/repo')
+    assert.deepEqual(views.map(v => v.program), ['python3', 'run_code'])
+    assert.equal(views[0].preview, "python3 - <<'PY'")
+    assert.deepEqual(views[0].shape, { lines: 3, heredoc: true, inline: false })
+    assert.deepEqual(views[1].shape, { lines: 1, heredoc: false, inline: false })
+  })
+
+  test('a supplied program is the one searched', () => {
+    const rec = cmd(1, { cmd: 'git status' })
+    assert.equal(matchesQuery(rec, 'my-program', 'my-program'), true)
+    assert.equal(matchesQuery(rec, 'my-program'), false)
   })
 })
 
@@ -155,7 +175,7 @@ describe('the rail derivations', () => {
       cmd(5, { tool: 'run_code', cmd: 'await 1' }),
       cmd(6, { cmd: 'git log' }),
     ]
-    assert.deepEqual(programsOf(records), [
+    assert.deepEqual(programsOf(viewsOf(records, undefined)), [
       { name: 'git', n: 3 },
       { name: 'grep', n: 1 },
       { name: 'pnpm', n: 1 },
@@ -164,14 +184,14 @@ describe('the rail derivations', () => {
   })
 
   test('attentionOf surfaces the slowest, the most-failed program, repeats, and background', () => {
-    const attention = attentionOf([
+    const attention = attentionOf(viewsOf([
       cmd(1, { cmd: 'git status', start: 0, end: 300 }),
       cmd(2, { cmd: 'pnpm build', start: 0, end: 90_000 }),
       cmd(3, { cmd: 'vitest run a', status: 'failed', exit: 1 }),
       cmd(4, { cmd: 'vitest run b', status: 'failed', exit: 1 }),
       cmd(5, { cmd: 'git status' }),
       cmd(6, { cmd: 'sleep 9', status: 'running', background: true }),
-    ])
+    ], undefined))
     assert.deepEqual(attention.slowest, { cmd: 'pnpm build', ms: 90_000 })
     assert.deepEqual(attention.failing, { program: 'vitest', count: 2 })
     assert.deepEqual(attention.repeats, { cmd: 'git status', count: 2 })
@@ -179,7 +199,7 @@ describe('the rail derivations', () => {
   })
 
   test('ties keep the first-seen program/command; a later-but-shorter slow run does not displace the top', () => {
-    const attention = attentionOf([
+    const attention = attentionOf(viewsOf([
       cmd(1, { cmd: 'vitest a', status: 'failed', start: 0, end: 5000 }),
       cmd(2, { cmd: 'eslint b', status: 'failed', start: 0, end: 3000 }),
       cmd(3, { cmd: 'git status' }),
@@ -188,7 +208,7 @@ describe('the rail derivations', () => {
       cmd(6, { cmd: 'git diff' }),
       cmd(7, { cmd: 'pnpm build', start: 0, end: 60_000 }),
       cmd(8, { cmd: 'pnpm test', start: 0, end: 30_000 }),
-    ])
+    ], undefined))
     assert.equal(attention.failing?.count, 1, 'each program failed once — first-seen holds the tie')
     assert.equal(attention.failing?.program, 'vitest')
     assert.equal(attention.repeats?.cmd, 'git status', 'first-seen holds the repeats tie')
@@ -196,10 +216,10 @@ describe('the rail derivations', () => {
   })
 
   test('attentionOf stays empty when nothing is notable', () => {
-    assert.deepEqual(attentionOf([cmd(1, { start: 0, end: 50 })]), {})
     assert.deepEqual(attentionOf([]), {})
+    assert.deepEqual(attentionOf(viewsOf([cmd(1, { start: 0, end: 50 })], undefined)), {})
     // A sub-second slowest is not attention-worthy.
-    assert.equal(attentionOf([cmd(1, { start: 0, end: 500 })]).slowest, undefined)
+    assert.equal(attentionOf(viewsOf([cmd(1, { start: 0, end: 500 })], undefined)).slowest, undefined)
   })
 
   test('search also matches the program identity (the rail’s program clicks land)', () => {

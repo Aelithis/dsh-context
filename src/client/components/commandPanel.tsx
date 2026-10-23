@@ -1,12 +1,12 @@
-import { memo, useMemo, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
-import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewOf, previewTextOf, programsOf, tallyOfCommands } from '../commands'
-import type { Command, CommandFilter, CommandSort } from '../commands'
+import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
+import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, tallyOfCommands, viewsOf } from '../commands'
+import type { Command, CommandFilter, CommandSort, CommandView } from '../commands'
 import { nameColorOf } from '../nameColor'
-import { shapeOfCmd } from '../../shared/commands'
 import type { CommandStats } from '../../shared/types'
 import type { DetailState } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
 import { makeDetailNote } from './detailNote'
+import { useRowWindow } from './useRowWindow'
 
 export interface CommandPanelProps {
   commands: Command[]
@@ -29,6 +29,8 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
 
   const FILTERS: readonly CommandFilter[] = ['all', 'failed', 'slow', 'background']
   const SORTS: readonly CommandSort[] = ['latest', 'slowest']
+  /** Below this many matched rows the full list stays in the DOM (browser find, select-all); above it the list windows. */
+  const WINDOW_MIN_ROWS = 100
 
   function statusGlyphOf(rec: Command): { glyph: string; cls: string; tip: string } {
     if (rec.status === 'running') return { glyph: '◐', cls: 'run', tip: t('cmds.status.running') }
@@ -48,13 +50,13 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     const [copiedSeq, setCopiedSeq] = useState<number | null>(null)
 
     const q = query.trim().toLowerCase()
-    // Every matched row renders — the list is the whole point. Offscreen rows skip their paint via
-    // `content-visibility: auto` (the file card's own idiom), so a 400-row log costs no layout storm.
+    // Past the threshold the list windows; below it every matched row stays in the DOM for browser find and select-all.
+    const views = useMemo(() => viewsOf(commands, props.workspace), [commands, props.workspace])
     const shown = useMemo(
-      () => commands
-        .filter(rec => matchesFilter(rec, filter) && matchesQuery(rec, q))
-        .sort(sort === 'slowest' ? bySlowest : byLatest),
-      [commands, filter, q, sort],
+      () => views
+        .filter(view => matchesFilter(view.rec, filter) && matchesQuery(view.rec, q, view.program))
+        .sort((a, b) => (sort === 'slowest' ? bySlowest(a.rec, b.rec) : byLatest(a.rec, b.rec))),
+      [views, filter, q, sort],
     )
     const tally = props.stats ?? tallyOfCommands(commands)
     const counts = useMemo(() => ({
@@ -63,8 +65,40 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       slow: commands.filter(r => matchesFilter(r, 'slow')).length,
       background: commands.filter(r => matchesFilter(r, 'background')).length,
     }), [commands])
-    const programs = useMemo(() => programsOf(commands), [commands])
-    const attention = useMemo(() => attentionOf(commands), [commands])
+    const programs = useMemo(() => programsOf(views), [views])
+    const attention = useMemo(() => attentionOf(views), [views])
+
+    const listRef = useRef<HTMLDivElement | null>(null)
+    const [rowPitch, setRowPitch] = useState(0)
+    const [rowGap, setRowGap] = useState(0)
+    // Fixed-height rows, so one measured pitch holds for the mount.
+    const measured = useRef(false)
+    useEffect(() => {
+      if (measured.current || openSeq !== null || shown.length < WINDOW_MIN_ROWS) return
+      const el = listRef.current
+      /* v8 ignore next 1 -- the list renders whenever `shown` is non-empty; the guard covers a mid-swap render. */
+      if (el === null) return
+      const items = [...el.querySelectorAll<HTMLElement>('.lc-cmd-item')]
+      /* v8 ignore next 1 -- the committed full-list render is what arms this effect. */
+      if (items.length !== shown.length) return
+      measured.current = true
+      const rects = items.map(item => item.getBoundingClientRect())
+      const height = Math.round(rects[0].height)
+      const uniform = height > 4 && rects.every(r => Math.abs(Math.round(r.height) - height) <= 1)
+      if (!uniform) return
+      const pitch = rects[1].top - rects[0].top
+      /* v8 ignore next 1 -- uniform rows taller than 4px always pitch past 4px. */
+      if (Number.isFinite(pitch) && pitch > 4) {
+        setRowPitch(Math.round(pitch))
+        setRowGap(Math.max(0, Math.round(pitch - height)))
+      }
+    }, [openSeq, shown.length])
+    const windowed = openSeq === null && rowPitch > 0 && shown.length >= WINDOW_MIN_ROWS
+    const rowRange = useRowWindow(listRef, shown.length, rowPitch, windowed)
+    const lastRow = Math.max(0, shown.length - 1)
+    // A filter/sort can shrink the list under a stale range for one render; clamping keeps the window non-empty.
+    const windowFrom = Math.min(rowRange.from, lastRow)
+    const windowTo = Math.min(rowRange.to, lastRow)
     const [progQuery, setProgQuery] = useState('')
     /** A rail preview keeps to a tight budget; the full text is one click into the row. */
     const railPreview = (cmd: string): string => {
@@ -249,21 +283,20 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       )
     }
 
-    const rowOf = (rec: Command): ReactElement => {
+    const rowOf = (view: CommandView, index: number): ReactElement => {
+      const rec = view.rec
       const open = openSeq === rec.seq
-      const shape = shapeOfCmd(rec.cmd)
       const st = statusGlyphOf(rec)
-      const preview = previewOf(rec, props.workspace)
       const d = durationOf(rec)
       const target = rec.parent ?? rec.resultSeq
       const stamp = target !== undefined ? props.stampOf?.(target) ?? null : null
       const locatable = props.onLocate !== undefined && target !== undefined
       return (
-        <div key={rec.seq} className={'lc-cmd-item' + (open ? ' lc-cmd-item-on' : '')}>
+        <div key={rec.seq} className={'lc-cmd-item' + (index % 2 === 1 ? ' lc-cmd-item-alt' : '') + (open ? ' lc-cmd-item-on' : '')}>
           <button
             type="button"
             className="lc-cmd-row hover:bg-(--dsw-alias-interactive-bg-hover)"
-            title={rec.description ?? preview}
+            title={rec.description ?? view.preview}
             onClick={() => { setOpenSeq(open ? null : rec.seq) }}
           >
             <span className={'lc-br-chev' + (open ? ' lc-br-chev-on' : '')} />
@@ -271,12 +304,12 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             <span className="lc-cmd-cmd">
               {rec.tool !== 'bash' ? <span className="lc-cmd-tool">{rec.tool === 'run_code' ? t('cmds.tool.code') : rec.tool}</span> : null}
               {rec.codeMode === true && rec.tool === 'bash' ? <span className="lc-cmd-tool">{t('cmds.tool.nested')}</span> : null}
-              {preview}
+              {view.preview}
             </span>
             <span className="lc-cmd-badges">
-              {shape.lines > 1 ? <span className="lc-cmd-badge">{t('cmds.lines', { n: shape.lines })}</span> : null}
-              {shape.heredoc ? <span className="lc-cmd-badge">{t('cmds.heredoc')}</span> : null}
-              {shape.inline ? <span className="lc-cmd-badge">{t('cmds.inline')}</span> : null}
+              {view.shape.lines > 1 ? <span className="lc-cmd-badge">{t('cmds.lines', { n: view.shape.lines })}</span> : null}
+              {view.shape.heredoc ? <span className="lc-cmd-badge">{t('cmds.heredoc')}</span> : null}
+              {view.shape.inline ? <span className="lc-cmd-badge">{t('cmds.inline')}</span> : null}
               {rec.background === true ? <span className="lc-cmd-badge lc-cmd-badge-bg">{t('cmds.bgBadge')}</span> : null}
             </span>
             {d !== undefined
@@ -367,8 +400,17 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             ) : shown.length === 0 ? (
               <div className="lc-empty lc-lane">{t(commands.length === 0 ? 'cmds.empty' : 'cmds.noMatch')}</div>
             ) : (
-              <div className="lc-cmd-list">
-                {shown.map(rowOf)}
+              <div className="lc-cmd-list" ref={listRef}>
+                {/* One stable fragment: branching to a separate fragment for the pads would remount every row. */}
+                {windowed && windowFrom > 0
+                  ? <div className="lc-row-pad" style={{ height: Math.max(0, windowFrom * rowPitch - rowGap) }} aria-hidden="true" />
+                  : null}
+                {windowed
+                  ? shown.slice(windowFrom, windowTo + 1).map((view, i) => rowOf(view, windowFrom + i))
+                  : shown.map(rowOf)}
+                {windowed && windowTo < lastRow
+                  ? <div className="lc-row-pad" style={{ height: Math.max(0, (lastRow - windowTo) * rowPitch - rowGap) }} aria-hidden="true" />
+                  : null}
               </div>
             )}
           </div>
