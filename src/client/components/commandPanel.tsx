@@ -137,6 +137,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
                 title={row.title}
                 onClick={row.apply}
               >
+                <i className="lc-cmd-attn-dot" />
                 <span className="lc-cmd-attn-k">{row.label}</span>
                 <span className="lc-cmd-attn-v">{row.value}</span>
                 <span className="lc-cmd-attn-n">{row.n}</span>
