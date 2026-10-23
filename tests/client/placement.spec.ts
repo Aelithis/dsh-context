@@ -39,6 +39,29 @@ describe('watchPlacement', () => {
     dispose()
   })
 
+  test("'hide' unwinds both surfaces without remount churn; flipping back mounts both", () => {
+    const settings = createContextSettings()
+    const tab = mountSpy()
+    const sidebar = mountSpy()
+    const dispose = watchPlacement(settings, { tab: tab.factory, sidebar: sidebar.factory })
+    assert.equal(tab.mounted(), 1)
+    assert.equal(sidebar.mounted(), 1)
+
+    settings.set('defaultPlacement', 'hide')
+    assert.equal(tab.disposed(), 1)
+    assert.equal(sidebar.disposed(), 1)
+    settings.set('defaultPlacement', 'hide')
+    assert.equal(tab.mounted(), 1, 'a hidden panel entry never churns')
+    assert.equal(sidebar.mounted(), 1)
+
+    settings.set('defaultPlacement', 'all')
+    assert.equal(tab.mounted(), 2)
+    assert.equal(sidebar.mounted(), 2)
+    dispose()
+    assert.equal(tab.disposed(), 2)
+    assert.equal(sidebar.disposed(), 2)
+  })
+
   test("'all' restores both; unrelated preference changes never remount", () => {
     const settings = createContextSettings()
     const tab = mountSpy()

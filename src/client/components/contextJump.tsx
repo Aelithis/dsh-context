@@ -1,11 +1,13 @@
 /** Assistant-message jump action on the harness's `conversation.chat.assistant-actions` seat. The matching node's seq is
  * resolved off the `useChat` node seat AT RENDER TIME: that seat is a real React hook, so a click-time read throws the
  * dispatcher guard and the jump lands unpinned. */
-import { type ReactElement } from 'react'
+import { useSyncExternalStore, type ReactElement } from 'react'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ClientCtx, ConversationNodeLike, UseChatLike } from '../services'
 import { conversationNodesOf } from '../services'
 import { activateViewTab, openContextSidebar, requestContextFocus } from '../viewFocus'
+import { placementSurfaces } from '../placement'
+import type { ContextSettings } from '../settings'
 import type { ViewKit } from '../viewkit'
 
 export interface ContextJumpProps {
@@ -38,13 +40,22 @@ function JumpIcon(): ReactElement {
   )
 }
 
-export function makeContextJumpButton(ctx: ClientCtx, kit: ViewKit): (props: ContextJumpProps) => ReactElement | null {
+export function makeContextJumpButton(
+  ctx: ClientCtx,
+  kit: ViewKit,
+  settings: ContextSettings,
+): (props: ContextJumpProps) => ReactElement | null {
   const { t } = kit
+  const subscribeSettings = settings.store.subscribe.bind(settings.store)
   return function ContextJump(props: ContextJumpProps): ReactElement | null {
-    // Read first and unconditionally, so the early return below keeps hook order.
+    // Read first and unconditionally, so the early returns below keep hook order.
     const nodes = conversationNodesOf(props)
+    const placement = useSyncExternalStore(subscribeSettings, () => settings.defaultPlacement())
     const messageId = props.messageId
     if (typeof messageId !== 'string' || messageId === '') return null
+    // No mounted surface means nowhere to land, so the jump stays out of the reply row too.
+    const surfaces = placementSurfaces(placement)
+    if (!surfaces.tab && !surfaces.sidebar) return null
     const seq = seqOfMessageId(nodes, messageId)
     const jump = (): void => {
       const sessionId = props.sessionId

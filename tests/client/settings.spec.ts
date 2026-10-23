@@ -107,6 +107,16 @@ describe('set', () => {
     assert.equal(s.defaultOverviewRange(), 'today')
   })
 
+  test('the hidden placement is a served preference both from the scope and from a pick', () => {
+    const s = createContextSettings()
+    s.attach(new TestSettingsScope({ status: 'ready', value: { defaultPlacement: 'hide' }, writable: true }))
+    assert.equal(s.defaultPlacement(), 'hide')
+    s.set('defaultPlacement', 'all')
+    assert.equal(s.defaultPlacement(), 'all')
+    s.set('defaultPlacement', 'hide')
+    assert.equal(s.defaultPlacement(), 'hide')
+  })
+
   test('an unchanged value does not notify listeners', () => {
     const s = createContextSettings()
     let calls = 0

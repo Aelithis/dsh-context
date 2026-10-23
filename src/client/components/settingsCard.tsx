@@ -131,6 +131,7 @@ function PreferenceRows(props: { t: Translate; state: SettingsState; set?: Setti
             { id: 'all', label: t('placement.all') },
             { id: 'tab', label: t('placement.tab') },
             { id: 'sidebar', label: t('placement.sidebar') },
+            { id: 'hide', label: t('placement.hide') },
           ]}
           onPick={(id) => { set?.('defaultPlacement', id) }}
         />

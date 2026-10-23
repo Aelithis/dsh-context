@@ -75,6 +75,8 @@ describe('watchFleetTab — the Fleet tab\'s own gate', () => {
     assert.equal(ctx.slots.of('conversation.view').length, 1)
     settings.set('defaultPlacement', 'tab')
     assert.equal(ctx.slots.of('conversation.view').length, 1, 'no placement churn')
+    settings.set('defaultPlacement', 'hide')
+    assert.equal(ctx.slots.of('conversation.view').length, 1, 'a hidden panel entry leaves the tab served')
     dispose()
     assert.deepEqual(ctx.slots.of('conversation.view'), [])
     ctx.dispose()

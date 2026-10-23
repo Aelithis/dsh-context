@@ -72,11 +72,12 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await click(selects[0])
     assert.equal(selects[0].getAttribute('aria-expanded'), 'true')
     const placementItems = menuItems()
-    assert.equal(placementItems.length, 3)
+    assert.equal(placementItems.length, 4)
     assert.deepEqual(placementItems.map(i => text(i)), [
       DICT_EN['placement.all'],
       DICT_EN['placement.tab'],
       DICT_EN['placement.sidebar'],
+      DICT_EN['placement.hide'],
     ])
     await click(placementItems[2]) // 'Sidebar'
     assert.deepEqual(calls, [['defaultPlacement', 'sidebar']])
@@ -254,6 +255,20 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await m.unmount()
   })
 
+  test('the placement row offers Hide, which persists the hidden entry', async () => {
+    const calls: [string, string][] = []
+    const m = await mount(h(PluginConfigCard, {
+      useContextSettings: hookFor(stateOf({ placement: 'hide' })),
+      set: (field, value) => { calls.push([field, value]) },
+    }))
+    const select = query<HTMLButtonElement>(m.container, '.lc-settings-select')
+    assert.ok(text(select).includes(DICT_EN['placement.hide']), 'the hidden entry reads as Hide')
+    await click(select)
+    await click(menuItems()[3])
+    assert.deepEqual(calls, [['defaultPlacement', 'hide']])
+    await m.unmount()
+  })
+
   test('Menu onClose (Escape) closes an open select without picking', async () => {
     const calls: [string, string][] = []
     const m = await mount(h(PluginConfigCard, {
@@ -263,7 +278,7 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     const select = query(m.container, '.lc-settings-select')
     await click(select)
     assert.equal(select.getAttribute('aria-expanded'), 'true')
-    assert.equal(menuItems().length, 3, 'the placement row leads with three options')
+    assert.equal(menuItems().length, 4, 'the placement row leads with four options')
     await keydown('Escape', document.body)
     assert.equal(select.getAttribute('aria-expanded'), 'false')
     assert.equal(document.body.querySelector('[role="menu"]'), null)

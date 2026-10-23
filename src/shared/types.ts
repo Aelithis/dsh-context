@@ -148,7 +148,8 @@ export type DefaultFileSort = 'count' | 'lines' | 'latest' | 'path' | 'name'
 
 export type DefaultToolSort = 'size' | 'count' | 'name'
 
-export type DefaultPlacement = 'all' | 'tab' | 'sidebar'
+/** Where the Context panel mounts; 'hide' registers no surface. */
+export type DefaultPlacement = 'all' | 'tab' | 'sidebar' | 'hide'
 
 export type InsightsEntry = 'show' | 'hide'
 

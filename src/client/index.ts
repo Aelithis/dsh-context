@@ -43,7 +43,8 @@ import './styles/dateRange.css'
 
 const NS = 'dsh-context'
 
-/** The chat→Context jump doubles as the mount marker: no preference gates it, so a seated ledger means a mount is live. */
+/** The chat→Context jump seat doubles as the mount marker: the seat is never gated (only its rendering follows the
+ * panel placement), so a seated ledger means a mount is live. */
 const JUMP_SLOT = 'conversation.chat.assistant-actions'
 const JUMP_ID = 'context-jump'
 
@@ -83,7 +84,7 @@ function apply(ctx: ClientCtx): void {
   ), 'dsh-context: fleet tab')
 
   // Chat → Context jump: the right Sidebar tab pinned to the reply's turn where served, else the conversation tab.
-  const ContextJump = makeContextJumpButton(ctx, kit)
+  const ContextJump = makeContextJumpButton(ctx, kit, settings)
   ctx.slots.inject(JUMP_SLOT, () => {
     return ctx.slots.register(
       // After the shipped feedback entry (10), still inside the icon row.

@@ -47,7 +47,7 @@ export const Config = z.object({
   maxCommands: count(DEFAULT_BOUNDS.maxCommands),
   maxCommandChars: count(DEFAULT_BOUNDS.maxCommandChars),
   // Loose: a stale persisted value degrades to the default instead of failing the entry.
-  defaultPlacement: volatileField(z.union(['all', 'tab', 'sidebar']).default('all').loose()),
+  defaultPlacement: volatileField(z.union(['all', 'tab', 'sidebar', 'hide']).default('all').loose()),
   defaultGranularity: volatileField(z.union(['step', 'turn']).default('step').loose()),
   defaultTrendMode: volatileField(z.union(['total', 'delta']).default('total').loose()),
   defaultDeltaBase: volatileField(z.union(['step', 'turn']).default('step').loose()),

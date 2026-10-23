@@ -97,6 +97,7 @@ export const DICT_EN = {
   'placement.tab': 'Tab',
   'placement.sidebar': 'Sidebar',
   'placement.all': 'All',
+  'placement.hide': 'Hide',
   'settings.insightsEntry': 'Context Insights',
   'settings.fleetTab': 'Fleet tab',
   'showHide.show': 'Show',

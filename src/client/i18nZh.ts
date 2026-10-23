@@ -94,6 +94,7 @@ export const DICT_ZH = {
   'placement.tab': '标签页',
   'placement.sidebar': '侧边栏',
   'placement.all': '全部',
+  'placement.hide': '隐藏',
   'settings.insightsEntry': '上下文洞察',
   'settings.fleetTab': '编队标签页',
   'showHide.show': '显示',

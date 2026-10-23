@@ -6,6 +6,14 @@ export interface PlacementMounts {
   sidebar(): unknown
 }
 
+/** The surfaces a placement mounts; a positive membership set, so 'hide' mounts neither. */
+export function placementSurfaces(placement: DefaultPlacement): { tab: boolean; sidebar: boolean } {
+  return {
+    tab: placement === 'all' || placement === 'tab',
+    sidebar: placement === 'all' || placement === 'sidebar',
+  }
+}
+
 export function watchPlacement(settings: ContextSettings, mounts: PlacementMounts): () => void {
   let tab: (() => void) | undefined
   let sidebar: (() => void) | undefined
@@ -14,8 +22,7 @@ export function watchPlacement(settings: ContextSettings, mounts: PlacementMount
   let tabMounted = false
   let sidebarMounted = false
   const mount = (placement: DefaultPlacement): void => {
-    const wantTab = placement !== 'sidebar'
-    const wantSidebar = placement !== 'tab'
+    const { tab: wantTab, sidebar: wantSidebar } = placementSurfaces(placement)
     if (wantTab && !tabMounted) {
       const result: unknown = mounts.tab()
       tab = typeof result === 'function' ? result as () => void : undefined

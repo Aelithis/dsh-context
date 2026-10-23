@@ -452,6 +452,23 @@ describe('client entry: placement gating', () => {
     assert.deepEqual(ctx.slots.of('sidebar.right.pane.tab'), [])
   })
 
+  test("the persisted 'hide' placement registers neither surface; the Fleet tab still serves and a flip back mounts both", () => {
+    const scope = scopeWith({ status: 'ready', value: { defaultPlacement: 'hide' }, writable: true })
+    const ctx = new TestClientCtx({ services: { configForms: formsServing(scope) } })
+    applyTo(ctx)
+    assert.deepEqual(ctx.slots.of('conversation.view').map(e => e.registration.id), ['fleet'], 'only the independent Fleet tab is served')
+    const tabs = registry()
+    ctx.setService('sidebarRightTabs', tabs)
+    assert.equal(tabs.definitions.length, 0, 'the sidebar never registers')
+
+    scope.emit({ status: 'ready', value: { defaultPlacement: 'all' }, writable: true })
+    assert.equal(tabs.definitions.length, 1, 'the sidebar joins live')
+    assert.equal(ctx.slots.of('conversation.view').length, 2, 'the Context tab joins live')
+    ctx.dispose()
+    assert.deepEqual(ctx.slots.of('conversation.view'), [])
+    assert.deepEqual(ctx.slots.of('sidebar.right.pane.tab'), [])
+  })
+
   test('a preference flip moves the registrations live; disposal unwinds everything', () => {
     const scope = scopeWith({ status: 'ready', value: {}, writable: true })
     const ctx = new TestClientCtx({ services: { configForms: formsServing(scope) } })
