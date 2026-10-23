@@ -19,6 +19,7 @@ import { decodeSpansOfStream, decodeTallyOfStream, firstTokenTimeOfStream, repla
 import { opBearingTool, opsOfCall, parseCallArgs, rawArgsNeeded } from '../shared/fileOps'
 import { commandArgsOf, commandTool, markersOfText, outcomeOfMarkers } from '../shared/commands'
 import {
+  bumpBg,
   commandRecordOf,
   findCommandIndex,
   jobCallIdOf,
@@ -373,6 +374,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
                 step: data.step,
                 call: data.callId,
               }))
+              if (parsed.background === true) bumpBg(s)
               bumpDetailRev(s)
             }
           }
@@ -441,6 +443,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
           call: subCallId,
         })
         const s = ensure([])
+        if (parsed.background === true) bumpBg(s)
         s.pendingCodeCmds = { ...pending, [rootCallId]: [...(pending[rootCallId] ?? []), rec] }
         break
       }
@@ -477,6 +480,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
               }
               if (markers.backgroundAck === true) {
                 next.background = true
+                if (prev.background !== true) bumpBg(s)
               } else {
                 const outcome = outcomeOfMarkers(markers, isError)
                 next.status = outcome.status
@@ -679,6 +683,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
               // infrastructure error, a denial) settles through the normal outcome path.
               if (markers.backgroundAck === true) {
                 next.background = true
+                if (prev.background !== true) bumpBg(s)
               } else if (prev.status === 'running') {
                 const outcome = outcomeOfMarkers(markers, isError)
                 next.status = outcome.status

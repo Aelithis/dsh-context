@@ -147,6 +147,33 @@ export function hideableCdPrefix(cmd: string, workspace: string | undefined): nu
   return target === root ? match[0].length : 0
 }
 
+/** A leading prefix that carries no program identity: `cd … &&` navigation, `VAR=value` assignments, the launcher
+ * wrappers (`env`/`sudo`/`time`/`nohup`, `timeout` with its duration argument), and a wrapper's own flags (`sudo -E`). */
+const HEAD_PREFIX = new RegExp(
+  '^(?:cd\\s+(?:\\S+|"[^"]*"|\'[^\']*\')\\s*&&\\s*'
+  + '|[A-Za-z_][A-Za-z0-9_]*=\\S+\\s+'
+  + '|(?:env|sudo|time|nohup)\\s+'
+  + '|timeout\\s+\\S+\\s+'
+  + '|-\\S+\\s+)',
+)
+
+const SHELL_HEADS = new Set(['{', '}', '(', ')', 'for', 'if', 'while', 'until', 'case', 'do', 'then', 'else', 'elif'])
+
+/** The first real program of a command line, for the summary rail's Programs ranking: leading `cd … &&` navigations,
+ * `VAR=value` assignments, and launcher wrappers unwrap, then the basename answers. A shell control head reads as
+ * `shell`. Display-only — never throws, never claims more than the head word. */
+export function headProgramOf(cmd: string): string {
+  let rest = cmd.trimStart()
+  for (let i = 0; i < 8; i++) {
+    const lead = HEAD_PREFIX.exec(rest)
+    if (lead === null) break
+    rest = rest.slice(lead[0].length)
+  }
+  const word = /^\S+/.exec(rest)?.[0] ?? ''
+  if (word === '' || SHELL_HEADS.has(word)) return word === '' ? '' : 'shell'
+  return word.slice(word.lastIndexOf('/') + 1)
+}
+
 export interface CommandShape {
   lines: number
   heredoc: boolean

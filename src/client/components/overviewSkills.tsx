@@ -4,6 +4,7 @@ import { dayKeyOf } from '../../shared/days'
 import type { SkillInfo } from '../../shared/types'
 import { relativeTime, type SkillLoadStat, type SkillSort } from '../overview'
 import { copySkillPath } from '../skills'
+import { nameColorOf } from '../nameColor'
 import { IconCheck, IconCopy } from '../primitives'
 import type { ViewKit } from '../viewkit'
 
@@ -20,25 +21,10 @@ const TIP_MARGIN = 8
 
 const TIP_ID = 'lc-skilltip-bubble'
 
-const SKILL_COLORS = [
-  'var(--color-blue-500)',
-  'var(--color-green-500)',
-  'var(--color-purple-500)',
-  'var(--color-orange-500)',
-  'var(--color-teal-500)',
-  'var(--color-pink-500)',
-  'var(--color-indigo-500)',
-  'var(--color-amber-500)',
-] as const
-
 const SKILL_SORTS: readonly SkillSort[] = ['loads', 'recent']
 
-/** Stable name-hash color (djb2) — deterministic, so a skill keeps its color across scopes. */
-export function skillColorOf(name: string): string {
-  let hash = 5381
-  for (let i = 0; i < name.length; i++) hash = ((hash << 5) + hash + name.charCodeAt(i)) >>> 0
-  return SKILL_COLORS[hash % SKILL_COLORS.length]
-}
+/** The skills palette is the shared name-hash palette (nameColor.ts). */
+export const skillColorOf = nameColorOf
 
 /** Known discovery sources localize; unknown/provider-named sources display raw; source-less has no label. */
 function originLabelOf(t: ViewKit['t'], info: SkillInfo): string {

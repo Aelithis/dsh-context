@@ -253,7 +253,7 @@ describe('the command log — background runs', () => {
     assert.equal(rec.background, true)
     assert.equal(rec.status, 'running', 'the ack is no outcome')
     assert.equal(rec.end, undefined)
-    assert.equal(state.commandStats, undefined, 'nothing terminal yet — no tally')
+    assert.deepEqual(state.commandStats, { runs: 0, failed: 0, ms: 0, bg: 1 }, 'the dispatch tallies at the ack; nothing terminal yet')
   })
 
   test('a promoted run tallies exactly once — at its terminal job record, not at the ack', () => {
@@ -312,7 +312,7 @@ describe('the command log — background runs', () => {
       bashResult(2, 'c1', 'started background job j2'),
     ])
     assert.equal(cmdsOf(state)[0].status, 'running')
-    assert.equal(state.commandStats, undefined)
+    assert.deepEqual(state.commandStats, { runs: 0, failed: 0, ms: 0, bg: 1 }, 'the dispatch counts at creation')
   })
 })
 

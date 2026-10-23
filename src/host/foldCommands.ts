@@ -31,8 +31,13 @@ export function tallyRun(st: TimelineState, rec: CommandStateRecord): void {
   if (rec.status === 'failed' || rec.status === 'killed') stats.failed += 1
   /* v8 ignore next 1 -- every settle path stamps `end` before the running → terminal transition reaches here. */
   if (rec.end !== undefined) stats.ms += Math.max(0, rec.end - rec.start)
-  if (rec.background === true) stats.bg += 1
   st.commandStats = stats
+}
+
+/** A background dispatch counts when it is KNOWN (the run_in_background argument at creation, or the hand-off ack) —
+ * a never-settling background run would otherwise never join the tally. Callers bump only on the false → true edge. */
+export function bumpBg(st: TimelineState): void {
+  st.commandStats = { ...(st.commandStats ?? { runs: 0, failed: 0, ms: 0, bg: 0 }), bg: (st.commandStats?.bg ?? 0) + 1 }
 }
 
 /** Replace the record at `index` (the array must already be this event's clone); the running → terminal transition

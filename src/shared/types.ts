@@ -334,14 +334,15 @@ export interface CommandRecord {
   gone?: number
 }
 
-/** Whole-log execution tallies, maintained at each record's terminal settle so list trimming never skews them. */
+/** Whole-log execution tallies, maintained incrementally: `runs`/`failed`/`ms` at each record's terminal transition,
+ * `bg` when a background dispatch becomes known (the argument at creation, else the hand-off ack). */
 export interface CommandStats {
   runs: number
   /** Failed OR killed terminal outcomes. */
   failed: number
   /** Summed execution ms over records with both endpoints known (concurrent runs double-count wall time). */
   ms: number
-  /** Runs dispatched to the background. */
+  /** Runs dispatched to the background, whether or not they ever settle. */
   bg: number
 }
 

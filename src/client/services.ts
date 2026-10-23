@@ -11,6 +11,8 @@ export interface LocaleService {
   register(ns: string, dicts: Record<string, Record<string, string>>): () => void
   bind(ns: string): (key: string, params?: Record<string, string | number>) => string
   getLocale?(): { active: string }
+  /** The harness's LocaleFace change feed; absent on older faces (cards then keep the boot locale until remount). */
+  subscribe?(listener: () => void): () => void
 }
 
 export interface SlotRegistration {

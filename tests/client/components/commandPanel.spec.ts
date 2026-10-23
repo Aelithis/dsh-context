@@ -260,6 +260,172 @@ describe('CommandPanel — the row detail and actions', () => {
   })
 })
 
+describe('CommandPanel — the summary rail', () => {
+  function railCommands(): Command[] {
+    return [
+      cmd(1, { cmd: 'cd /repo && git status', resultSeq: 51 }),
+      cmd(2, { cmd: 'cd /repo && git diff', resultSeq: 52 }),
+      cmd(3, { cmd: 'cd /repo && git status', resultSeq: 53 }),
+      cmd(4, {
+        cmd: 'cd /repo && pnpm exec vitest run tests/client/components/commandPanel.spec.ts --reporter=verbose',
+        status: 'failed',
+        exit: 1,
+        start: T0 + 4000,
+        end: T0 + 94000,
+        resultSeq: 54,
+      }),
+      cmd(5, { cmd: 'pnpm dev', status: 'running', background: true, end: undefined }),
+    ]
+  }
+
+  test('the rail shows the KPIs, the top programs, and the attention items', async () => {
+    const m = await mount(h(Panel, {
+      commands: railCommands(),
+      workspace: '/repo',
+      stats: { runs: 4, failed: 1, ms: 95000, bg: 1 },
+    }))
+    try {
+      const rail = query(m.container, '.lc-cmd-rail')
+      const txt = text(rail)
+      assert.ok(txt.includes('Summary'))
+      assert.ok(txt.includes('Programs · 2'), 'two distinct programs (git, pnpm)')
+      assert.ok(txt.includes('Attention'))
+      assert.ok(txt.includes('git'), 'git tops the program ranking')
+      assert.ok(txt.includes('Slowest'))
+      assert.ok(txt.includes('Failing'))
+      assert.ok(txt.includes('Repeats'))
+      assert.ok(txt.includes('Background'))
+      // The share label is the program's share of ALL listed runs: git ×3 of 5 → 60%.
+      const gitRow = queryAll(m.container, '.lc-cmd-prog').find(b => text(b).startsWith('git'))
+      assert.ok(gitRow !== undefined)
+      assert.ok(text(gitRow).includes('60%'))
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('with two failing programs, the Failing row lands on exactly its own program’s failures', async () => {
+    const commands: Command[] = [
+      cmd(1, { cmd: 'vitest run a', status: 'failed', exit: 1 }),
+      cmd(2, { cmd: 'vitest run b', status: 'failed', exit: 1 }),
+      cmd(3, { cmd: 'eslint src', status: 'failed', exit: 2 }),
+      cmd(4, { cmd: 'git status' }),
+    ]
+    const m = await mount(h(Panel, { commands }))
+    try {
+      // vitest fails twice, eslint once: the rail names vitest.
+      const failing = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Failing'))
+      assert.ok(failing !== undefined)
+      assert.ok(text(failing).includes('vitest'))
+      await click(failing)
+      const rows = queryAll(m.container, '.lc-cmd-row')
+      assert.equal(rows.length, 2, 'only vitest’s failures show')
+      assert.ok(rows.every(r => r.textContent.includes('vitest')))
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('an attention click drives the list lens; a program click searches it', async () => {
+    const m = await mount(h(Panel, { commands: railCommands(), workspace: '/repo' }))
+    try {
+      const rowTextsNow = () => queryAll(m.container, '.lc-cmd-row').map(r => text(r))
+      // Slowest → the slow sort: the 90s vitest run tops the list.
+      const slowestBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Slowest'))
+      assert.ok(slowestBtn !== undefined)
+      await click(slowestBtn)
+      assert.ok(rowTextsNow()[0].includes('vitest'))
+      // Failing → the failed filter.
+      const failingBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Failing'))
+      assert.ok(failingBtn !== undefined)
+      await click(failingBtn)
+      assert.equal(rowTextsNow().length, 1)
+      assert.ok(rowTextsNow()[0].includes('vitest'))
+      // Repeats → search the repeated command.
+      const repeatsBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Repeats'))
+      assert.ok(repeatsBtn !== undefined)
+      await click(repeatsBtn)
+      assert.equal(rowTextsNow().length, 0, 'the failed filter still narrows; git status is not failed')
+      const failedChip = queryAll(m.container, '.lc-cmd-chips .lc-gran-btn').find(b => text(b).startsWith('Failed'))
+      assert.ok(failedChip !== undefined)
+      await click(failedChip)
+      const withRepeats = rowTextsNow()
+      assert.equal(withRepeats.length, 2, 'the search holds the two identical git status runs')
+      assert.ok(withRepeats.every(r => r.includes('git status')))
+      // A program row click filters the list to that program (git status ×2 + git diff ×1).
+      const gitBtn = queryAll(m.container, '.lc-cmd-prog').find(b => text(b).startsWith('git'))
+      assert.ok(gitBtn !== undefined)
+      await click(gitBtn)
+      assert.equal(rowTextsNow().length, 3)
+      // The Background attention row drives its chip too.
+      await typeSearch(m.container, '')
+      const bgBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Background'))
+      assert.ok(bgBtn !== undefined)
+      await click(bgBtn)
+      assert.equal(rowTextsNow().length, 1)
+      assert.ok(rowTextsNow()[0].includes('pnpm dev'))
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('the rail hides when the log is empty and when nothing is notable', async () => {
+    const empty = await mount(h(Panel, { commands: [] }))
+    try {
+      assert.equal(queryAll(empty.container, '.lc-cmd-rail').length, 0)
+    } finally {
+      await empty.unmount()
+    }
+    const quiet = await mount(h(Panel, { commands: [cmd(1, { start: 0, end: 50 })] }))
+    try {
+      assert.ok(query(quiet.container, '.lc-cmd-rail') !== null, 'the summary still renders')
+      assert.equal(queryAll(quiet.container, '.lc-cmd-attn').length, 0, 'no attention section without notable items')
+    } finally {
+      await quiet.unmount()
+    }
+  })
+
+  test('a long program ranking gets its own search; the duration column heats with wall time', async () => {
+    const commands: Command[] = ['grep', 'git', 'pnpm', 'node', 'python3', 'cat', 'sed'].flatMap((prog, i) =>
+      Array.from({ length: i + 1 }, (_, j) => cmd(i * 10 + j, { cmd: `${prog} task-${j}` })))
+    const m = await mount(h(Panel, {
+      commands: [
+        ...commands,
+        cmd(100, { cmd: 'grep fast', start: 0, end: 500 }),
+        cmd(101, { cmd: 'grep one-sec', start: 0, end: 1500 }),
+        cmd(102, { cmd: 'grep slow-ish', start: 0, end: 15_000 }),
+        cmd(103, { cmd: 'grep very-slow', start: 0, end: 90_000 }),
+      ],
+    }))
+    try {
+      // Seven programs clear the search threshold.
+      const search = query<HTMLInputElement>(m.container, '.lc-cmd-prog-search')
+      assert.ok(search !== undefined)
+      assert.equal(queryAll(m.container, '.lc-cmd-prog').length, 7, 'all programs listed, not just a top cut')
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(search, 'gi')
+        search.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      assert.equal(queryAll(m.container, '.lc-cmd-prog').length, 1, 'git alone survives the rail search')
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(search, 'nothing-matches')
+        search.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      assert.ok(query(m.container, '.lc-cmd-prog-none') !== null, 'the no-match note renders')
+      // The duration heat tiers land on the rows.
+      const durClass = (label: string) => queryAll(m.container, '.lc-cmd-row').find(r => r.textContent.includes(label))?.querySelector('.lc-cmd-dur')?.className ?? ''
+      assert.ok(durClass('fast').endsWith('lc-cmd-dur'))
+      assert.ok(durClass('one-sec').includes('lc-cmd-dur-1'))
+      assert.ok(durClass('slow-ish').includes('lc-cmd-dur-2'))
+      assert.ok(durClass('very-slow').includes('lc-cmd-dur-3'))
+    } finally {
+      await m.unmount()
+    }
+  })
+})
+
 describe('CommandPanel — empty and channel states', () => {
   test('an empty log, a loading channel, and a failed channel each render their note', async () => {
     const empty = await mount(h(Panel, { commands: [] }))

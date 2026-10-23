@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import {
   SLOW_MS,
+  attentionOf,
   byLatest,
   bySlowest,
   commandsOf,
@@ -9,6 +10,8 @@ import {
   matchesFilter,
   matchesQuery,
   previewOf,
+  programOf,
+  programsOf,
   surfaceSeqOf,
   tallyOfCommands,
 } from '../../src/client/commands'
@@ -125,6 +128,79 @@ describe('tallyOfCommands', () => {
       cmd(4, { status: 'running', background: true }),
       cmd(5, { status: 'completed', background: true, start: 0, end: 50 }),
     ])
-    assert.deepEqual(tally, { runs: 4, failed: 2, ms: 1050, bg: 1 })
+    assert.deepEqual(tally, { runs: 4, failed: 2, ms: 1050, bg: 2 })
+  })
+})
+
+describe('the rail derivations', () => {
+  test('programOf reads the shell head word and the code tool identity', () => {
+    assert.equal(programOf(cmd(1, { cmd: 'cd /repo && git status' })), 'git')
+    assert.equal(programOf(cmd(2, { tool: 'pwsh', cmd: 'Get-ChildItem' })), 'Get-ChildItem')
+    assert.equal(programOf(cmd(3, { tool: 'run_code', cmd: 'await x()' })), 'run_code')
+    assert.equal(programOf(cmd(4, { cmd: 'for f in a; do echo $f; done' })), 'shell')
+    assert.equal(programOf(cmd(5, { cmd: '   ' })), 'shell', 'a blank command reads as shell too')
+  })
+
+  test('programsOf ranks every program by count with a stable name tie-break', () => {
+    const records = [
+      cmd(1, { cmd: 'git status' }),
+      cmd(2, { cmd: 'git diff' }),
+      cmd(3, { cmd: 'pnpm run build' }),
+      cmd(4, { cmd: 'grep -rn x src' }),
+      cmd(5, { tool: 'run_code', cmd: 'await 1' }),
+      cmd(6, { cmd: 'git log' }),
+    ]
+    assert.deepEqual(programsOf(records), [
+      { name: 'git', n: 3 },
+      { name: 'grep', n: 1 },
+      { name: 'pnpm', n: 1 },
+      { name: 'run_code', n: 1 },
+    ])
+  })
+
+  test('attentionOf surfaces the slowest, the most-failed program, repeats, and background', () => {
+    const attention = attentionOf([
+      cmd(1, { cmd: 'git status', start: 0, end: 300 }),
+      cmd(2, { cmd: 'pnpm build', start: 0, end: 90_000 }),
+      cmd(3, { cmd: 'vitest run a', status: 'failed', exit: 1 }),
+      cmd(4, { cmd: 'vitest run b', status: 'failed', exit: 1 }),
+      cmd(5, { cmd: 'git status' }),
+      cmd(6, { cmd: 'sleep 9', status: 'running', background: true }),
+    ])
+    assert.deepEqual(attention.slowest, { cmd: 'pnpm build', ms: 90_000 })
+    assert.deepEqual(attention.failing, { program: 'vitest', count: 2 })
+    assert.deepEqual(attention.repeats, { cmd: 'git status', count: 2 })
+    assert.equal(attention.background, 1)
+  })
+
+  test('ties keep the first-seen program/command; a later-but-shorter slow run does not displace the top', () => {
+    const attention = attentionOf([
+      cmd(1, { cmd: 'vitest a', status: 'failed', start: 0, end: 5000 }),
+      cmd(2, { cmd: 'eslint b', status: 'failed', start: 0, end: 3000 }),
+      cmd(3, { cmd: 'git status' }),
+      cmd(4, { cmd: 'git diff' }),
+      cmd(5, { cmd: 'git status' }),
+      cmd(6, { cmd: 'git diff' }),
+      cmd(7, { cmd: 'pnpm build', start: 0, end: 60_000 }),
+      cmd(8, { cmd: 'pnpm test', start: 0, end: 30_000 }),
+    ])
+    assert.equal(attention.failing?.count, 1, 'each program failed once — first-seen holds the tie')
+    assert.equal(attention.failing?.program, 'vitest')
+    assert.equal(attention.repeats?.cmd, 'git status', 'first-seen holds the repeats tie')
+    assert.deepEqual(attention.slowest, { cmd: 'pnpm build', ms: 60_000 })
+  })
+
+  test('attentionOf stays empty when nothing is notable', () => {
+    assert.deepEqual(attentionOf([cmd(1, { start: 0, end: 50 })]), {})
+    assert.deepEqual(attentionOf([]), {})
+    // A sub-second slowest is not attention-worthy.
+    assert.equal(attentionOf([cmd(1, { start: 0, end: 500 })]).slowest, undefined)
+  })
+
+  test('search also matches the program identity (the rail’s program clicks land)', () => {
+    const rec = cmd(1, { cmd: 'for f in a; do echo $f; done' })
+    assert.equal(matchesQuery(rec, 'shell'), true)
+    const rc = cmd(2, { tool: 'run_code', cmd: 'await x()' })
+    assert.equal(matchesQuery(rc, 'run_code'), true)
   })
 })

@@ -266,6 +266,8 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
   // Memoized so a hover/selection change re-renders only the bars whose flags flipped; `req`/`marker` keep stable
   // identities because the parent memoizes its aggregation, so the default shallow compare suffices.
   const ChartBar = memo(function ChartBar(props: ChartBarProps): ReactElement {
+    // The memo must not block a locale switch: the tick re-renders on it even when the props are reference-stable.
+    kit.useLocaleTick()
     const { req, marker } = props
     const markerAt = marker !== undefined ? eventAt(marker) : null
     const diverge = props.upPx !== undefined && props.downPx !== undefined && props.deltaScale !== undefined

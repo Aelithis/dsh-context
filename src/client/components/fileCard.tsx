@@ -52,6 +52,8 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
   // Memoized at the factory level: the parent's activity/onLocate props are reference-stable across hover/select
   // renders (see contextView), so the card skips reconciliation whenever its own inputs did not move.
   return memo(function FileCard(props: FileCardProps): ReactElement {
+    // The memo must not block a locale switch: the tick re-renders on it even when the props are reference-stable.
+    kit.useLocaleTick()
     const { activity } = props
     const [filter, setFilter] = useState<FileFilter>('all')
     // Mount-time default; in-card toggling stays mount-local and never writes back.

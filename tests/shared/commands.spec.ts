@@ -6,6 +6,7 @@ import {
   commandTool,
   exitOfJobDetail,
   firstLineOf,
+  headProgramOf,
   hideableCdPrefix,
   markersOfText,
   outcomeOfMarkers,
@@ -207,5 +208,22 @@ describe('display shaping', () => {
     assert.deepEqual(shapeOfCmd('python3 -c \'print(1)\''), { lines: 1, heredoc: false, inline: true })
     assert.deepEqual(shapeOfCmd('git diff | node -e "x"'), { lines: 1, heredoc: false, inline: true })
     assert.deepEqual(shapeOfCmd('echo "a <<- not a heredoc in spirit but matches the cheap test"'), { lines: 1, heredoc: true, inline: false })
+  })
+
+  test('headProgramOf unwraps cd prefixes, assignments and launchers to the head basename', () => {
+    assert.equal(headProgramOf('git status'), 'git')
+    assert.equal(headProgramOf('cd /repo && git status'), 'git')
+    assert.equal(headProgramOf('cd "/my repo" && pnpm run build'), 'pnpm')
+    assert.equal(headProgramOf('FOO=1 BAR=2 node x.mjs'), 'node')
+    assert.equal(headProgramOf('env A=1 node x.mjs'), 'node')
+    assert.equal(headProgramOf('sudo rm -rf /tmp/x'), 'rm')
+    assert.equal(headProgramOf('sudo -E node x.mjs'), 'node', 'wrapper flags unwrap too')
+    assert.equal(headProgramOf('timeout 30 curl -s https://x'), 'curl')
+    assert.equal(headProgramOf('nohup pnpm dev &'), 'pnpm')
+    assert.equal(headProgramOf('/usr/local/bin/python3 - <<\'PY\''), 'python3')
+    assert.equal(headProgramOf('for f in a b; do echo $f; done'), 'shell')
+    assert.equal(headProgramOf('{ pnpm run build; } >> log'), 'shell')
+    assert.equal(headProgramOf(''), '')
+    assert.equal(headProgramOf('   '), '')
   })
 })

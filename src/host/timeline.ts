@@ -322,7 +322,7 @@ export function createContextTimelineDefinition(config: Config, slim: () => bool
     apply: (state: TimelineState, event: SessionEvent) => applyTimeline(state, event as Parameters<typeof applyTimeline>[1], bounds),
     // Bump on any persisted-shape or fold-semantics change, which refolds cached rows; never for a backfillable or serve-time-derived
     // field, since invalidating in-generation rows orphans idle sessions with no refresh channel.
-    stateVersion: 29,
+    stateVersion: 30,
   }
   return definition
 }

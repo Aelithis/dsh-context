@@ -56,7 +56,7 @@ function apply(ctx: ClientCtx): void {
   }, 'dsh-context: dictionaries')
   const t = ctx.locale.bind(NS)
 
-  const kit = makeViewKit(t)
+  const kit = makeViewKit(t, ctx.locale)
   // History faces ride the DECLARED inject: an undeclared read of the traced proxy throws (historyPage.ts).
   watchHistoryFaces(ctx)
   const settings = createContextSettings()

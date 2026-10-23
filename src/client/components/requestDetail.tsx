@@ -164,6 +164,8 @@ export function makeRequestDetail(
   // Memoized at the factory level: the parent hands reference-stable props across hover/select renders (see contextView),
   // so the panel skips reconciliation when the active bar did not move.
   return memo(function RequestDetail(props: RequestDetailProps): ReactElement | null {
+    // The memo must not block a locale switch: the tick re-renders on it even when the props are reference-stable.
+    kit.useLocaleTick()
     const req = props.request
     if (!req) return null
     const isTurn = req.stepCount !== undefined && req.stepCount > 1
