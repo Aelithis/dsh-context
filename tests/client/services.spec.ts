@@ -9,6 +9,7 @@ import {
   headersOf,
   imageLoaderOf,
   numOf,
+  seedConversationViewVia,
   sessionAddressOf,
   timelineOf,
   timingOf,
@@ -16,7 +17,7 @@ import {
   unsupportedOf,
   workspaceOf,
 } from '../../src/client/services'
-import type { ClientCtx, ConversationNodeLike } from '../../src/client/services'
+import { CONTEXT_VIEW_ID, type ClientCtx, type ConversationNodeLike } from '../../src/client/services'
 import type { TimingTotals } from '../../src/shared/types'
 
 const useChatOf = (snapshot: unknown) => (<T>(sel: (s: unknown) => T) => sel(snapshot))
@@ -968,5 +969,39 @@ describe('entrySeated — the slot-ledger second-mount guard', () => {
     } as unknown as ClientCtx
     assert.equal(entrySeated(ctx, 'conversation.chat.assistant-actions', 'context-jump'), false)
     assert.deepEqual(asked, ['conversation.chat.assistant-actions'])
+  })
+})
+
+describe('seedConversationViewVia — the pre-jump view preference', () => {
+  test('seeds a fresh key and merges into an existing state, draft riding along', () => {
+    globalThis.localStorage.clear()
+    seedConversationViewVia('session-1', CONTEXT_VIEW_ID)
+    assert.equal(globalThis.localStorage.getItem('dsh.conversation.session-1'), JSON.stringify({ view: 'context' }))
+    globalThis.localStorage.setItem('dsh.conversation.session-2', JSON.stringify({ draft: { text: 'hi', references: [] }, view: 'chat', viewRequest: null }))
+    seedConversationViewVia('session-2', CONTEXT_VIEW_ID)
+    assert.deepEqual(JSON.parse(globalThis.localStorage.getItem('dsh.conversation.session-2')!), {
+      draft: { text: 'hi', references: [] }, view: 'context', viewRequest: null,
+    })
+    globalThis.localStorage.clear()
+  })
+
+  test('a malformed stored state is replaced whole; storage failures degrade silently', () => {
+    globalThis.localStorage.clear()
+    globalThis.localStorage.setItem('dsh.conversation.session-3', 'not-json')
+    seedConversationViewVia('session-3', CONTEXT_VIEW_ID)
+    assert.equal(globalThis.localStorage.getItem('dsh.conversation.session-3'), JSON.stringify({ view: 'context' }))
+    globalThis.localStorage.setItem('dsh.conversation.session-4', '[1]')
+    seedConversationViewVia('session-4', CONTEXT_VIEW_ID)
+    assert.equal(globalThis.localStorage.getItem('dsh.conversation.session-4'), JSON.stringify({ view: 'context' }))
+    const denied = (): never => { throw new Error('denied') }
+    const getItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'getItem')
+    const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')
+    Object.defineProperty(Storage.prototype, 'getItem', { value: denied, configurable: true })
+    Object.defineProperty(Storage.prototype, 'setItem', { value: denied, configurable: true })
+    seedConversationViewVia('session-5', CONTEXT_VIEW_ID)
+    if (getItem !== undefined) Object.defineProperty(Storage.prototype, 'getItem', getItem)
+    if (setItem !== undefined) Object.defineProperty(Storage.prototype, 'setItem', setItem)
+    assert.equal(globalThis.localStorage.getItem('dsh.conversation.session-5'), null)
+    globalThis.localStorage.clear()
   })
 })

@@ -79,6 +79,7 @@ function propsOf(over: Partial<MemberBoardProps> = {}): MemberBoardProps {
     pinnedId: null,
     onPin: () => {},
     onHover: () => {},
+    onEnter: () => {},
     onOpen: () => {},
     ownerFilter: null,
     onOwnerFilter: () => {},
@@ -105,7 +106,7 @@ describe('MemberBoard — team cards', () => {
     assert.ok(text(lead).includes('current'))
     assert.ok(text(lead).includes('deepseek-v4'))
     assert.ok(text(lead).includes('running'))
-    assert.equal(queryAll(lead, '.lc-member-open').length, 0)
+    assert.equal(queryAll(lead, '.lc-member-opens').length, 0)
 
     const worker = cards[1]
     assert.ok(worker.className.includes('lc-member-pinned'))
@@ -123,8 +124,9 @@ describe('MemberBoard — team cards', () => {
     await m.unmount()
   })
 
-  test('card click pins, task chip filters the board, open jumps', async () => {
+  test('card click pins, task chip filters the board, the enter and aside buttons navigate', async () => {
     const pins = new Array<string | null>()
+    const entered = new Array<string>()
     const opened = new Array<string>()
     const hovers = new Array<string | null>()
     // The owner filter is a controlled prop: the wrapper plays the view, holding its state.
@@ -138,6 +140,7 @@ describe('MemberBoard — team cards', () => {
           ownerFilter = name
           filters.push(name)
         },
+        onEnter: id => { entered.push(id) },
         onOpen: id => { opened.push(id) },
         onHover: id => { hovers.push(id) },
       }))
@@ -159,9 +162,12 @@ describe('MemberBoard — team cards', () => {
     await m.update(h(Controlled))
     assert.deepEqual([...filters], ['worker-bee', null])
 
-    await click(query(queryAll(m.container, '.lc-member-card')[1], '.lc-member-open'))
+    const foot = query(queryAll(m.container, '.lc-member-card')[1], '.lc-member-opens')
+    await click(query(foot, '.lc-member-aside'))
     assert.deepEqual([...opened], ['w1'])
-    assert.deepEqual([...pins], ['w1'], 'open never pins')
+    await click(query(foot, '.lc-member-enter'))
+    assert.deepEqual([...entered], ['w1'])
+    assert.deepEqual([...pins], ['w1'], 'neither button pins')
     await m.unmount()
   })
 
@@ -227,7 +233,7 @@ describe('MemberBoard — team cards', () => {
     // No roster facts: no duty descriptions; the descriptor model stands in.
     assert.ok(text(cards[1]).includes('flash-lite (high)'))
     assert.equal(queryAll(cards[1], '.lc-member-desc').length, 0)
-    assert.equal(queryAll(m.container, '.lc-member-open').length, 0)
+    assert.equal(queryAll(m.container, '.lc-member-opens').length, 0)
     await m.unmount()
   })
 })
@@ -243,8 +249,9 @@ describe('MemberBoard — the other-agents cards', () => {
     return otherCards(container).map(c => text(query(c, '.lc-member-name')))
   }
 
-  test('non-member family agents render as member cards with status, meta, and the open jump', async () => {
+  test('non-member family agents render as member cards with status, meta, and the enter/aside buttons', async () => {
     const pins = new Array<string | null>()
+    const entered: string[] = []
     const opened: string[] = []
     const hovers: (string | null)[] = []
     const details = new Map<string, { detail: FleetDetail | null }>([
@@ -253,6 +260,7 @@ describe('MemberBoard — the other-agents cards', () => {
     const m = await mount(h(MemberBoard, propsOf({
       detailOf: id => details.get(id),
       onPin: id => { pins.push(id) },
+      onEnter: id => { entered.push(id) },
       onOpen: id => { opened.push(id) },
       onHover: id => { hovers.push(id) },
     })))
@@ -272,9 +280,12 @@ describe('MemberBoard — the other-agents cards', () => {
     await unhover(cards[0])
     assert.deepEqual([...pins], ['s1'])
     assert.deepEqual(hovers, ['s1', null])
-    await click(query(cards[0], '.lc-member-open'))
+    const foot = query(cards[0], '.lc-member-opens')
+    await click(query(foot, '.lc-member-aside'))
     assert.deepEqual(opened, ['s1'])
-    assert.deepEqual([...pins], ['s1'], 'open never pins')
+    await click(query(foot, '.lc-member-enter'))
+    assert.deepEqual(entered, ['s1'])
+    assert.deepEqual([...pins], ['s1'], 'neither button pins')
 
     await act(async () => { cards[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
     await act(async () => { cards[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })) })

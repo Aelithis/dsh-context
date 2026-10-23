@@ -8,7 +8,7 @@ import { makeOverviewPanel } from './components/overviewPanel'
 import { makePluginConfigCard } from './components/settingsCard'
 import { watchInsightPage } from './insightPage'
 import { modalStoreOf } from './modalStore'
-import { entrySeated, type ClientCtx } from './services'
+import { CONTEXT_VIEW_ID, entrySeated, type ClientCtx } from './services'
 import { createContextSettings, type ConfigFormsFace, type SettingsField } from './settings'
 import { makeContextView } from './components/contextView'
 import { makeContextJumpButton } from './components/contextJump'
@@ -69,7 +69,7 @@ function apply(ctx: ClientCtx): void {
   ctx.effect(() => watchPlacement(settings, {
     tab: () => ctx.slots.inject('conversation.view', () => ctx.slots.register(
       // order 20 renders right of Chat (0) and Trajectory (10).
-      { name: 'conversation.view', id: 'context', order: 20, locale: NS, label: () => t('tab.context') },
+      { name: 'conversation.view', id: CONTEXT_VIEW_ID, order: 20, locale: NS, label: () => t('tab.context') },
       props => h(ContextView, props),
     )),
     sidebar: () => watchSidebarContextTab(ctx, ContextView, t, NS),

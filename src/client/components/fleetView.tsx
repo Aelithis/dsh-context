@@ -11,7 +11,7 @@ import { useFleetDetails, useFleetModel } from '../fleetModel'
 import { teamMemberOf, teamOf } from '../fleetTeam'
 import { useModelPrices } from '../modelPrices'
 import type { ClientCtx, SessionStandardProps } from '../services'
-import { openChildAsideVia, openSessionVia, projectionOf, unsupportedOf } from '../services'
+import { CONTEXT_VIEW_ID, openChildAsideVia, openSessionVia, projectionOf, seedConversationViewVia, unsupportedOf } from '../services'
 import { useContextSession } from '../sessionData'
 import type { ViewKit } from '../viewkit'
 import type { FleetDetail } from '../../shared/types'
@@ -143,6 +143,11 @@ export function makeFleetView(
       openSessionVia(ctx, id)
     }
 
+    const enter = (id: string): void => {
+      seedConversationViewVia(id, CONTEXT_VIEW_ID)
+      openSessionVia(ctx, id)
+    }
+
     /** A graph-node or member-card pick rings the node and narrows the task board to that agent's work — members by
      * roster name, plain subagents by their own session; picking again releases both. */
     const select = (id: string): void => {
@@ -216,6 +221,7 @@ export function makeFleetView(
             hoverId={hoverId}
             onPin={select}
             onHover={setHoverId}
+            onEnter={enter}
             onOpen={open}
             ownerFilter={ownerFilter}
             onOwnerFilter={setOwnerFilter}

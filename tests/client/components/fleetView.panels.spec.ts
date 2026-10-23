@@ -76,7 +76,7 @@ function makeView(ctx: TestClientCtx, useKit = kit) {
 }
 
 describe('FleetView — the panels over one family', () => {
-  test('the other-agents card open button jumps to the session', async () => {
+  test('the other-agents card enter button jumps to the session', async () => {
     stubFleetRoute()
     const opened = new Array<string>()
     const ctx = new TestClientCtx({
@@ -85,13 +85,28 @@ describe('FleetView — the panels over one family', () => {
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
     const cards = queryAll(m.container, '.lc-member-card')
-    await click(query(cards[cards.length - 1], '.lc-member-open'))
+    await click(query(cards[cards.length - 1], '.lc-member-enter'))
     assert.deepEqual([...opened], ['w2'])
     await m.unmount()
     ctx.dispose()
   })
 
-  test('the other-agents card open button prefers the right Sidebar\'s subagent chat', async () => {
+  test('the aside button keeps the whole-view jump when no sidebar takes the resource', async () => {
+    stubFleetRoute()
+    const opened = new Array<string>()
+    const ctx = new TestClientCtx({
+      services: { sessions: familySessions(), uiWorkspace: { openSession: (id: string) => { opened.push(id) } } },
+    })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+    const cards = queryAll(m.container, '.lc-member-card')
+    await click(query(cards[cards.length - 1], '.lc-member-aside'))
+    assert.deepEqual([...opened], ['w2'])
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('the other-agents card aside button prefers the right Sidebar\'s subagent chat', async () => {
     stubFleetRoute()
     const opened: { address: string; options: unknown }[] = []
     const ctx = new TestClientCtx({
@@ -103,7 +118,7 @@ describe('FleetView — the panels over one family', () => {
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
     const cards = queryAll(m.container, '.lc-member-card')
-    await click(query(cards[cards.length - 1], '.lc-member-open'))
+    await click(query(cards[cards.length - 1], '.lc-member-aside'))
     assert.deepEqual(opened, [{
       address: 'dsh-resource://subagentchat/session/w2?parent=root&mode=one-shot',
       options: { kind: 'subagentchat', preferNewPane: true },

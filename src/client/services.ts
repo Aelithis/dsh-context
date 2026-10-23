@@ -818,8 +818,28 @@ export function openSessionVia(ctx: ClientCtx, id: string): void {
   } catch { /* absent or hostile face — the jump is best-effort */ }
 }
 
+/** This bundle's `conversation.view` registration id, shared by the registration and the pre-seed jump. */
+export const CONTEXT_VIEW_ID = 'context'
+
+/** The conversation shell re-reads its per-session persisted `view` preference on EVERY session binding, so seeding
+ * `dsh.conversation.<sessionId>` before an `openSession` jump lands the entered session on that view. Merge-write — any
+ * existing draft rides along, a malformed stored state is replaced whole; no storage degrades to the shell's default. */
+export function seedConversationViewVia(sessionId: string, view: string): void {
+  try {
+    const key = `dsh.conversation.${sessionId}`
+    let stored: Record<string, unknown> = {}
+    try {
+      const raw = localStorage.getItem(key)
+      const parsed: unknown = raw !== null ? JSON.parse(raw) : null
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) stored = parsed as Record<string, unknown>
+    } catch { /* malformed stored state — replaced whole */ }
+    stored.view = view
+    localStorage.setItem(key, JSON.stringify(stored))
+  } catch { /* no storage — the entered session lands on its default view */ }
+}
+
 /** Jump to this bundle's page on the Plugins panel through the panel's own navigator: it selects the panel and resets the
- * remembered tab, so a contributed `plugins.tab` left selected cannot swallow the jump (docs/compatibility.md §5.5). */
+ * remembered tab, so a contributed `plugins.tab` left selected cannot swallow the jump (docs/compatibility.md §5.6). */
 export function openPluginSettings(ctx: ClientCtx): void {
   try {
     const navigation = asRecord(ctx.get('pluginNavigation'))

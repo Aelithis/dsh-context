@@ -2,7 +2,7 @@
  * toolbar's search/status/sort steer both sections; a pick pins the agent, a member's task chip filters the task board. */
 
 import { useMemo, useState, type CSSProperties, type ReactElement } from 'react'
-import { IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconPanelLeftOutlineRegular, IconRightUpOutlineRegular, IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
 import { familyHue, fmtDurationCompact, modelLabelOf } from '../agentTree'
 import { familyOthersOf, tasksOfOwner, type FleetTeam } from '../fleetTeam'
@@ -24,6 +24,9 @@ export interface MemberBoardProps {
    * task-board narrowing (the graph's select semantics). */
   onPin: (id: string) => void
   onHover: (id: string | null) => void
+  /** Enter the agent's session as the whole view, landing on this bundle's Context tab. */
+  onEnter: (id: string) => void
+  /** Open the agent in the sidebar aside; the parent keeps its own whole-view fallback. */
   onOpen: (id: string) => void
   /** The task board's owner filter, owned by the view so the boards interlock. */
   ownerFilter: string | null
@@ -124,6 +127,33 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
   // can back out of the filter.
   const listTotal = (team?.members.length ?? 0) + othersAll.length
   const bare = query === '' && status === 'all'
+
+  const opens = (id: string): ReactElement => (
+    <span className="lc-member-opens">
+      <button
+        type="button"
+        className="lc-inspector-btn lc-member-aside"
+        title={t('fleet.openSidebar')}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          props.onOpen(id)
+        }}
+      >
+        <IconPanelLeftOutlineRegular size={11} />
+      </button>
+      <button
+        type="button"
+        className="lc-inspector-btn lc-member-enter"
+        title={t('fleet.open')}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          props.onEnter(id)
+        }}
+      >
+        <IconRightUpOutlineRegular size={11} />
+      </button>
+    </span>
+  )
 
   return (
     <div className="lc-card lc-members">
@@ -258,19 +288,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                         {t('fleet.members.tasks', { n: activeTasks.length })}
                       </button>
                     ) : <span className="lc-member-tasks-none">{t('fleet.members.noTasks')}</span>}
-                    {!isCurrent && node !== undefined ? (
-                      <button
-                        type="button"
-                        className="lc-inspector-btn lc-member-open"
-                        title={t('fleet.openSidebar')}
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          props.onOpen(member.id)
-                        }}
-                      >
-                        →
-                      </button>
-                    ) : null}
+                    {!isCurrent && node !== undefined ? opens(member.id) : null}
                   </div>
                 </div>
               )
@@ -339,17 +357,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                   ) : null}
                   {memberMeta(node, t, fmt)}
                   <div className="lc-member-foot">
-                    <button
-                      type="button"
-                      className="lc-inspector-btn lc-member-open"
-                      title={t('fleet.openSidebar')}
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        props.onOpen(node.id)
-                      }}
-                    >
-                      →
-                    </button>
+                    {opens(node.id)}
                   </div>
                 </div>
               )

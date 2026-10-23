@@ -61,7 +61,8 @@
 .lc-member-tasks:hover { border-color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
 .lc-member-tasks-on { background: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 14%, transparent); border-color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
 .lc-member-tasks-none { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
-.lc-member-open { margin-left: auto; }
+.lc-member-opens { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+.lc-member-opens .lc-inspector-btn { display: inline-flex; align-items: center; padding: 2px 6px; }
 
 .lc-tasks-filter { cursor: pointer; color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
 .lc-tasks-group { margin-top: 10px; }
