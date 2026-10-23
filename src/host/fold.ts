@@ -299,7 +299,7 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
       case 'request/header': {
         const header = (data?.header ?? {}) as {
           tools?: unknown[]
-          config?: { model?: unknown; provider?: unknown; maxTokens?: unknown }
+          config?: { model?: unknown; provider?: unknown; reasoningEffort?: unknown; maxTokens?: unknown }
         }
         const tools = Array.isArray(header.tools) ? header.tools : []
         const s = ensure(['events'])
@@ -308,6 +308,13 @@ export function applyTimeline(state: TimelineState, event: TimelineEvent, bounds
         // The durable request envelope, not request/context, is the route/model source of truth.
         if (header.config && typeof header.config.model === 'string') s.model = header.config.model
         if (header.config && typeof header.config.provider === 'string') s.provider = header.config.provider
+        // dsh materializes the effective effort (user-picked or adapter default) into every envelope; a header without one
+        // leaves no effort in force. Last-wins like the output cap.
+        if (header.config && typeof header.config.reasoningEffort === 'string' && header.config.reasoningEffort !== '') {
+          s.reasoningEffort = header.config.reasoningEffort
+        } else {
+          delete s.reasoningEffort
+        }
         // The routed output cap auto-compaction reserves out of the window. Last-wins: a cap-less header clears it.
         const maxOutputTokens = header.config?.maxTokens
         if (typeof maxOutputTokens === 'number' && Number.isFinite(maxOutputTokens) && maxOutputTokens > 0) {

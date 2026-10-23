@@ -33,6 +33,8 @@ export interface TimelineState {
    * stay absent until a value is known. */
   model?: string
   provider?: string
+  /** Last-wins: a header without an effort clears it. */
+  reasoningEffort?: string
   lastModel?: string
   contextWindow?: number
   /** The newest `request/header` envelope's routed output cap (dsh materializes the adapter default into it). Last-wins: a header

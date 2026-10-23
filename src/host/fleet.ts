@@ -60,7 +60,7 @@ function descriptorOf(data: Record<string, unknown>): FleetDescriptor | null {
   const mode = data.mode
   if (mode !== 'one-shot' && mode !== 'continuable') return null
   const out: FleetDescriptor = { mode }
-  for (const key of ['label', 'provider', 'agentProvider', 'agentModel', 'persona'] as const) {
+  for (const key of ['label', 'provider', 'agentProvider', 'agentModel', 'agentReasoningEffort', 'persona'] as const) {
     const value = data[key]
     if (typeof value === 'string' && value !== '') out[key] = value
   }

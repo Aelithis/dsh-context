@@ -158,6 +158,12 @@ describe('agentStatsOf', () => {
     assert.equal(agentStatsOf({ contextTimeline: timeline(100, 1) }).model, undefined)
   })
 
+  test('the timeline head reasoning effort rides the stats beside the model', () => {
+    const withEffort = agentStatsOf({ contextTimeline: { ...timeline(100, 1), model: 'deepseek-flash', reasoningEffort: 'max' } })
+    assert.equal(withEffort.reasoningEffort, 'max')
+    assert.equal(agentStatsOf({ contextTimeline: timeline(100, 1) }).reasoningEffort, undefined)
+  })
+
   test('split-generation rows: the precomputed tally serves without the request records', () => {
     const slim = {
       ...timeline(500, 0),

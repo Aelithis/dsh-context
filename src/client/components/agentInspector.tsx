@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentNode } from '../agentTree'
-import { fmtDurationCompact } from '../agentTree'
+import { fmtDurationCompact, modelLabelOf } from '../agentTree'
 import { type CommsRow } from '../fleetDetail'
 import { CommsParties, commsTextOf } from './commsRow'
 import { tasksOfOwner, teamMemberOf, type FleetTeam } from '../fleetTeam'
@@ -62,10 +62,14 @@ export function AgentInspector(props: AgentInspectorProps): ReactElement {
 
   const descriptor = detail?.descriptor
   const descriptorBits: string[] = []
-  if (node.model !== undefined) descriptorBits.push(node.model)
+  const modelLabel = modelLabelOf(node.model, node.reasoningEffort)
+  if (modelLabel !== undefined) descriptorBits.push(modelLabel)
   if (descriptor !== undefined) {
     if (descriptor.provider !== undefined) descriptorBits.push(descriptor.provider)
-    if (descriptor.agentModel !== undefined && descriptor.agentModel !== node.model) descriptorBits.push(descriptor.agentModel)
+    const declared = descriptor.agentModel !== undefined && descriptor.agentModel !== node.model
+      ? modelLabelOf(descriptor.agentModel, descriptor.agentReasoningEffort)
+      : undefined
+    if (declared !== undefined) descriptorBits.push(declared)
     if (descriptor.persona !== undefined) descriptorBits.push(descriptor.persona)
   }
 

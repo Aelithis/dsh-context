@@ -37,6 +37,7 @@ export interface AgentStats {
   durationMs: number | null
   identity: AgentIdentity | null
   model?: string
+  reasoningEffort?: string
 }
 
 export interface AgentSelfStats {
@@ -101,6 +102,12 @@ export function familyParentOf(row: AgentRow | undefined): string | undefined {
   return row !== undefined && row.origin === 'subagent' ? row.parentId : undefined
 }
 
+/** The pair must come from one source — the live envelope or the declared descriptor. */
+export function modelLabelOf(model: string | undefined, effort: string | undefined): string | undefined {
+  if (model === undefined) return undefined
+  return effort === undefined ? model : `${model} (${effort})`
+}
+
 export function agentIdentityOf(value: unknown): AgentIdentity | null {
   const rec = asRecord(value)
   if (rec === null) return null
@@ -160,6 +167,7 @@ export function agentStatsOf(values: Record<string, unknown> | undefined): Agent
     durationMs: agentDurationOf(values?.subagentTiming),
     identity: agentIdentityOf(values?.subagent),
     ...(timeline !== null && typeof timeline.model === 'string' ? { model: timeline.model } : {}),
+    ...(timeline !== null && typeof timeline.reasoningEffort === 'string' ? { reasoningEffort: timeline.reasoningEffort } : {}),
   }
 }
 

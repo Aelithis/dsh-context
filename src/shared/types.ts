@@ -95,6 +95,7 @@ export interface FleetDescriptor {
   provider?: string
   agentProvider?: string
   agentModel?: string
+  agentReasoningEffort?: string
   persona?: string
 }
 
@@ -192,6 +193,9 @@ export interface Snapshot {
   }
   model?: string
   provider?: string
+  /** The newest request envelope's materialized reasoning effort. Absent = no effort in force, or a row folded before the field
+   * existed. */
+  reasoningEffort?: string
   contextWindow?: number
   /** The newest request envelope's routed output cap (auto-compaction reserves it). Absent = no cap in the log, or a row folded before
    * the field existed. */

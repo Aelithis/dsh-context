@@ -11,7 +11,7 @@ function descriptorOf(value: unknown): FleetDescriptor | undefined {
   if (rec === null) return undefined
   if (rec.mode !== 'one-shot' && rec.mode !== 'continuable') return undefined
   const out: FleetDescriptor = { mode: rec.mode }
-  for (const key of ['label', 'provider', 'agentProvider', 'agentModel', 'persona'] as const) {
+  for (const key of ['label', 'provider', 'agentProvider', 'agentModel', 'agentReasoningEffort', 'persona'] as const) {
     const v = strings(rec[key])
     if (v !== undefined) out[key] = v
   }

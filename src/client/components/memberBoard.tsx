@@ -4,7 +4,7 @@
 import { useMemo, useState, type CSSProperties, type ReactElement } from 'react'
 import { IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
-import { familyHue, fmtDurationCompact } from '../agentTree'
+import { familyHue, fmtDurationCompact, modelLabelOf } from '../agentTree'
 import { familyOthersOf, tasksOfOwner, type FleetTeam } from '../fleetTeam'
 import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
 import type { ViewKit } from '../viewkit'
@@ -186,7 +186,9 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
               const running = node?.running === true
               const info = roster.get(member.name)
               const detail = props.detailOf(member.id)?.detail ?? null
-              const model = node?.model ?? detail?.descriptor?.agentModel
+              const model = node?.model !== undefined
+                ? modelLabelOf(node.model, node.reasoningEffort)
+                : modelLabelOf(detail?.descriptor?.agentModel, detail?.descriptor?.agentReasoningEffort)
               const owned = tasksOfOwner(team, member.name)
               const activeTasks = owned.filter(task => task.status !== 'completed')
               const isCurrent = node?.isCurrent === true
@@ -293,6 +295,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
           <div className="lc-members-grid">
             {others.map((node) => {
               const detail = props.detailOf(node.id)?.detail ?? null
+              const model = modelLabelOf(node.model, node.reasoningEffort)
               return (
                 <div
                   key={node.id}
@@ -327,7 +330,7 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                   </div>
                   <div className="lc-member-status">
                     {node.running ? t('agents.running') : node.completed ? t('fleet.filter.done') : t('fleet.memberInactive')}
-                    {node.model !== undefined ? <span className="lc-member-model">{node.model}</span> : null}
+                    {model !== undefined ? <span className="lc-member-model">{model}</span> : null}
                   </div>
                   {detail?.lastReply !== undefined ? (
                     <div className="lc-member-reply" title={detail.lastReply.text}>

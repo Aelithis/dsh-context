@@ -181,6 +181,15 @@ describe('timelineOf', () => {
     }
   })
 
+  test('reasoningEffort: wrong-typed dropped, right-typed kept', () => {
+    const kept = timelineOf({ current: 1, reasoningEffort: 'max' })
+    assert.ok(kept !== null)
+    assert.equal(kept.reasoningEffort, 'max')
+    const dropped = timelineOf({ current: 1, reasoningEffort: 7 })
+    assert.ok(dropped !== null)
+    assert.ok(!('reasoningEffort' in dropped))
+  })
+
   test('images/toolCalls/humanInputs/surfaceFloor/archiveFloor are kept only when numbers', () => {
     const kept = timelineOf({ current: 1, images: 3, toolCalls: 2, humanInputs: 5, surfaceFloor: 10, archiveFloor: 4 })
     assert.ok(kept !== null)

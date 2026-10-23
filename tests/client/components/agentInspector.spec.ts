@@ -160,12 +160,12 @@ describe('AgentInspector — the fleet-detail sections', () => {
 
   test('descriptor and prompt render off the landed detail; the node model joins the config', async () => {
     const m = await mount(h(AgentInspector, propsOf({
-      node: nodeOf('w1', { model: 'deepseek-flash' }),
+      node: nodeOf('w1', { model: 'deepseek-flash', reasoningEffort: 'max' }),
       detail: { detail: DETAIL },
     })))
     const el = query(m.container, '.lc-inspector')
-    // The node's own model leads; the descriptor's distinct model follows, deduped.
-    assert.ok(text(el).includes('deepseek-flash · fork · deepseek-v4 · careful reviewer'))
+    // The node's own model (with its effort) leads; the descriptor's distinct model follows, deduped.
+    assert.ok(text(el).includes('deepseek-flash (max) · fork · deepseek-v4 · careful reviewer'))
     assert.ok(text(el).includes('Review the diff carefully.'))
     // jsdom reports no clamping: the expand toggle stays hidden.
     assert.equal(queryAll(el, '.lc-inspector-btn').length, 1, 'only the open button')

@@ -17,7 +17,7 @@ afterEach(() => {
 describe('fleetDetailOf — the sanitizing parse', () => {
   test('a full payload parses; hostile entries drop alone', () => {
     const detail = fleetDetailOf({
-      descriptor: { mode: 'continuable', label: 'worker', provider: 'fork', agentModel: 'v4', persona: '' },
+      descriptor: { mode: 'continuable', label: 'worker', provider: 'fork', agentModel: 'v4', agentReasoningEffort: 'max', persona: '' },
       initialPrompt: 'do the thing',
       messages: [
         null,
@@ -31,7 +31,7 @@ describe('fleetDetailOf — the sanitizing parse', () => {
       truncated: true,
     })
     assert.ok(detail !== null)
-    assert.deepEqual(detail.descriptor, { mode: 'continuable', label: 'worker', provider: 'fork', agentModel: 'v4' })
+    assert.deepEqual(detail.descriptor, { mode: 'continuable', label: 'worker', provider: 'fork', agentModel: 'v4', agentReasoningEffort: 'max' })
     assert.equal(detail.initialPrompt, 'do the thing')
     assert.deepEqual(detail.messages, [
       { kind: 'relay', text: 'hi', seq: 3, time: 30, from: 'a' },

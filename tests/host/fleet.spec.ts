@@ -191,11 +191,11 @@ describe('fleetDetailOfEvents — the descriptor', () => {
         type: 'subagent/descriptor',
         seq: 2,
         time: 2,
-        data: { version: 3, mode: 'continuable', provider: 'fork', label: 'worker', agentProvider: 'deepseek', agentModel: 'v4', persona: 'reviewer' },
+        data: { version: 3, mode: 'continuable', provider: 'fork', label: 'worker', agentProvider: 'deepseek', agentModel: 'v4', agentReasoningEffort: 'max', persona: 'reviewer' },
       },
     ])
     assert.deepEqual(detail.descriptor, {
-      mode: 'continuable', provider: 'fork', label: 'worker', agentProvider: 'deepseek', agentModel: 'v4', persona: 'reviewer',
+      mode: 'continuable', provider: 'fork', label: 'worker', agentProvider: 'deepseek', agentModel: 'v4', agentReasoningEffort: 'max', persona: 'reviewer',
     })
   })
 

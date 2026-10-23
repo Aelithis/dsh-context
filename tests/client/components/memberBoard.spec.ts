@@ -38,7 +38,7 @@ const FOREST: AgentForest = {
     nodeOf('root', { isCurrent: true, running: true, model: 'deepseek-v4' }),
     nodeOf('w1', { running: true }),
     nodeOf('w2'),
-    nodeOf('s1', { label: 'scout', running: true, model: 'deepseek-flash', head: { tokens: 800, window: 1000, pct: 80, parts: [] }, requests: 5, durationMs: 42000, updatedAt: 8 }),
+    nodeOf('s1', { label: 'scout', running: true, model: 'deepseek-flash', reasoningEffort: 'max', head: { tokens: 800, window: 1000, pct: 80, parts: [] }, requests: 5, durationMs: 42000, updatedAt: 8 }),
     nodeOf('s2', { label: 'archivist', completed: true, head: { tokens: 200, window: 1000, pct: 20, parts: [] }, requests: 1, durationMs: 9000, updatedAt: 6 }),
     nodeOf('s3', { label: 'lounger', updatedAt: 4 }),
   ],
@@ -215,7 +215,7 @@ describe('MemberBoard — team cards', () => {
 
   test('model falls back to the descriptor when the node lists none; a member outside the forest renders bare', async () => {
     const details = new Map<string, { detail: FleetDetail | null }>([
-      ['w1', { detail: { descriptor: { mode: 'continuable', label: 'w', agentModel: 'flash-lite' }, messages: [], truncated: false } }],
+      ['w1', { detail: { descriptor: { mode: 'continuable', label: 'w', agentModel: 'flash-lite', agentReasoningEffort: 'high' }, messages: [], truncated: false } }],
     ])
     const forest: AgentForest = { nodes: [nodeOf('root', { isCurrent: true })], edges: [], solo: false }
     const m = await mount(h(MemberBoard, propsOf({
@@ -225,7 +225,7 @@ describe('MemberBoard — team cards', () => {
     })))
     const cards = queryAll(m.container, '.lc-member-card')
     // No roster facts: no duty descriptions; the descriptor model stands in.
-    assert.ok(text(cards[1]).includes('flash-lite'))
+    assert.ok(text(cards[1]).includes('flash-lite (high)'))
     assert.equal(queryAll(cards[1], '.lc-member-desc').length, 0)
     assert.equal(queryAll(m.container, '.lc-member-open').length, 0)
     await m.unmount()
@@ -261,7 +261,7 @@ describe('MemberBoard — the other-agents cards', () => {
     const cards = otherCards(m.container)
     assert.ok(text(cards[0]).includes('800 · 42s · 5 steps'))
     assert.ok(!text(cards[0]).includes('%'))
-    assert.ok(text(cards[0]).includes('deepseek-flash'))
+    assert.ok(text(cards[0]).includes('deepseek-flash (max)'))
     assert.ok(text(cards[0]).includes('running'))
     assert.ok(text(cards[1]).includes('archive sealed'), 'the landed latest reply fills the card')
     assert.equal(queryAll(cards[2], '.lc-member-meta').length, 0)

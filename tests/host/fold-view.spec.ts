@@ -17,10 +17,12 @@ describe('buildTimelineView unknown-model shape', () => {
     ])
     assert.equal(view.model, undefined)
     assert.equal(view.provider, undefined)
+    assert.equal(view.reasoningEffort, undefined)
     assert.equal(view.contextWindow, undefined)
     assert.equal(view.maxOutputTokens, undefined)
     assert.ok(!('model' in view), 'no own `model` key')
     assert.ok(!('provider' in view), 'no own `provider` key')
+    assert.ok(!('reasoningEffort' in view), 'no own `reasoningEffort` key')
     assert.ok(!('contextWindow' in view), 'no own `contextWindow` key')
     assert.ok(!('maxOutputTokens' in view), 'no own `maxOutputTokens` key')
     assertPlainJson(view)
@@ -28,15 +30,34 @@ describe('buildTimelineView unknown-model shape', () => {
 
   test('known scalars ride their own keys once a request names them', () => {
     const { view } = driveTimeline([
-      header(1, { config: { model: 'deepseek-v4-flash', provider: 'deepseek', maxTokens: 256000 } }),
+      header(1, { config: { model: 'deepseek-v4-flash', provider: 'deepseek', reasoningEffort: 'max', maxTokens: 256000 } }),
       requestContext(2, { provider: 'deepseek', model: 'deepseek-v4-flash', contextWindow: 128000 }),
       userMessage(3, [{ type: 'text', text: 'hi' }]),
     ])
     assert.equal(view.model, 'deepseek-v4-flash')
     assert.equal(view.provider, 'deepseek')
+    assert.equal(view.reasoningEffort, 'max')
     assert.equal(view.contextWindow, 128000)
     assert.equal(view.maxOutputTokens, 256000)
     assertPlainJson(view)
+  })
+
+  test('the materialized reasoning effort is LAST-WINS across headers, like the output cap', () => {
+    // A later header without an effort clears it.
+    const cleared = driveTimeline([
+      header(1, { config: { model: 'm', reasoningEffort: 'max' } }),
+      header(2, { config: { model: 'm' }, reason: 'change' }),
+    ])
+    assert.equal(cleared.view.reasoningEffort, undefined)
+    for (const effort of ['', 42, null, false] as const) {
+      const { view } = driveTimeline([header(1, { config: { model: 'm', reasoningEffort: effort } })])
+      assert.equal(view.reasoningEffort, undefined, String(effort))
+    }
+    const kept = driveTimeline([
+      header(1, { config: { model: 'm', reasoningEffort: 'low' } }),
+      header(2, { config: { model: 'm', reasoningEffort: 'max' }, reason: 'change' }),
+    ])
+    assert.equal(kept.view.reasoningEffort, 'max')
   })
 
   test('the routed output cap is LAST-WINS across headers, exactly as the compaction backend reads it', () => {

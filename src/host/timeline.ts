@@ -225,6 +225,7 @@ export const contextTimelineSchema = z.object({
   unsupported: unsupportedSchema.optional(),
   model: z.string().optional(),
   provider: z.string().optional(),
+  reasoningEffort: z.string().optional(),
   contextWindow: z.number().optional(),
   maxOutputTokens: z.number().positive().optional(),
   current: currentSchema,
@@ -270,6 +271,7 @@ const timelineStateSchema = z.object({
   toolsTokens: z.number().int().nonnegative(),
   model: z.string().optional(),
   provider: z.string().optional(),
+  reasoningEffort: z.string().optional(),
   lastModel: z.string().optional(),
   contextWindow: z.number().optional(),
   maxOutputTokens: z.number().positive().optional(),
@@ -322,7 +324,7 @@ export function createContextTimelineDefinition(config: Config, slim: () => bool
     apply: (state: TimelineState, event: SessionEvent) => applyTimeline(state, event as Parameters<typeof applyTimeline>[1], bounds),
     // Bump on any persisted-shape or fold-semantics change, which refolds cached rows; never for a backfillable or serve-time-derived
     // field, since invalidating in-generation rows orphans idle sessions with no refresh channel.
-    stateVersion: 30,
+    stateVersion: 31,
   }
   return definition
 }

@@ -22,8 +22,7 @@ function canonicalLog(): TimelineEvent[] {
   return [
     header(1, {
       tools: [{ name: 'bash', description: 'run a command' }],
-      model: 'deepseek-v4-flash',
-      provider: 'deepseek',
+      config: { model: 'deepseek-v4-flash', provider: 'deepseek', reasoningEffort: 'max' },
     }),
     systemMessage(2),
     requestContext(3, { contextWindow: 128000 }),
@@ -82,6 +81,7 @@ describe('buildTimelineHead', () => {
     assert.equal(head.ok, true)
     assert.equal(head.model, 'deepseek-v4-flash')
     assert.equal(head.provider, 'deepseek')
+    assert.equal(head.reasoningEffort, 'max')
     assert.equal(head.contextWindow, 128000)
     assert.ok(head.current.total > 0)
     // `counts` are retained-record tallies; `humanInputs`/`answers` are whole-session tallies (one user
