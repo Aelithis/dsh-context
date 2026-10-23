@@ -229,8 +229,6 @@ export const DICT_EN = {
   'files.glyph.lang.svelte': 'Svelte',
   'files.glyph.lang.html': 'HTML',
   'cmds.title': 'Command Executions',
-  'cmds.runs': '{n} runs',
-  'cmds.failed': '{n} failed',
   'cmds.search': 'Filter commands…',
   'cmds.filter.all': 'All',
   'cmds.filter.failed': 'Failed',

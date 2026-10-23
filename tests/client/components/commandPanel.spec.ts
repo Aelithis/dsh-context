@@ -85,25 +85,22 @@ describe('CommandPanel — rendering', () => {
       assert.ok(rows[2].includes('pnpm exec vitest run tests/client'))
       assert.ok(rows[2].includes('20.0s'))
       assert.ok(rows[3].includes('git status --short'))
-      // The title tally counts the list when no whole-log stats arrive.
-      const title = text(query(m.container, '.lc-card-title'))
-      assert.ok(title.includes('3 runs'))
-      assert.ok(title.includes('1 failed'))
+      // The rail's tally counts the list when no whole-log stats arrive.
+      const kpis = queryAll(m.container, '.lc-cmd-kpi b').map(b => text(b))
+      assert.deepEqual(kpis, ['3', '1', '20.5s', '1'])
     } finally {
       await m.unmount()
     }
   })
 
-  test('the whole-log stats win the title over the list count', async () => {
+  test('the whole-log stats win the rail tally over the list count', async () => {
     const m = await mount(h(Panel, {
       commands: richCommands(),
       stats: { runs: 128, failed: 9, ms: 42700, bg: 2 },
     }))
     try {
-      const title = text(query(m.container, '.lc-card-title'))
-      assert.ok(title.includes('128 runs'))
-      assert.ok(title.includes('9 failed'))
-      assert.ok(title.includes('42.7s'))
+      const kpis = queryAll(m.container, '.lc-cmd-kpi b').map(b => text(b))
+      assert.deepEqual(kpis, ['128', '9', '42.7s', '2'])
     } finally {
       await m.unmount()
     }
@@ -134,9 +131,14 @@ describe('CommandPanel — filtering, search, sort', () => {
         if (hit === undefined) throw new Error(`chip not found: ${label}`)
         return hit
       }
+      for (const [label, cls] of [['All', 'all'], ['Failed', 'failed'], ['Slow', 'slow'], ['Background', 'background']] as const) {
+        assert.ok(chip(label).className.includes('lc-cmd-chip-' + cls), `the ${label} chip carries its tone class`)
+      }
+      assert.ok(chip('All').className.includes('lc-gran-on'), 'All starts active')
       await click(chip('Failed'))
       assert.equal(rowTexts(m.container).length, 1)
       assert.ok(rowTexts(m.container)[0].includes('vitest'))
+      assert.ok(!chip('All').className.includes('lc-gran-on') && chip('Failed').className.includes('lc-gran-on'), 'the active tone follows the pick')
       await click(chip('Slow'))
       assert.equal(rowTexts(m.container).length, 1, 'the failed 20s run is also the slow one')
       await click(chip('Background'))

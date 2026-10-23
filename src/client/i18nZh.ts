@@ -227,8 +227,6 @@ export const DICT_ZH = {
   'files.glyph.lang.svelte': 'Svelte',
   'files.glyph.lang.html': 'HTML',
   'cmds.title': '命令执行',
-  'cmds.runs': '{n} 次执行',
-  'cmds.failed': '{n} 次失败',
   'cmds.search': '过滤命令…',
   'cmds.filter.all': '全部',
   'cmds.filter.failed': '失败',

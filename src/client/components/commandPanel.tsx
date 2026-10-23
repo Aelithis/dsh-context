@@ -348,17 +348,12 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       <div className="lc-card lc-cmd-card lc-col flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('cmds.title')}</span>
-          <span className="lc-cmd-meta">
-            <span>{t('cmds.runs', { n: fmt(tally.runs) })}</span>
-            {tally.failed > 0 ? <span className="lc-cmd-meta-fail">{t('cmds.failed', { n: fmt(tally.failed) })}</span> : null}
-            {tally.ms > 0 ? <span>{fmtDuration(tally.ms)}</span> : null}
-          </span>
           <div className="lc-gran lc-cmd-chips @max-[380px]/lc-card:flex-wrap">
             {FILTERS.map(f => (
               <button
                 key={f}
                 type="button"
-                className={'lc-gran-btn' + (filter === f ? ' lc-gran-on' : '')}
+                className={'lc-gran-btn lc-cmd-chip-' + f + (filter === f ? ' lc-gran-on' : '')}
                 onClick={() => { setFilter(cur => (cur === f ? 'all' : f)) }}
               >
                 {t('cmds.filter.' + f)}

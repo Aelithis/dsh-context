@@ -126,7 +126,8 @@ describe('ContextView — command panel', () => {
       await until(() => queryAll(m.container, '.lc-cmd-row').length === 1, 'the detail never landed')
       const card = queryAll(m.container, '.lc-card').find(c => c.className.includes('lc-cmd-card'))
       assert.ok(card !== undefined)
-      assert.ok(text(card).includes('42 runs'), 'the whole-log tally rides the detail')
+      const kpi = query(card, '.lc-cmd-kpi b')
+      assert.ok(kpi !== undefined && text(kpi) === '42', 'the whole-log tally rides the detail')
       assert.ok(text(card).includes('Covering the latest 1 runs'), 'the floor note rides the detail')
     } finally {
       await m.unmount()

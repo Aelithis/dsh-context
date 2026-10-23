@@ -4,10 +4,16 @@
    bottom anchor (every streamed command re-asserted the bottom mid-drag). */
 .lc-cmd-card { max-height: 560px; display: flex; flex-direction: column; }
 .lc-cmd-card .lc-card-title { align-content: center; flex: none; }
-@container lc-card (max-width: 380px) { .lc-cmd-card .lc-card-title { min-height: 69px; } }
 .lc-cmd-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
-.lc-cmd-meta { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }
-.lc-cmd-meta-fail { color: var(--dsw-alias-state-error-primary); }
+/* The filter chips carry their dimension's tone; an active chip tints its own hue instead of the solid primary fill. */
+.lc-cmd-chip-all, .lc-cmd-chip-all:hover { color: var(--dsw-alias-state-business-primary); }
+.lc-cmd-chip-all.lc-gran-on, .lc-cmd-chip-all.lc-gran-on:hover { background: var(--dsw-alias-button-info-fill); color: var(--dsw-alias-label-primary-foreground); }
+.lc-cmd-chip-failed, .lc-cmd-chip-failed:hover { color: var(--dsw-alias-state-error-primary); }
+.lc-cmd-chip-failed.lc-gran-on, .lc-cmd-chip-failed.lc-gran-on:hover { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent); color: var(--dsw-alias-state-error-primary); }
+.lc-cmd-chip-slow, .lc-cmd-chip-slow:hover { color: var(--dsw-alias-state-warn-primary); }
+.lc-cmd-chip-slow.lc-gran-on, .lc-cmd-chip-slow.lc-gran-on:hover { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.lc-cmd-chip-background, .lc-cmd-chip-background:hover { color: var(--color-teal-500); }
+.lc-cmd-chip-background.lc-gran-on, .lc-cmd-chip-background.lc-gran-on:hover { background: color-mix(in srgb, var(--color-teal-500) 14%, transparent); color: var(--color-teal-500); }
 .lc-cmd-floor { margin: 0 0 6px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 
 /* ── The two-column body ── */
