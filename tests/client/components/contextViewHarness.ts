@@ -44,6 +44,7 @@ export function richTimeline(over: Record<string, unknown> = {}): ContextTimelin
   return timeline({
     model: 'deepseek-v4-flash',
     provider: 'deepseek',
+    reasoningEffort: 'high',
     contextWindow: 128000,
     toolCalls: 3,
     images: 1,

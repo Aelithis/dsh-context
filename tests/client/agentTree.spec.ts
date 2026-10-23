@@ -16,6 +16,7 @@ import {
   layoutForest,
   lineageOf,
   pressureColorOf,
+  providerModelLabelOf,
   sessionsFaceOf,
   subagentCostFoldOf,
   type AgentForest,
@@ -162,6 +163,18 @@ describe('agentStatsOf', () => {
     const withEffort = agentStatsOf({ contextTimeline: { ...timeline(100, 1), model: 'deepseek-flash', reasoningEffort: 'max' } })
     assert.equal(withEffort.reasoningEffort, 'max')
     assert.equal(agentStatsOf({ contextTimeline: timeline(100, 1) }).reasoningEffort, undefined)
+  })
+
+  test('providerModelLabelOf drops absent parts without a lone separator', () => {
+    assert.equal(providerModelLabelOf('deepseek', 'deepseek-flash', 'high'), 'deepseek · deepseek-flash (high)')
+    assert.equal(providerModelLabelOf('deepseek', 'deepseek-flash', undefined), 'deepseek · deepseek-flash')
+    assert.equal(providerModelLabelOf('deepseek', undefined, 'high'), 'deepseek')
+    assert.equal(providerModelLabelOf(undefined, 'deepseek-flash', 'max'), 'deepseek-flash (max)')
+    assert.equal(providerModelLabelOf(undefined, undefined, undefined), '')
+    // The fold admits empty-string model/provider scalars; they read as absent, never as a lone separator.
+    assert.equal(providerModelLabelOf('', 'deepseek-flash', 'high'), 'deepseek-flash (high)')
+    assert.equal(providerModelLabelOf('deepseek', '', 'high'), 'deepseek')
+    assert.equal(providerModelLabelOf('', '', undefined), '')
   })
 
   test('split-generation rows: the precomputed tally serves without the request records', () => {

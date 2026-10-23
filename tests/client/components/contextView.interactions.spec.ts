@@ -10,7 +10,7 @@ import { buttonByText, makeView, mountRich, projectionsFor, richTimeline, T0, ti
 describe('ContextView — interactions', () => {
   test('renders the rich tab: stats, chart bars, markers, events, nodes, browser', async () => {
     const m = await mountRich('sv-rich')
-    assert.ok(text(m.container).includes('deepseek-v4-flash · deepseek'))
+    assert.ok(text(m.container).includes('deepseek · deepseek-v4-flash (high)'))
     assert.equal(queryAll(m.container, '.lc-bar').length, 3)
     assert.equal(queryAll(m.container, '.lc-bar-marker').length, 1)
     assert.equal(queryAll(m.container, '.lc-event').length, 2)

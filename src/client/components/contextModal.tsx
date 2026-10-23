@@ -2,6 +2,7 @@
  * composition and the shared browser. */
 
 import { createElement as h, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { providerModelLabelOf } from '../agentTree'
 import { makeAttachmentOpener } from '../attachmentSource'
 import { measureDock } from '../dockMeasure'
 import { headlineOf } from '../headline'
@@ -114,7 +115,7 @@ export function makeContextModal(
     if (!open) return null
 
     const head = data !== null ? headlineOf(data, pressure, breakdown) : null
-    const subtitle = data !== null ? (data.model ? data.model : '') + (data.provider ? ' · ' + data.provider : '') : ''
+    const subtitle = data !== null ? providerModelLabelOf(data.provider, data.model, data.reasoningEffort) : ''
 
     return (
       <div ref={backdropRef} className="lc-modal-backdrop" style={{ left: dock.left, right: dock.right }} onClick={close}>

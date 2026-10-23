@@ -19,7 +19,7 @@ import type { ContextSettings } from '../settings'
 import { overviewThresholdOf } from '../settings'
 import type { ViewKit } from '../viewkit'
 import type { AgentHeads } from '../agentHeads'
-import { agentSelfOf } from '../agentTree'
+import { agentSelfOf, providerModelLabelOf } from '../agentTree'
 import { makeContextBrowser } from './browser'
 import type { CatFocus } from './browser'
 import { makeAgentGraph } from './agentGraph'
@@ -642,7 +642,7 @@ export function makeContextView(
     const activeLocale = localeSvc !== undefined && typeof localeSvc.getLocale === 'function'
       ? localeSvc.getLocale().active
       : 'en'
-    const subtitle = (data.model ?? '') + (data.provider ? ' · ' + data.provider : '')
+    const subtitle = providerModelLabelOf(data.provider, data.model, data.reasoningEffort)
     const gate = unsupportedOf(data.unsupported)
 
     /* v8 ignore next 2 -- only a real dock collapse hides a sidebar copy; jsdom has no IntersectionObserver. */

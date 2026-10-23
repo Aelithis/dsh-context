@@ -108,6 +108,17 @@ export function modelLabelOf(model: string | undefined, effort: string | undefin
   return effort === undefined ? model : `${model} (${effort})`
 }
 
+/** `provider · model (effort)`; empty or absent parts drop without a lone separator. */
+export function providerModelLabelOf(
+  provider: string | undefined,
+  model: string | undefined,
+  effort: string | undefined,
+): string {
+  const label = modelLabelOf(model || undefined, effort)
+  if (label === undefined) return provider ?? ''
+  return provider ? `${provider} · ${label}` : label
+}
+
 export function agentIdentityOf(value: unknown): AgentIdentity | null {
   const rec = asRecord(value)
   if (rec === null) return null

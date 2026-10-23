@@ -122,6 +122,7 @@ describe('ContextModal', () => {
       contextTimeline: timeline({
         model: 'deepseek-v4-flash',
         provider: 'deepseek',
+        reasoningEffort: 'high',
       }),
       contextPressure: { projectedTokens: 100, contextWindow: 128000 },
       contextBreakdown: { systemTokens: 1, toolsTokens: 2, messageTokens: 18 },
@@ -134,7 +135,7 @@ describe('ContextModal', () => {
       useContextModal: OPEN,
       useProjection: (key: string) => projections[key],
     }))
-    assert.ok(text(m.container).includes('deepseek-v4-flash · deepseek'))
+    assert.ok(text(m.container).includes('deepseek · deepseek-v4-flash (high)'))
 
     const compCard = query(m.container, '.lc-modal-card .lc-card')
     const seg = query(compCard, '.lc-stacked-seg')
