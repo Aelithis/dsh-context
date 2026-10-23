@@ -30,6 +30,20 @@
 .lc-gran-on, .lc-gran-on:hover { background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); }
 .lc-kind-n { margin-left: 4px; font-variant-numeric: tabular-nums; opacity: 0.65; }
 .lc-gran-on .lc-kind-n { opacity: 0.85; }
+/* Clearable field: the wrapper owns the flex slot, so these rules are the one sizing source for every field. */
+.lc-searchbox { position: relative; display: flex; flex: 1; min-width: 80px; }
+.lc-searchbox > input { flex: 1 1 0; min-width: 0; }
+.lc-searchbox:has(> .lc-fleet-search) { flex: 1 1 140px; min-width: 120px; max-width: 240px; }
+.lc-searchbox:has(> .lc-ov-search) { flex: 1 1 150px; min-width: 110px; }
+/* Must follow the ov rule: the skills field narrows that same class. */
+.lc-searchbox:has(> .lc-ov-skills-search) { flex: 0 1 170px; min-width: 110px; margin-left: auto; }
+.lc-searchbox:has(> .lc-cmd-prog-search) { flex: 0 1 110px; min-width: 60px; }
+.lc-searchbox-on > input { padding-right: 20px; }
+/* The custom control replaces WebKit's native search cancel, which no other engine draws. */
+.lc-searchbox > input::-webkit-search-cancel-button,
+.lc-searchbox > input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+.lc-searchbox-x { position: absolute; top: 50%; right: 3px; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+.lc-searchbox-x:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
 /* Shared tooltip chrome: pair with the owner's own tip class, then position locally; new tips never re-declare it. */
 .lc-tip { position: absolute; z-index: 6; width: max-content; background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--dsw-alias-label-primary); box-shadow: var(--dsw-shadow-lv3, 0 2px 8px rgba(0, 0, 0, 0.18)); pointer-events: none; opacity: 0; transition: opacity var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
 .lc-events, .lc-fa-list { display: flex; flex-direction: column; gap: 2px; height: 320px; overflow-y: auto; }

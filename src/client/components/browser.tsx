@@ -582,6 +582,7 @@ export function makeContextBrowser(
           <RowToolbar
             value={rowQuery}
             placeholder={t('tool.search')}
+            clearLabel={t('field.clear')}
             count={shown.length}
             tokens={shownTokens}
             tip={t('tool.sortTip')}
@@ -659,6 +660,7 @@ export function makeContextBrowser(
           <RowToolbar
             value={rowQuery}
             placeholder={t('browser.search.' + c)}
+            clearLabel={t('field.clear')}
             count={shown.length}
             tokens={shownTokens}
             onChange={setRowQuery}
@@ -668,6 +670,7 @@ export function makeContextBrowser(
           <RowToolbar
             value={rowQuery}
             placeholder={t('browser.search.' + c)}
+            clearLabel={t('field.clear')}
             count={shown.length}
             tokens={shownTokens}
             tip={t('browser.kindTip')}
@@ -795,6 +798,7 @@ export function makeContextBrowser(
       <RowToolbar
         value={rowQuery}
         placeholder={t('browser.search.flat')}
+        clearLabel={t('field.clear')}
         count={flat.count}
         tokens={flat.tokens}
         onChange={setRowQuery}

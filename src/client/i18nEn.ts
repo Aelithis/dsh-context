@@ -6,6 +6,7 @@ export const DICT_EN = {
   'tab.context': 'Context',
   'tab.fleet': 'Fleet',
   'sidebar.guideDescription': 'Inspect context composition, stats, and evolution.',
+  'field.clear': 'Clear input',
   'cat.system': 'System Prompt',
   'cat.tools': 'Tool Schemas',
   'cat.user': 'User Messages',

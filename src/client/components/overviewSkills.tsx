@@ -7,6 +7,7 @@ import { copySkillPath } from '../skills'
 import { nameColorOf } from '../nameColor'
 import { IconCheck, IconCopy } from '../primitives'
 import type { ViewKit } from '../viewkit'
+import { ClearableInput } from './clearableInput'
 
 /** Render bound on listed skills — a hostile corpus can coin a name per injection. */
 const MAX_ROWS = 20
@@ -245,13 +246,13 @@ export function makeOverviewSkills(kit: ViewKit): (props: OverviewSkillsProps) =
               {t('ov.skills.summary', { skills: fmt(visible.length), loads: fmt(visibleTotal) })}
             </span>
             {stats.length > 1 && (
-              <input
+              <ClearableInput
                 className="lc-ov-search lc-ov-skills-search"
                 type="search"
                 value={query}
                 placeholder={t('ov.skills.search')}
-                aria-label={t('ov.skills.search')}
-                onChange={(ev) => { setQuery(ev.target.value) }}
+                clearLabel={t('field.clear')}
+                onChange={setQuery}
               />
             )}
           </div>

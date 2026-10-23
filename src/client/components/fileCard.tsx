@@ -1,9 +1,10 @@
-import { memo, useEffect, useRef, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
+import { memo, useEffect, useRef, useState, type ComponentType, type MouseEvent, type ReactElement } from 'react'
 import { absPathOf, baseNameOf, displayPathOf, glyphOf, surfaceSeqOf } from '../fileActivity'
 import type { FileActivity, FileEntry, FileOp, FileOpKind } from '../fileActivity'
 import type { ContextSettings, DefaultFileSort } from '../settings'
 import type { DetailState } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
+import { ClearableInput } from './clearableInput'
 import { makeDetailNote } from './detailNote'
 import { useRowWindow } from './useRowWindow'
 
@@ -235,11 +236,12 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
             populated one does. */}
         <div>
           <div className="lc-fa-ctl">
-            <input
+            <ClearableInput
               className="lc-fa-search focus:border-(--dsw-alias-label-dimmed)"
               value={query}
               placeholder={t('files.search')}
-              onChange={(ev: ChangeEvent<HTMLInputElement>) => { setQuery(ev.target.value) }}
+              clearLabel={t('field.clear')}
+              onChange={setQuery}
             />
             <span className="lc-gran lc-fa-sort" role="group" title={t('files.sortTip')}>
               {(['count', 'lines', 'latest', 'path', 'name'] as const).map(k => (

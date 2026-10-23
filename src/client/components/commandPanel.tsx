@@ -1,10 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type MouseEvent, type ReactElement } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement } from 'react'
 import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, tallyOfCommands, viewsOf } from '../commands'
 import type { Command, CommandFilter, CommandSort, CommandView } from '../commands'
 import { nameColorOf } from '../nameColor'
 import type { CommandStats } from '../../shared/types'
 import type { DetailState } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
+import { ClearableInput } from './clearableInput'
 import { makeDetailNote } from './detailNote'
 import { useRowWindow } from './useRowWindow'
 
@@ -183,13 +184,13 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
           <div className="lc-cmd-rail-h lc-cmd-progs-h">
             <span title={t('cmds.rail.topScope')}>{t('cmds.rail.top', { n: programs.length })}</span>
             {programs.length > 6 ? (
-              <input
+              <ClearableInput
                 className="lc-cmd-prog-search"
                 type="search"
                 value={progQuery}
                 placeholder={t('cmds.rail.topSearch')}
-                aria-label={t('cmds.rail.topSearch')}
-                onChange={(ev: ChangeEvent<HTMLInputElement>) => { setProgQuery(ev.target.value) }}
+                clearLabel={t('field.clear')}
+                onChange={setProgQuery}
               />
             ) : null}
           </div>
@@ -370,11 +371,12 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
           {rail}
           <div className="lc-cmd-main">
             <div className="lc-cmd-ctl">
-              <input
+              <ClearableInput
                 className="lc-fa-search focus:border-(--dsw-alias-label-dimmed)"
                 value={query}
                 placeholder={t('cmds.search')}
-                onChange={(ev: ChangeEvent<HTMLInputElement>) => { setQuery(ev.target.value) }}
+                clearLabel={t('field.clear')}
+                onChange={setQuery}
               />
               <span className="lc-gran lc-fa-sort" role="group" title={t('cmds.sortTip')}>
                 {SORTS.map(k => (

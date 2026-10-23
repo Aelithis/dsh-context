@@ -19,6 +19,7 @@ import type { SkillInfo } from '../../shared/types'
 import { dayKeyOf } from '../../shared/days'
 import type { ViewKit } from '../viewkit'
 import { makeBalanceCapsule } from './balanceCapsule'
+import { ClearableInput } from './clearableInput'
 import { makeDateRange } from './dateRange'
 import { makeErrorBoundary } from './errorBoundary'
 import { makeHeatmap, todayKey, type HeatMetric } from './heatmap'
@@ -288,13 +289,13 @@ export function makeOverviewPanel(
                           {t('node.skillTag', { name: skill })} ×
                         </button>
                       )}
-                      <input
+                      <ClearableInput
                         className="lc-ov-search"
                         type="search"
                         value={query}
                         placeholder={t('ov.list.search')}
-                        aria-label={t('ov.list.search')}
-                        onChange={(ev) => { setQuery(ev.target.value) }}
+                        clearLabel={t('field.clear')}
+                        onChange={setQuery}
                       />
                       <select
                         className="lc-ov-cover"

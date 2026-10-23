@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactElement, type ReactNode } from 'react'
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import type { SurfaceNode } from '../../shared/types'
 import type { ConversationNodeLike } from '../services'
 import { parseCallArgs } from '../callSummary'
@@ -6,6 +6,7 @@ import { attachmentOf } from '../../shared/attachment'
 import type { AttachmentRef } from '../../shared/attachment'
 import type { AttachmentKit } from './attachments'
 import type { RichKit } from './richText'
+import { ClearableInput } from './clearableInput'
 import { Section } from './section'
 import { typeOf, paramsOf } from './browserSchema'
 import type { ParamSchema } from './browserSchema'
@@ -79,6 +80,7 @@ export function schemaTextOf(schema: unknown): string {
 export function RowToolbar(props: {
   value: string
   placeholder: string
+  clearLabel: string
   count: number
   tokens: number
   tip?: string
@@ -87,11 +89,12 @@ export function RowToolbar(props: {
 }): ReactElement {
   return (
     <div className="lc-br-toolctl">
-      <input
+      <ClearableInput
         className="lc-br-tool-search focus:border-(--dsw-alias-label-dimmed)"
         value={props.value}
         placeholder={props.placeholder}
-        onChange={(ev: ChangeEvent<HTMLInputElement>) => { props.onChange(ev.target.value) }}
+        clearLabel={props.clearLabel}
+        onChange={props.onChange}
       />
       <span className="lc-br-filter-stat">{'×' + fmt(props.count) + ' ≈' + fmt(props.tokens)}</span>
       {props.children !== undefined

@@ -5,6 +5,7 @@ import { familyHue } from '../agentTree'
 import { fmtTime } from '../format'
 import { familyOthersOf, memberIdByName, type FleetTeam, type FleetTeamTask } from '../fleetTeam'
 import type { FleetDetail } from '../../shared/types'
+import { ClearableInput } from './clearableInput'
 import { Section } from './section'
 import { BRAND_HUE, memberStyle, runMetaOf } from './memberBoard'
 import type { RichKit } from './richText'
@@ -526,12 +527,13 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
 
       {showToolbar ? (
         <div className="lc-fleet-toolbar">
-          <input
+          <ClearableInput
             type="search"
             className="lc-fleet-search"
             placeholder={t('fleet.tasks.search')}
+            clearLabel={t('field.clear')}
             value={query}
-            onChange={(ev) => { setQuery(ev.target.value) }}
+            onChange={setQuery}
           />
           <div className="lc-fleet-filters" role="group" aria-label={t('fleet.tasks.filter')}>
             {(['all', 'in_progress', 'pending', 'completed'] as const).map(key => (

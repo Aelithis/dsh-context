@@ -8,6 +8,7 @@ import { familyHue, fmtDurationCompact } from '../agentTree'
 import { familyOthersOf, tasksOfOwner, type FleetTeam } from '../fleetTeam'
 import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
 import type { ViewKit } from '../viewkit'
+import { ClearableInput } from './clearableInput'
 
 export interface MemberBoardProps {
   /** Null when the session never composed the agent-team plugin — the panel still lists the family. */
@@ -139,12 +140,13 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
 
       {listTotal > 1 || !bare ? (
         <div className="lc-fleet-toolbar">
-          <input
+          <ClearableInput
             type="search"
             className="lc-fleet-search"
             placeholder={t('fleet.list.search')}
+            clearLabel={t('field.clear')}
             value={query}
-            onChange={(ev) => { setQuery(ev.target.value) }}
+            onChange={setQuery}
           />
           <div className="lc-fleet-filters" role="group" aria-label={t('fleet.list.filter')}>
             {(['all', 'running', 'done', 'idle'] as const).map(key => (

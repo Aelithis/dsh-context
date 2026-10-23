@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type RefObject } from 'react'
 import { JsonTree, MarkdownText, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { JsonTreeLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 import { IconCheck, IconChevronDown, IconChevronUp, IconClose, IconCopy, IconSearch } from '../primitives'
 import type { ViewKit } from '../viewkit'
+import { ClearableInput } from './clearableInput'
 
 export type RichMode = 'raw' | 'md' | 'json'
 
@@ -292,12 +293,13 @@ export function makeRichText(kit: ViewKit): RichKit {
     )
     const bar = !open ? null : (
       <div className="lc-find">
-        <input
-          ref={inputRef}
+        <ClearableInput
+          inputRef={inputRef}
           className="lc-find-input focus:border-(--dsw-alias-label-dimmed)"
           value={query}
           placeholder={t('rich.findPlaceholder')}
-          onChange={(ev: ChangeEvent<HTMLInputElement>) => { setQuery(ev.target.value) }}
+          clearLabel={t('field.clear')}
+          onChange={setQuery}
           onKeyDown={onKey}
         />
         {needle !== '' ? (

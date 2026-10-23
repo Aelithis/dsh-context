@@ -4,7 +4,7 @@
 @container lc-card (max-width: 380px) { .lc-fa-card .lc-card-title { min-height: 69px; } }
 .lc-fa-ctl, .lc-br-toolctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .lc-fa-n { margin-left: 4px; font-weight: 700; opacity: 0.75; }
-.lc-fa-search, .lc-br-tool-search, .lc-find-input { flex: 1; min-width: 80px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 8px; outline: none; }
+.lc-fa-search, .lc-br-tool-search, .lc-find-input { font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 3px 8px; outline: none; }
 /* The buttons fold inside the group rather than overflowing a narrow card. */
 .lc-fa-sort { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; }
 .lc-fa-meta { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }
