@@ -147,31 +147,506 @@ export function hideableCdPrefix(cmd: string, workspace: string | undefined): nu
   return target === root ? match[0].length : 0
 }
 
-/** A leading prefix that carries no program identity: `cd … &&` navigation, `VAR=value` assignments, the launcher
- * wrappers (`env`/`sudo`/`time`/`nohup`, `timeout` with its duration argument), and a wrapper's own flags (`sudo -E`). */
-const HEAD_PREFIX = new RegExp(
-  '^(?:cd\\s+(?:\\S+|"[^"]*"|\'[^\']*\')\\s*&&\\s*'
-  + '|[A-Za-z_][A-Za-z0-9_]*=\\S+\\s+'
-  + '|(?:env|sudo|time|nohup)\\s+'
-  + '|timeout\\s+\\S+\\s+'
-  + '|-\\S+\\s+)',
+/** The dialect whose quoting and assignment rules {@link headProgramOf} reads. `bash` also covers zsh and Git Bash. */
+export type CommandDialect = 'bash' | 'pwsh'
+
+/** Launchers that wrap a real command; their own arguments never name the program. */
+const BASH_WRAPPERS = new Set(['env', 'sudo', 'doas', 'command', 'exec', 'time', 'nohup', 'nice', 'stdbuf', 'timeout', 'caffeinate', 'noglob', 'nocorrect'])
+
+/** Per-wrapper flags whose next word is the flag's value, not the command. */
+const WRAPPER_VALUE_FLAGS: Record<string, ReadonlySet<string>> = {
+  env: new Set(['-u', '--unset', '-C', '--chdir', '-S', '--split-string']),
+  sudo: new Set(['-u', '--user', '-g', '--group', '-p', '--prompt', '-C', '--close-from', '-D', '--chdir', '-h', '--host', '-r', '--role', '-t', '--type', '-U', '--other-user', '-R', '--chroot']),
+  doas: new Set(['-u', '-C']),
+  nice: new Set(['-n', '--adjustment']),
+  time: new Set(['-f', '--format', '-o', '--output']),
+  timeout: new Set(['-s', '--signal', '-k', '--kill-after']),
+  stdbuf: new Set(['-i', '--input', '-o', '--output', '-e', '--error']),
+  caffeinate: new Set(['-t', '-w']),
+  exec: new Set(['-a']),
+}
+
+/** The single-letter value flags of a short-flag cluster (`sudo -iu postgres`). */
+const WRAPPER_VALUE_LETTERS = new Map<string, ReadonlySet<string>>([
+  ['sudo', new Set(['u', 'g', 'p', 'C', 'D', 'h', 'r', 't', 'U', 'R'])],
+  ['doas', new Set(['u', 'C'])],
+  ['env', new Set(['u', 'C', 'S'])],
+  ['nice', new Set(['n'])],
+  ['timeout', new Set(['s', 'k'])],
+  ['stdbuf', new Set(['i', 'o', 'e'])],
+  ['caffeinate', new Set(['t', 'w'])],
+  ['exec', new Set(['a'])],
+])
+
+/** Shell constructs that carry no program identity. */
+const BASH_HEADS = new Set(['[', '[[', 'for', 'if', 'while', 'until', 'case', 'do', 'then', 'else', 'elif', 'function', 'select', 'coproc'])
+const BASH_DECLARATIONS = new Set(['export', 'local', 'declare', 'readonly', 'typeset'])
+const PWSH_HEADS = new Set(['if', 'elseif', 'else', 'for', 'foreach', 'while', 'do', 'switch', 'function', 'filter', 'param', 'begin', 'process', 'end', 'try', 'catch', 'finally', 'trap', 'return', 'throw', 'break', 'continue', 'using', 'class', 'enum'])
+
+interface Word {
+  word: string
+  end: number
+}
+
+/** Read one shell word: quotes are stripped, a backslash escapes a space, and whitespace/control operators end it. */
+function readWord(text: string): Word | null {
+  let i = 0
+  let word = ''
+  while (i < text.length) {
+    const c = text[i]
+    if (c === '"' || c === "'") {
+      const quote = c
+      i++
+      while (i < text.length && text[i] !== quote) {
+        if (quote === '"' && text[i] === '\\' && i + 1 < text.length && /[\\$`"\n]/.test(text[i + 1])) { i++; word += text[i]; i++; continue }
+        word += text[i]
+        i++
+      }
+      if (i < text.length) i++
+      continue
+    }
+    if (c === '\\' && i + 1 < text.length && /\s/.test(text[i + 1])) { word += text[i + 1]; i += 2; continue }
+    if (/\s/.test(c) || c === ';' || c === '&' || c === '|' || c === ')' || c === '}') break
+    word += c
+    i++
+  }
+  return word === '' ? null : { word, end: i }
+}
+
+/** The index just past the `)` matching the `(` at `open`; quote content is skipped. */
+function scanParens(text: string, open: number): number {
+  let depth = 0
+  for (let i = open; i < text.length; i++) {
+    const c = text[i]
+    if (c === '"' || c === "'") {
+      const close = text.indexOf(c, i + 1)
+      if (close === -1) return text.length
+      i = close
+      continue
+    }
+    if (c === '(') depth++
+    else if (c === ')' && --depth === 0) return i + 1
+  }
+  return text.length
+}
+
+/** Consume a bash `NAME=value`; the value stays a literal only when no expansion can change it. */
+function readAssignment(text: string): { name: string; value: string | null; end: number } | null {
+  const head = /^([A-Za-z_][A-Za-z0-9_]*)\+?=/.exec(text)
+  if (head === null) return null
+  const compound = head[0].includes('+')
+  let i = head[0].length
+  const first = text[i]
+  let value: string | null = null
+  if (first === '"' || first === "'") {
+    let j = i + 1
+    let raw = ''
+    while (j < text.length && text[j] !== first) {
+      if (first === '"' && text[j] === '\\' && j + 1 < text.length && /[\\$`"\n]/.test(text[j + 1])) { j++; raw += text[j]; j++; continue }
+      raw += text[j]
+      j++
+    }
+    i = j < text.length ? j + 1 : text.length
+    value = first === "'" || !/[$`]/.test(raw) ? raw : null
+  } else if (text.startsWith('$(', i)) {
+    i = scanParens(text, i + 1)
+  } else if (first === '`') {
+    const end = text.indexOf('`', i + 1)
+    i = end === -1 ? text.length : end + 1
+  } else if (first === '(') {
+    i = scanParens(text, i)
+  } else {
+    const start = i
+    while (i < text.length && !/[\s;&|]/.test(text[i])) i++
+    const raw = text.slice(start, i)
+    value = /[$`]/.test(raw) ? null : raw
+  }
+  let tail = i
+  while (tail < text.length && !/[\s;&|]/.test(text[tail])) {
+    const quote = text[tail]
+    if (quote === '"' || quote === "'") {
+      const close = text.indexOf(quote, tail + 1)
+      if (close === -1) { tail = text.length; break }
+      tail = close + 1
+      continue
+    }
+    tail++
+  }
+  if (tail > i) {
+    i = tail
+    value = null
+  }
+  return { name: head[1], value: compound ? null : value, end: i }
+}
+
+/** Consume a declaration keyword and its options/assignments; a following `;`/`&&` keeps the rest for the next command. */
+function readDeclaration(text: string, vars: Map<string, string | null>): string | null {
+  const first = readWord(text)
+  if (first === null || !BASH_DECLARATIONS.has(first.word)) return null
+  let i = first.end
+  for (let guard = 0; guard < 16; guard++) {
+    const ws = /^[ \t]+/.exec(text.slice(i))
+    if (ws === null) break
+    i += ws[0].length
+    const tail = text.slice(i)
+    if (tail === '' || /^[;|&#]/.test(tail)) break
+    const assigned = readAssignment(tail)
+    if (assigned !== null) {
+      vars.set(assigned.name, assigned.value)
+      i += assigned.end
+      continue
+    }
+    const word = readWord(tail)
+    if (word === null) break
+    i += word.end
+  }
+  return text.slice(i)
+}
+
+/** Strip leading file-descriptor redirections (operator plus its target word); a statement with only redirections
+ *  returns ''. */
+function trimRedirections(text: string): string {
+  let rest = text
+  for (let guard = 0; guard < 8; guard++) {
+    const op = /^\s*(?:&>|[0-9]*[<>]+&?)\s*/.exec(rest)
+    if (op === null) break
+    rest = rest.slice(op[0].length)
+    const target = readWord(rest)
+    if (target === null) break
+    rest = rest.slice(target.end)
+  }
+  return rest
+}
+
+/** Consume `cd …` navigation when another statement follows (`&&`, `;` or a newline, redirects included); a lone
+ *  `cd` stays the head command. */
+function readCdPrefix(text: string): string | null {
+  const head = /^cd[ \t]+/.exec(text)
+  if (head === null) return null
+  const rest = text.slice(head[0].length)
+  let at = 0
+  for (let guard = 0; guard < 4; guard++) {
+    const flag = /^(?:-[PL@e]+|--)[ \t]+/.exec(rest.slice(at))
+    if (flag === null) break
+    at += flag[0].length
+  }
+  const dir = readWord(rest.slice(at))
+  if (dir === null) return null
+  const tail = trimRedirections(rest.slice(at + dir.end))
+  const sep = /^[ \t]*(?:&&|;|\r?\n)[ \t]*/.exec(tail)
+  if (sep === null) return null
+  const next = tail.slice(sep[0].length)
+  return next.trim() === '' ? null : next
+}
+
+/** Consume PowerShell navigation (`cd`/`Set-Location`/`sl`) when another statement follows; a lone one stays the head. */
+function readPwshCdPrefix(text: string): string | null {
+  const head = /^(?:cd|Set-Location|sl)\b[ \t]*/i.exec(text)
+  if (head === null) return null
+  const rest = text.slice(head[0].length)
+  let at = 0
+  for (let guard = 0; guard < 8; guard++) {
+    const flag = /^-(?:Path|LiteralPath)[ \t]+|^-[A-Z]+[ \t]*/i.exec(rest.slice(at))
+    if (flag === null) break
+    at += flag[0].length
+  }
+  const dir = readWord(rest.slice(at))
+  if (dir === null) return null
+  const tail = trimRedirections(rest.slice(at + dir.end))
+  const sep = /^[ \t]*(?:;|&&|\r?\n)[ \t]*/.exec(tail)
+  if (sep === null) return null
+  const next = tail.slice(sep[0].length)
+  return next.trim() === '' ? null : next
+}
+
+/** Consume a launcher and its flags/arguments when a real command still follows; null when the launcher itself is the command. */
+function readWrapper(text: string): string | null {
+  const first = readWord(text)
+  if (first === null) return null
+  const name = normalizeProgram(first.word)
+  if (!BASH_WRAPPERS.has(name)) return null
+  if (name === 'command' && /^\s+-[A-Za-z]*[vV][A-Za-z]*\b/.test(text.slice(first.end))) return null
+  const valueLetters = WRAPPER_VALUE_LETTERS.get(name)
+  let i = first.end
+  let duration = false
+  for (let guard = 0; guard < 24; guard++) {
+    const ws = /^\s+/.exec(text.slice(i))
+    if (ws === null) break
+    i += ws[0].length
+    const tail = text.slice(i)
+    if (tail === '' || /^[;|&#]/.test(tail)) return null
+    if (/^--(?:\s|$)/.test(tail)) { i += 2; continue }
+    if (name === 'env' || name === 'sudo' || name === 'doas') {
+      const assigned = readAssignment(tail)
+      if (assigned !== null) { i += assigned.end; continue }
+    }
+    const flag = /^(-{1,2}[A-Za-z0-9][A-Za-z0-9_-]*)(?:=[^\s]+)?/.exec(tail)
+    if (flag !== null) {
+      i += flag[0].length
+      const long = flag[1].startsWith('--')
+      const single = flag[1].length === 2
+      let takesValue = !flag[0].includes('=') && WRAPPER_VALUE_FLAGS[name]?.has(flag[1])
+      if (!long && !single && !flag[0].includes('=') && valueLetters !== undefined) {
+        const letters = flag[1].slice(1)
+        for (let k = 0; k < letters.length; k++) {
+          if (valueLetters.has(letters[k])) {
+            takesValue = k === letters.length - 1
+            break
+          }
+        }
+      }
+      if (takesValue) {
+        let space = 0
+        while (i + space < text.length && (text[i + space] === ' ' || text[i + space] === '\t')) space++
+        const valueWord = readWord(text.slice(i + space))
+        if (valueWord !== null) i += space + valueWord.end
+      }
+      continue
+    }
+    if (name === 'timeout' && !duration) {
+      const durationWord = readWord(tail)
+      if (durationWord !== null) { i += durationWord.end; duration = true; continue }
+    }
+    break
+  }
+  const next = trimRedirections(text.slice(i)).trimStart()
+  return next === '' || /^[;|&#]/.test(next) ? null : next
+}
+
+/** Resolve a bash head word against assignments seen earlier in the same command; only literal values resolve. */
+function resolveBashWord(word: string, vars: ReadonlyMap<string, string | null>): string | null {
+  if (word === '' || word.startsWith('$(') || word.startsWith('`') || word.includes('`')) return null
+  const simple = /^\$([A-Za-z_][A-Za-z0-9_]*)$/.exec(word) ?? /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/.exec(word)
+  if (simple !== null) return vars.get(simple[1]) ?? null
+  const prefixed = /^\$([A-Za-z_][A-Za-z0-9_]*)/.exec(word) ?? /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}/.exec(word)
+  if (prefixed !== null) {
+    const value = vars.get(prefixed[1])
+    const suffix = word.slice(prefixed[0].length)
+    if (suffix.includes('$') || suffix.includes('`')) return null
+    if (value === undefined || value === null) {
+      const cut = Math.max(suffix.lastIndexOf('/'), suffix.lastIndexOf('\\'))
+      const tail = cut >= 0 ? suffix.slice(cut + 1) : ''
+      return tail === '' ? null : tail
+    }
+    return value + suffix
+  }
+  return word.includes('$') ? null : word
+}
+
+/** Advance to the end of a PowerShell statement without interpreting it; brackets and quotes hold the depth. */
+function skipPwshStatement(text: string, from: number): number {
+  let depth = 0
+  for (let i = from; i < text.length; i++) {
+    const c = text[i]
+    if (c === '"' || c === "'") {
+      const close = text.indexOf(c, i + 1)
+      if (close === -1) return text.length
+      i = close
+      continue
+    }
+    if (c === '#') {
+      const newline = text.indexOf('\n', i)
+      if (newline === -1) return text.length
+      i = newline - 1
+      continue
+    }
+    if (c === '(' || c === '[' || c === '{') depth++
+    else if (c === ')' || c === ']' || c === '}') { if (depth > 0) depth-- }
+    else if (depth === 0 && (c === ';' || c === '\n')) return i
+  }
+  return text.length
+}
+
+/** `[type]$name`, a member/index target, an optional compound assignment, then the value. */
+const PWSH_ASSIGNMENT = new RegExp(
+  '^\\s*(?:\\[[^\\]]+\\]\\s*)?\\$('
+  + '[A-Za-z_][A-Za-z0-9_]*'
+  + '(?:(?::[A-Za-z_][A-Za-z0-9_-]*)|(?:\\[[^\\]]*\\])|(?:\\.[A-Za-z_][A-Za-z0-9_]*))*'
+  + ')\\s*(?:\\+|-|\\*|\\/|%|\\?\\?)?=\\s*',
 )
 
-const SHELL_HEADS = new Set(['{', '}', '(', ')', 'for', 'if', 'while', 'until', 'case', 'do', 'then', 'else', 'elif'])
-
-/** The first real program of a command line, for the summary rail's Programs ranking: leading `cd … &&` navigations,
- * `VAR=value` assignments, and launcher wrappers unwrap, then the basename answers. A shell control head reads as
- * `shell`. Display-only — never throws, never claims more than the head word. */
-export function headProgramOf(cmd: string): string {
-  let rest = cmd.trimStart()
-  for (let i = 0; i < 8; i++) {
-    const lead = HEAD_PREFIX.exec(rest)
-    if (lead === null) break
-    rest = rest.slice(lead[0].length)
+/** Consume a PowerShell assignment (`[type]$name`, `$name.member`, `$name[i]`, `+=`, …); only a quoted literal
+ *  value is resolvable. */
+function readPwshAssignment(text: string): { name: string; value: string | null; end: number } | null {
+  const head = PWSH_ASSIGNMENT.exec(text)
+  if (head === null) return null
+  const compound = /[-+*/%]=|\?\?=/.test(head[0])
+  const i = head[0].length
+  const first = text[i]
+  let value: string | null = null
+  let end = i
+  if (first === '"' || first === "'") {
+    let j = i + 1
+    let raw = ''
+    while (j < text.length && text[j] !== first) {
+      if (first === '"' && text[j] === '`' && j + 1 < text.length) { j++; raw += text[j]; j++; continue }
+      raw += text[j]
+      j++
+    }
+    end = j < text.length ? j + 1 : text.length
+    value = first === "'" || !/[$`]/.test(raw) ? raw : null
+    const tail = text.slice(end)
+    if (!/^[ \t]*(?:;|#|$)/.test(tail) && !/^[ \t]*\r?\n/.test(tail)) {
+      end = skipPwshStatement(text, end)
+      value = null
+    }
+  } else {
+    end = skipPwshStatement(text, i)
   }
-  const word = /^\S+/.exec(rest)?.[0] ?? ''
-  if (word === '' || SHELL_HEADS.has(word)) return word === '' ? '' : 'shell'
-  return word.slice(word.lastIndexOf('/') + 1)
+  return { name: head[1], value: compound ? null : value, end }
+}
+
+/** Resolve a PowerShell head word; a bare/parameter variable resolves only from a literal value. */
+function resolvePwshWord(word: string, vars: ReadonlyMap<string, string | null>): string | null {
+  if (word === '' || word.startsWith('$(')) return null
+  const scoped = /^\$([A-Za-z_][A-Za-z0-9_]*(?::[A-Za-z_][A-Za-z0-9_-]*)*)$/.exec(word) ?? /^\$\{([^}]+)\}$/.exec(word)
+  if (scoped !== null) return vars.get(scoped[1].replace(/^\$/, '')) ?? null
+  const prefixed = /^\$([A-Za-z_][A-Za-z0-9_]*(?::[A-Za-z_][A-Za-z0-9_-]*)?)/.exec(word) ?? /^\$\{([^}]+)\}/.exec(word)
+  if (prefixed !== null) {
+    const name = prefixed[1].replace(/^\$/, '')
+    const suffix = word.slice(prefixed[0].length)
+    if (suffix.includes('$') || suffix.includes('`')) return null
+    const value = vars.get(name)
+    if (value !== undefined && value !== null) return value + suffix
+    const cut = Math.max(suffix.lastIndexOf('/'), suffix.lastIndexOf('\\'))
+    const tail = cut >= 0 ? suffix.slice(cut + 1) : ''
+    return tail === '' ? null : tail
+  }
+  return word.includes('$') || word.includes('`') ? null : word
+}
+
+/** The display identity of a program word: the basename on either separator, without a Windows executable suffix
+ *  (`.exe`/`.cmd`/`.bat`); case is kept. */
+function normalizeProgram(word: string): string {
+  let name = word.trim()
+  const cut = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'))
+  if (cut >= 0) name = name.slice(cut + 1)
+  const dot = name.lastIndexOf('.')
+  if (dot > 0 && /\.(?:exe|cmd|bat)$/i.test(name)) name = name.slice(0, dot)
+  return name.trim()
+}
+
+function bashProgram(cmd: string): string {
+  if (cmd.trim() === '') return ''
+  const vars = new Map<string, string | null>()
+  let rest = cmd.trimStart()
+  for (let guard = 0; guard < 32 && rest !== ''; guard++) {
+    rest = rest.replace(/^[\s;&|]+/, '')
+    if (rest === '') break
+    if (rest.startsWith('#')) {
+      const newline = rest.indexOf('\n')
+      if (newline === -1) break
+      rest = rest.slice(newline + 1)
+      continue
+    }
+    if (/^\\\r?\n/.test(rest)) { rest = rest.replace(/^\\\r?\n[ \t]*/, ''); continue }
+    if (/^!\s/.test(rest)) { rest = rest.slice(1).trimStart(); continue }
+    const unredirected = trimRedirections(rest)
+    if (unredirected !== rest) {
+      rest = unredirected.trimStart()
+      if (rest === '') break
+      continue
+    }
+    const cd = readCdPrefix(rest)
+    if (cd !== null) { rest = cd; continue }
+    const declared = readDeclaration(rest, vars)
+    if (declared !== null) { rest = declared; continue }
+    const assigned = readAssignment(rest)
+    if (assigned !== null) {
+      vars.set(assigned.name, assigned.value)
+      rest = rest.slice(assigned.end).trimStart()
+      continue
+    }
+    const wrapped = readWrapper(rest)
+    if (wrapped !== null) { rest = wrapped; continue }
+    break
+  }
+  if (rest === '' || rest.startsWith('#')) return 'shell'
+  if (rest.startsWith('(') || rest.startsWith('{')) return 'shell'
+  const head = readWord(rest)
+  if (head === null) return 'shell'
+  if (/^[A-Za-z_][A-Za-z0-9_-]*\($/.test(head.word) && rest.slice(head.end).startsWith(')')) return 'shell'
+  if (/^\s*\(\s*\)/.test(rest.slice(head.end))) return 'shell'
+  const word = resolveBashWord(head.word, vars)
+  if (word === null || word === '') return 'shell'
+  const base = word.split('(')[0]
+  if (BASH_HEADS.has(word) || BASH_HEADS.has(base)) return 'shell'
+  return normalizeProgram(word)
+}
+
+function pwshProgram(cmd: string): string {
+  if (cmd.trim() === '') return ''
+  const vars = new Map<string, string | null>()
+  let rest = cmd.trimStart()
+  for (let guard = 0; guard < 32 && rest !== ''; guard++) {
+    rest = rest.replace(/^[\s;]+/, '')
+    if (rest === '') break
+    if (rest.startsWith('#')) {
+      const newline = rest.indexOf('\n')
+      if (newline === -1) break
+      rest = rest.slice(newline + 1)
+      continue
+    }
+    if (rest.startsWith('<#')) {
+      const end = rest.indexOf('#>', 2)
+      rest = end === -1 ? '' : rest.slice(end + 2).trimStart()
+      continue
+    }
+    const unredirected = trimRedirections(rest)
+    if (unredirected !== rest) {
+      rest = unredirected.trimStart()
+      if (rest === '') break
+      continue
+    }
+    const cd = readPwshCdPrefix(rest)
+    if (cd !== null) { rest = cd; continue }
+    if (/^\s*\[[^\]]+\]::[A-Za-z_][A-Za-z0-9_.]*\s*(?:\+|-|\*|\/|%|\?\?)?=/.test(rest)) {
+      rest = rest.slice(skipPwshStatement(rest, 0)).trimStart()
+      continue
+    }
+    const assigned = readPwshAssignment(rest)
+    if (assigned !== null) {
+      vars.set(assigned.name, assigned.value)
+      rest = rest.slice(assigned.end).trimStart()
+      continue
+    }
+    break
+  }
+  if (rest === '' || rest.startsWith('#')) return 'pwsh'
+  let invoked = false
+  const call = /^&\s*/.exec(rest)
+  if (call !== null) {
+    invoked = true
+    rest = rest.slice(call[0].length)
+  } else {
+    const dot = /^\.\s+/.exec(rest)
+    if (dot !== null) {
+      invoked = true
+      rest = rest.slice(dot[0].length)
+    }
+  }
+  if (rest === '') return 'pwsh'
+  const quoted = rest.startsWith('"') || rest.startsWith("'")
+  const head = readWord(rest)
+  if (head === null) return 'pwsh'
+  if (head.word.startsWith('(') || head.word.startsWith('[') || head.word.startsWith('{') || head.word.startsWith('@')) return 'pwsh'
+  const bareNumber = /^\d+(?:\.\d+)?(?:\.\.\d+(?:\.\d+)?)?$/.test(head.word)
+  if (!invoked && (quoted || head.word.startsWith('$') || head.word.startsWith('!') || bareNumber || /^-(?:not|join|split)\b/i.test(head.word))) return 'pwsh'
+  const word = resolvePwshWord(head.word, vars)
+  if (word === null || word === '') return 'pwsh'
+  const base = word.split('(')[0].toLowerCase()
+  if (PWSH_HEADS.has(word.toLowerCase()) || PWSH_HEADS.has(base)) return 'pwsh'
+  return normalizeProgram(word)
+}
+
+/** The first real program of a command, for the summary rail's Programs ranking. Bash/zsh/Git Bash read POSIX
+ * quoting, leading assignments (literal values resolve within the same command), declarations, launcher wrappers and
+ * `cd …` navigation; PowerShell reads `&`/`.` call operators, `$var` assignments and quoted paths. Path heads normalize
+ * to the basename (both separators, Windows extensions dropped); a head that cannot name a program (assignment-only,
+ * control structure, unresolved variable/command substitution) falls back to `shell`/`pwsh` rather than inventing one
+ * from its arguments. Display-only — never throws. */
+export function headProgramOf(cmd: string, dialect: CommandDialect = 'bash'): string {
+  return dialect === 'pwsh' ? pwshProgram(cmd) : bashProgram(cmd)
 }
 
 export interface CommandShape {

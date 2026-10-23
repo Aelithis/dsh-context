@@ -147,7 +147,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
         ) : null}
         <div className="lc-cmd-rail-sec lc-cmd-progs">
           <div className="lc-cmd-rail-h lc-cmd-progs-h">
-            <span>{t('cmds.rail.top', { n: programs.length })}</span>
+            <span title={t('cmds.rail.topScope')}>{t('cmds.rail.top', { n: programs.length })}</span>
             {programs.length > 6 ? (
               <input
                 className="lc-cmd-prog-search"

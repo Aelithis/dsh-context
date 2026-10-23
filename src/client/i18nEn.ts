@@ -272,6 +272,7 @@ export const DICT_EN = {
   'cmds.rail.totalTime': 'total time',
   'cmds.rail.background': 'background',
   'cmds.rail.top': 'Programs · {n}',
+  'cmds.rail.topScope': 'First command of each retained run after launchers, assignments and cd navigation, independent of the list filters; unresolvable heads group under shell/pwsh.',
   'cmds.rail.topSearch': 'Filter programs…',
   'cmds.rail.topTip': 'Filter the list to {name}',
   'cmds.rail.attention': 'Attention',

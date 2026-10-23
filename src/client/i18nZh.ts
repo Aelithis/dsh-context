@@ -270,6 +270,7 @@ export const DICT_ZH = {
   'cmds.rail.totalTime': '合计耗时',
   'cmds.rail.background': '后台',
   'cmds.rail.top': '程序分布 · {n}',
+  'cmds.rail.topScope': '按最近保留的每次执行统计，取跳过启动器、赋值和目录切换后的首个命令，不受列表筛选影响；无法解析时归入 shell/pwsh。',
   'cmds.rail.topSearch': '过滤程序…',
   'cmds.rail.topTip': '在列表中过滤 {name}',
   'cmds.rail.attention': '值得注意',

@@ -84,11 +84,11 @@ export function tallyOfCommands(records: readonly CommandRecord[]): CommandStats
   return stats
 }
 
-/** A record's program identity for the rail: the head word for shells, the tool itself for code programs. */
+/** A record's program identity for the rail: the shell head word (dialect-aware), the tool itself for code programs. */
 export function programOf(rec: CommandRecord): string {
   if (rec.tool === 'bash' || rec.tool === 'pwsh') {
-    const head = headProgramOf(rec.cmd)
-    return head === '' ? 'shell' : head
+    const head = headProgramOf(rec.cmd, rec.tool)
+    return head === '' ? (rec.tool === 'pwsh' ? 'pwsh' : 'shell') : head
   }
   return rec.tool
 }

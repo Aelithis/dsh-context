@@ -139,6 +139,11 @@ describe('the rail derivations', () => {
     assert.equal(programOf(cmd(3, { tool: 'run_code', cmd: 'await x()' })), 'run_code')
     assert.equal(programOf(cmd(4, { cmd: 'for f in a; do echo $f; done' })), 'shell')
     assert.equal(programOf(cmd(5, { cmd: '   ' })), 'shell', 'a blank command reads as shell too')
+    assert.equal(programOf(cmd(6, { cmd: 'URL=$(cat u); chrome-devtools x' })), 'chrome-devtools')
+    assert.equal(programOf(cmd(7, { cmd: 'CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; "$CH" --headless' })), 'Google Chrome')
+    assert.equal(programOf(cmd(8, { tool: 'pwsh', cmd: '$exe = "C:\\Tools\\foo.exe"; & $exe --x' })), 'foo')
+    assert.equal(programOf(cmd(9, { tool: 'pwsh', cmd: 'if ($x) { Get-Item y }' })), 'pwsh')
+    assert.equal(programOf(cmd(10, { tool: 'pwsh', cmd: '   ' })), 'pwsh', 'a blank pwsh command reads as pwsh')
   })
 
   test('programsOf ranks every program by count with a stable name tie-break', () => {
