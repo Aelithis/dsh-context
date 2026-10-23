@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement, type ReactNode } from 'react'
 import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, resultTextOf, surfaceSeqOf, tallyOfCommands, viewsOf } from '../commands'
 import type { Command, CommandFilter, CommandSort, CommandView } from '../commands'
 import type { ContentFetcher } from '../services'
@@ -8,7 +8,8 @@ import type { DetailState } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
 import { ClearableInput } from './clearableInput'
 import { makeDetailNote } from './detailNote'
-import { IconCheck, IconCopy, IconShare } from '../primitives'
+import { makeRichText } from './richText'
+import { IconShare } from '../primitives'
 import { Section } from './section'
 import { useRowWindow } from './useRowWindow'
 
@@ -32,6 +33,7 @@ export interface CommandPanelProps {
 export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps> {
   const { t, fmt, fmtTime, fmtDuration } = kit
   const DetailNote = makeDetailNote(kit)
+  const rich = makeRichText(kit)
 
   const FILTERS: readonly CommandFilter[] = ['all', 'failed', 'slow', 'background']
   const SORTS: readonly CommandSort[] = ['latest', 'slowest']
@@ -45,6 +47,35 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     return { glyph: '⊘', cls: 'kill', tip: t(rec.stopped === true ? 'cmds.status.stopped' : 'cmds.status.killed') }
   }
 
+  /** One section card carrying the browser's copy + find pair; the find lens marks matches inside the keyed body only. */
+  function FindCard(props: {
+    label: string
+    text: string
+    meta?: ReactNode
+    leading?: ReactNode
+    trailing?: ReactNode
+    children: ReactNode
+  }): ReactElement {
+    const find = rich.useRichFind(props.text, 'raw')
+    return (
+      <Section
+        label={props.label}
+        foldHead
+        meta={props.meta}
+        actions={<>
+          {props.leading}
+          <rich.RichCopy text={props.text} />
+          {find.button}
+        </>}
+      >
+        {find.bar}
+        {/* Keyed by the text itself: a content change remounts the body outright, so React never diffs over the find bar's DOM marks. */}
+        <div key={find.bodyKey} ref={find.bodyRef}>{props.children}</div>
+        {props.trailing}
+      </Section>
+    )
+  }
+
   return memo(function CommandPanel(props: CommandPanelProps): ReactElement {
     // The memo must not block a locale switch: the tick re-renders on it even when the props are reference-stable.
     kit.useLocaleTick()
@@ -53,7 +84,6 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     const [sort, setSort] = useState<CommandSort>('latest')
     const [query, setQuery] = useState('')
     const [openSeq, setOpenSeq] = useState<number | null>(null)
-    const [copiedSeq, setCopiedSeq] = useState<number | null>(null)
     // The expanded row's result content, read once per target seq through the shared content fetcher (it caches);
     // `miss` is a seq outside the loaded window, `empty` a node with no text blocks, `failed` a rejected read.
     type ResultRead = { state: 'loading' } | { state: 'miss' } | { state: 'empty' } | { state: 'failed' } | { state: 'ready'; text: string }
@@ -247,15 +277,6 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       </div>
     ) : null
 
-    const copyCommand = (rec: Command): void => {
-      const clipboard = (globalThis.navigator as { clipboard?: { writeText?: unknown } } | undefined)?.clipboard
-      if (typeof clipboard?.writeText !== 'function') return
-      void (clipboard.writeText as (text: string) => Promise<void>).call(clipboard, rec.cmd).then(() => {
-        setCopiedSeq(rec.seq)
-        setTimeout(() => { setCopiedSeq(cur => (cur === rec.seq ? null : cur)) }, 1200)
-      }, () => {})
-    }
-
     const detailOf = (view: CommandView): ReactElement => {
       const rec = view.rec
       const target = surfaceSeqOf(rec)
@@ -296,54 +317,50 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       const factsEl = facts.length > 0 ? <div className="lc-cmd-detail-facts">{facts}</div> : null
       const stampSuffix = stamp !== null ? ' · ' + t('browser.stepAt', { t: stamp.turn, s: stamp.step }) : ''
       const resultCard = target !== undefined && props.fetchContent !== undefined ? (
-        <Section
-          label={t('block.result')}
-          meta={result !== undefined && result.state === 'ready'
-            ? <span className="lc-ts-card-meta">{t('cmds.lines', { n: result.text.split(/\r\n|\r|\n/).length })}</span>
-            : undefined}
-        >
-          {result === undefined || result.state === 'loading' ? (
-            <DetailNote state="loading" className="lc-cmd-result-note" />
-          ) : result.state === 'miss' ? (
-            <div className="lc-cmd-result-note">{t('browser.noContent')}</div>
-          ) : result.state === 'empty' ? (
-            <div className="lc-cmd-result-note">{t('cmds.result.empty')}</div>
-          ) : result.state === 'failed' ? (
-            <div className="lc-cmd-result-note">{t('cmds.result.failed')}</div>
-          ) : (
+        result !== undefined && result.state === 'ready' ? (
+          <FindCard
+            label={t('block.result')}
+            text={result.text}
+            meta={<span className="lc-ts-card-meta">{t('cmds.lines', { n: result.text.split(/\r\n|\r|\n/).length })}</span>}
+            trailing={factsEl}
+          >
             <pre className="lc-cmd-full">{result.text}</pre>
-          )}
-          {factsEl}
-        </Section>
+          </FindCard>
+        ) : (
+          <Section label={t('block.result')}>
+            {result === undefined || result.state === 'loading' ? (
+              <DetailNote state="loading" className="lc-cmd-result-note" />
+            ) : result.state === 'miss' ? (
+              <div className="lc-cmd-result-note">{t('browser.noContent')}</div>
+            ) : result.state === 'empty' ? (
+              <div className="lc-cmd-result-note">{t('cmds.result.empty')}</div>
+            ) : (
+              <div className="lc-cmd-result-note">{t('cmds.result.failed')}</div>
+            )}
+            {factsEl}
+          </Section>
+        )
       ) : null
       return (
         <div className="lc-cmd-detail">
-          <Section
+          <FindCard
             label={t('cmds.kv.cmd')}
+            text={rec.cmd}
             meta={<span className="lc-ts-card-meta">{t('cmds.lines', { n: view.shape.lines })}</span>}
-            actions={<>
-              {locatable ? (
-                <button
-                  type="button"
-                  className="lc-find-btn"
-                  title={t('cmds.revealTip') + stampSuffix}
-                  aria-label={t('cmds.act.reveal') + stampSuffix}
-                  onClick={() => { props.onLocate?.(rec) }}
-                ><IconShare size={13} /></button>
-              ) : null}
+            leading={locatable ? (
               <button
                 type="button"
-                className={'lc-rich-copy' + (copiedSeq === rec.seq ? ' lc-rich-copy-on' : '')}
-                title={copiedSeq === rec.seq ? t('cmds.copied') : t('cmds.act.copy')}
-                aria-label={copiedSeq === rec.seq ? t('cmds.copied') : t('cmds.act.copy')}
-                onClick={() => { copyCommand(rec) }}
-              >{copiedSeq === rec.seq ? <IconCheck size={13} /> : <IconCopy size={13} />}</button>
-            </>}
+                className="lc-find-btn"
+                title={t('cmds.revealTip') + stampSuffix}
+                aria-label={t('cmds.act.reveal') + stampSuffix}
+                onClick={() => { props.onLocate?.(rec) }}
+              ><IconShare size={13} /></button>
+            ) : undefined}
+            trailing={resultCard === null ? factsEl : undefined}
           >
             {rec.description !== undefined ? <div className="lc-cmd-why">{rec.description}</div> : null}
             <pre className="lc-cmd-full">{rec.cmd}{rec.cmdTruncated === true ? ' …' : ''}</pre>
-            {resultCard === null ? factsEl : null}
-          </Section>
+          </FindCard>
           {resultCard}
         </div>
       )

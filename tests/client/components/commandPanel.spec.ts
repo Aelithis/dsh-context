@@ -453,6 +453,56 @@ describe('CommandPanel — the result block', () => {
     }
   })
 
+  test('both cards carry the copy and find actions; the result copy writes the result text', async () => {
+    const writes: string[] = []
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      value: { writeText: (t: string) => { writes.push(t); return Promise.resolve() } },
+      configurable: true,
+    })
+    const m = await mount(h(Panel, {
+      commands: richCommands(),
+      fetchContent: async (seq) => (seq === 52 ? RESULT : null),
+    }))
+    try {
+      await click(queryAll(m.container, '.lc-cmd-row')[2]) // the failed vitest run
+      const cards = queryAll(m.container, '.lc-cmd-detail .lc-ts-card')
+      assert.equal(cards.length, 2)
+      for (const card of cards) {
+        assert.ok(query(card, '.lc-rich-copy') !== null, 'the copy rides the head')
+        assert.equal(queryAll(card, '.lc-find-btn').length, 1, 'the find toggle rides the head')
+      }
+      await click(query(cards[1], '.lc-rich-copy'))
+      assert.deepEqual(writes, ['progress 21:40\nVERDICT: PASS'], 'the result copy writes the result text')
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('the find lens opens in a detail card and marks matches inside its own body', async () => {
+    const m = await mount(h(Panel, {
+      commands: [cmd(1, { cmd: 'git status --short', description: 'check the tree', resultSeq: 2 })],
+      fetchContent: async () => ({ kind: 'tool', seq: 2, content: [{ type: 'text', text: 'nothing here' }] }),
+    }))
+    try {
+      await click(query(m.container, '.lc-cmd-row'))
+      const cards = queryAll(m.container, '.lc-cmd-detail .lc-ts-card')
+      await click(query(cards[0], '.lc-find-btn'))
+      const input = query<HTMLInputElement>(cards[0], '.lc-find-input')
+      assert.equal(document.activeElement, input, 'the find input takes focus on open')
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(input, 'status')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
+      assert.equal(query(cards[0], '.lc-find-count')?.textContent, '1/1', 'one match in the command card')
+      assert.ok(query(cards[0], '.lc-find-mark') !== null, 'the match is marked in the command body')
+      assert.equal(queryAll(cards[1], '.lc-find').length, 0, 'the lens stays scoped to its own card')
+    } finally {
+      await m.unmount()
+    }
+  })
+
   test('a pending read shows the loading note; a null, rejected, or text-less read shows the miss note', async () => {
     let release: (node: unknown) => void = () => {}
     const deferred = new Promise(resolve => { release = resolve })
@@ -463,6 +513,8 @@ describe('CommandPanel — the result block', () => {
     try {
       await click(query(m.container, '.lc-cmd-row'))
       assert.ok(text(query(m.container, '.lc-cmd-result-note')).includes('Loading history…'))
+      const resultCard = queryAll(m.container, '.lc-cmd-detail .lc-ts-card')[1]
+      assert.equal(queryAll(resultCard, '.lc-rich-copy, .lc-find-btn').length, 0, 'a note-only result card carries no actions')
       await act(async () => { release(null) })
       assert.ok(text(query(m.container, '.lc-cmd-result-note')).includes('outside the loaded message window'), 'a null read misses')
     } finally {
@@ -645,7 +697,7 @@ describe('CommandPanel — empty and channel states', () => {
       // No clipboard at all: the click is a silent no-op.
       Object.defineProperty(globalThis.navigator, 'clipboard', { value: undefined, configurable: true })
       await click(copyBtn)
-      assert.equal(copyBtn.getAttribute('title'), 'Copy')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy Raw Text')
       // A failing write never claims the copy.
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         value: { writeText: () => Promise.reject(new Error('denied')) },
@@ -653,7 +705,7 @@ describe('CommandPanel — empty and channel states', () => {
       })
       await click(copyBtn)
       await act(async () => {})
-      assert.equal(copyBtn.getAttribute('title'), 'Copy')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy Raw Text')
       // A landed write flashes the label, then resets after the timeout.
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         value: { writeText: () => Promise.resolve() },
@@ -663,7 +715,7 @@ describe('CommandPanel — empty and channel states', () => {
       await act(async () => {})
       assert.equal(copyBtn.getAttribute('title'), 'Copied')
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
-      assert.equal(copyBtn.getAttribute('title'), 'Copy')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy Raw Text')
     } finally {
       await m.unmount()
     }
@@ -723,7 +775,7 @@ describe('CommandPanel — empty and channel states', () => {
       assert.equal(secondCopy.getAttribute('title'), 'Copied')
       // The first row's timer now fires while the SECOND seq is lit: it must not clear the newer flash.
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
-      assert.equal(secondCopy.getAttribute('title'), 'Copy')
+      assert.equal(secondCopy.getAttribute('title'), 'Copy Raw Text')
     } finally {
       await m.unmount()
     }
