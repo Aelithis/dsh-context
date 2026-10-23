@@ -438,11 +438,11 @@ describe('client entry: placement gating', () => {
     assert.deepEqual(ctx.slots.of('conversation.view'), [])
   })
 
-  test("the persisted 'sidebar' placement skips the conversation tab and keeps the sidebar", () => {
+  test("the persisted 'sidebar' placement skips the Context tab and keeps the sidebar", () => {
     const scope = scopeWith({ status: 'ready', value: { defaultPlacement: 'sidebar' }, writable: true })
     const ctx = new TestClientCtx({ services: { configForms: formsServing(scope) } })
     applyTo(ctx)
-    assert.deepEqual(ctx.slots.of('conversation.view'), [], 'the dropped tabs never registered')
+    assert.deepEqual(ctx.slots.of('conversation.view').map(e => e.registration.id), ['fleet'], 'the Context tab is dropped; the Fleet tab is not')
     const tabs = registry()
     ctx.setService('sidebarRightTabs', tabs)
     assert.equal(tabs.definitions.length, 1, 'the kept sidebar still registers')

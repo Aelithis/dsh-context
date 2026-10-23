@@ -1,7 +1,6 @@
-/** `defaultPlacement` decides whether tabs are served; `fleetTab` is this tab's own live switch. */
+/** The Context panel's placement never gates this tab — only its own switch does. */
 
 import type { Translate } from './i18n'
-import { wantsConversationTabs } from './placement'
 import type { ContextSettings } from './settings'
 import type { ClientCtx } from './services'
 import { watchGate } from './toggleGate'
@@ -17,7 +16,7 @@ export function watchFleetTab(
 ): () => void {
   return watchGate(
     settings.store,
-    () => wantsConversationTabs(settings) && settings.fleetTab() === 'show',
+    () => settings.fleetTab() === 'show',
     () => [ctx.slots.inject('conversation.view', () => ctx.slots.register(
       { name: 'conversation.view', id: 'fleet', order: FLEET_ORDER, locale: ns, label: () => t('tab.fleet') },
       view,

@@ -65,16 +65,16 @@ describe('watchFleetTab — the Fleet tab\'s own gate', () => {
     ctx.dispose()
   })
 
-  test('a sidebar-only placement keeps the tab off whatever the preference says', () => {
+  test('the Context panel\'s placement never gates the tab', () => {
     const ctx = new TestClientCtx()
     const settings = createContextSettings()
     settings.set('defaultPlacement', 'sidebar')
     const { dispose } = wire(ctx, settings)
-    assert.deepEqual(ctx.slots.of('conversation.view'), [], 'placement-sidebar serves no conversation tabs')
+    assert.equal(ctx.slots.of('conversation.view').length, 1, 'a sidebar-only Context panel leaves the tab served')
     settings.set('defaultPlacement', 'all')
     assert.equal(ctx.slots.of('conversation.view').length, 1)
-    settings.set('defaultPlacement', 'sidebar')
-    assert.deepEqual(ctx.slots.of('conversation.view'), [])
+    settings.set('defaultPlacement', 'tab')
+    assert.equal(ctx.slots.of('conversation.view').length, 1, 'no placement churn')
     dispose()
     assert.deepEqual(ctx.slots.of('conversation.view'), [])
     ctx.dispose()

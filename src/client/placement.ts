@@ -6,11 +6,6 @@ export interface PlacementMounts {
   sidebar(): unknown
 }
 
-/** 'sidebar' serves no conversation-view tabs; the Fleet tab's own switch layers on top (fleetTab.ts). */
-export function wantsConversationTabs(settings: ContextSettings): boolean {
-  return settings.defaultPlacement() !== 'sidebar'
-}
-
 export function watchPlacement(settings: ContextSettings, mounts: PlacementMounts): () => void {
   let tab: (() => void) | undefined
   let sidebar: (() => void) | undefined
@@ -19,7 +14,7 @@ export function watchPlacement(settings: ContextSettings, mounts: PlacementMount
   let tabMounted = false
   let sidebarMounted = false
   const mount = (placement: DefaultPlacement): void => {
-    const wantTab = wantsConversationTabs(settings)
+    const wantTab = placement !== 'sidebar'
     const wantSidebar = placement !== 'tab'
     if (wantTab && !tabMounted) {
       const result: unknown = mounts.tab()

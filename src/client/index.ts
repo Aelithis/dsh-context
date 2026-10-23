@@ -74,7 +74,6 @@ function apply(ctx: ClientCtx): void {
     sidebar: () => watchSidebarContextTab(ctx, ContextView, t, NS),
   }), 'dsh-context: placement')
 
-  // The Fleet tab: its own show/hide preference on top of the placement gate (fleetTab.ts).
   ctx.effect(() => watchFleetTab(
     ctx,
     settings,
