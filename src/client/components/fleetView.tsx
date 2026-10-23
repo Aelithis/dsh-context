@@ -61,8 +61,8 @@ export function makeFleetView(
     const [hoverId, setHoverId] = useState<string | null>(null)
     const [pinnedId, setPinnedId] = useState<string | null>(null)
     // The boards' cap rides the network card: the task card grows with the graph and bottoms out at its own default
-    // otherwise. Measure the graph's NATURAL content height (last child's offset + card padding) — the stretched
-    // column's height would self-fulfill the cap and never bind when the members card drives the row.
+    // otherwise. Measure the card's rendered height (last child's offset + card padding); when the members column
+    // stretches the card, the subtraction returns the task card's current height, so the cap cannot grow the row it measures.
     const colsRef = useRef<HTMLDivElement | null>(null)
     useEffect(() => {
       const row = colsRef.current

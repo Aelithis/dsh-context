@@ -307,6 +307,7 @@ describe('AgentGraph — the family tree', () => {
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.ok(text(m.container).includes('No subagents yet'))
     assert.equal(queryAll(m.container, '.lc-agent-card').length, 1)
+    assert.ok(!query<HTMLElement>(m.container, '.lc-agents-stage').className.includes('lc-agents-stage-tall'))
 
     await act(async () => {
       face.setState({
@@ -343,6 +344,7 @@ describe('AgentGraph — the family tree', () => {
     const m = await mount(h(View, { sessionId: 'root', self: selfStats() }))
     assert.equal(queryAll(m.container, '.lc-agent-card').length, 50)
     assert.ok(text(m.container).includes('50 agents'))
+    assert.ok(query<HTMLElement>(m.container, '.lc-agents-stage').className.includes('lc-agents-stage-tall'))
     assert.ok(!query<HTMLElement>(m.container, '.lc-agents-stage').className.includes('lc-agents-stage-all'))
 
     const toggle = query<HTMLElement>(m.container, '.lc-agents-toggle')

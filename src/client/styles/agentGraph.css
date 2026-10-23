@@ -83,6 +83,16 @@
    lc-col-browser idiom); wrapped on its own line the column holds only this card, so the stretch is a no-op. The base size stays the card's own content (`flex-basis: auto`) — a 0 basis lets engines size the row line under the canvas and clip levels; content stays top-aligned. */
 .lc-col-graph { display: flex; flex-direction: column; }
 .lc-col-graph > .lc-card { flex: 1 1 auto; }
+/* The stretched card hands its spare height down to the stage instead of stopping at the fold and leaving the card's
+   bottom empty. A canvas taller than the fold (STAGE_H) keeps it as the stage's basis — so a card shorter than the
+   family scrolls and a taller one fills — while a shorter canvas stays content-sized. Show all drops the basis so the
+   card grows to the whole family. */
+.lc-col-graph .lc-agents { display: flex; flex-direction: column; }
+.lc-col-graph .lc-agents-split { flex: 1 1 auto; align-items: stretch; min-height: 0; }
+.lc-col-graph .lc-agents-main { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.lc-col-graph .lc-agents-stage { flex: 1 1 auto; max-height: none; min-height: 0; }
+.lc-col-graph .lc-agents-stage-tall { flex-basis: 560px; }
+.lc-col-graph .lc-agents-stage-all { flex-basis: auto; }
 .lc-agent-pinned { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 70%, var(--dsw-alias-border-l2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 35%, transparent); }
 .lc-agents-chip-team { color: var(--dsw-alias-brand-primary, var(--color-blue-500)); border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 40%, transparent); }
 .lc-inspector[data-pinned] { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary, var(--color-blue-500)) 45%, var(--dsw-alias-border-l2)); }

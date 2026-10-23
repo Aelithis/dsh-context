@@ -41,7 +41,7 @@ export interface AgentGraphProps {
 }
 
 const STAGGER_CAP = 8
-/** The graph's viewport height, mirrored by `.lc-agents-stage`'s max-height in agentGraph.css. */
+/** The graph's fold height, mirrored by the stage's max-height and Fleet flex-basis in agentGraph.css. */
 const STAGE_H = 560
 
 function linkPath(x1: number, y1: number, x2: number, y2: number): string {
@@ -78,17 +78,22 @@ export function makeAgentGraph(
     // Re-layout whenever the stage's visible width changes (sidebar toggles, resizes, split views).
     const stageRef = useRef<HTMLDivElement | null>(null)
     const [stageWidth, setStageWidth] = useState(0)
+    const [stageHeight, setStageHeight] = useState(0)
     useEffect(() => {
       /* v8 ignore start -- jsdom has neither ResizeObserver nor layout; tests exercise the natural-pitch fallback (stageWidth 0). */
       const el = stageRef.current
       if (el === null || typeof ResizeObserver !== 'function') return
       // contentRect, not clientWidth: the stage's 4px side padding is breathing room for hover shadows, so clientWidth
       // would overshoot the content box by that padding and arm a phantom horizontal scrollbar when the layout fits exactly.
-      const observer = new ResizeObserver(([entry]) => { setStageWidth(entry.contentRect.width) })
+      const observer = new ResizeObserver(([entry]) => {
+        setStageWidth(entry.contentRect.width)
+        // Only the folded stage tells how much canvas is on screen; expanded, the stage IS the canvas.
+        if (!showAll) setStageHeight(entry.contentRect.height)
+      })
       observer.observe(el)
       return () => { observer.disconnect() }
       /* v8 ignore stop */
-    }, [])
+    }, [showAll])
     // Keep a swipe off the stage from chaining into browser history (overscroll.ts covers the WebKit gap).
     useEffect(() => {
       const el = stageRef.current
@@ -101,7 +106,10 @@ export function makeAgentGraph(
     const layout = useMemo(() => (forest !== null ? layoutForest(forest, stageWidth) : null), [forest, stageWidth])
 
     if (forest === null || layout === null) return null
-    const overflowsStage = layout.height > STAGE_H
+    const tallFamily = layout.height > STAGE_H
+    // The Fleet stage fills the stretched card, so the measured stage height, not the fold, decides whether the canvas
+    // clips; an expanded stage keeps the toggle reachable even when a resize brings the layout under the fold.
+    const overflowsStage = showAll || (tallFamily && layout.height > stageHeight)
     const byId = new Map(forest.nodes.map(n => [n.id, n]))
     /** v8 ignore next 1 -- agentForestOf anchors the forest at the current session, so a current node always exists. */
     const current = forest.nodes.find(n => n.isCurrent) ?? forest.nodes[0]
@@ -204,7 +212,7 @@ export function makeAgentGraph(
 
         <div className="lc-agents-split">
           <div className="lc-agents-main">
-            <div className={'lc-agents-stage' + (showAll ? ' lc-agents-stage-all' : '')} ref={stageRef}>
+            <div className={'lc-agents-stage' + (tallFamily ? ' lc-agents-stage-tall' : '') + (showAll ? ' lc-agents-stage-all' : '')} ref={stageRef}>
               <div
                 className={'lc-agents-canvas' + (lit !== null ? ' lc-agents-focus' : '')}
                 style={{ width: layout.width, height: layout.height }}
