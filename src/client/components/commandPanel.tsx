@@ -1,12 +1,15 @@
 import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement } from 'react'
-import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, tallyOfCommands, viewsOf } from '../commands'
+import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, resultTextOf, surfaceSeqOf, tallyOfCommands, viewsOf } from '../commands'
 import type { Command, CommandFilter, CommandSort, CommandView } from '../commands'
+import type { ContentFetcher } from '../services'
 import { nameColorOf } from '../nameColor'
 import type { CommandStats } from '../../shared/types'
 import type { DetailState } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
 import { ClearableInput } from './clearableInput'
 import { makeDetailNote } from './detailNote'
+import { IconCheck, IconCopy, IconShare } from '../primitives'
+import { Section } from './section'
 import { useRowWindow } from './useRowWindow'
 
 export interface CommandPanelProps {
@@ -20,6 +23,8 @@ export interface CommandPanelProps {
   stampOf?: (seq: number) => { turn: number; step: number } | null
   /** Reveal the run's result message in the Context Browser; absent = no reveal affordance. */
   onLocate?: (rec: Command) => void
+  /** On-demand content for one surface-node seq; absent = the detail serves no result block. */
+  fetchContent?: ContentFetcher
   state?: DetailState
   onRetry?: () => void
 }
@@ -49,6 +54,27 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     const [query, setQuery] = useState('')
     const [openSeq, setOpenSeq] = useState<number | null>(null)
     const [copiedSeq, setCopiedSeq] = useState<number | null>(null)
+    // The expanded row's result content, read once per target seq through the shared content fetcher (it caches);
+    // `miss` is a seq outside the loaded window, `empty` a node with no text blocks, `failed` a rejected read.
+    type ResultRead = { state: 'loading' } | { state: 'miss' } | { state: 'empty' } | { state: 'failed' } | { state: 'ready'; text: string }
+    const [results, setResults] = useState<Partial<Record<number, ResultRead>>>({})
+    const openRec = openSeq === null ? undefined : commands.find(rec => rec.seq === openSeq)
+    const openTarget = openRec !== undefined ? surfaceSeqOf(openRec) : undefined
+    useEffect(() => {
+      const fetchContent = props.fetchContent
+      if (openTarget === undefined || fetchContent === undefined) return
+      let live = true
+      setResults(cur => (cur[openTarget] !== undefined ? cur : { ...cur, [openTarget]: { state: 'loading' } }))
+      void fetchContent(openTarget).then(
+        (node) => {
+          if (!live) return
+          const text = node === null ? null : resultTextOf(node)
+          setResults(cur => ({ ...cur, [openTarget]: node === null ? { state: 'miss' } : text === null ? { state: 'empty' } : { state: 'ready', text } }))
+        },
+        () => { if (live) setResults(cur => ({ ...cur, [openTarget]: { state: 'failed' } })) },
+      )
+      return () => { live = false }
+    }, [openTarget, props.fetchContent])
 
     const q = query.trim().toLowerCase()
     // Past the threshold the list windows; below it every matched row stays in the DOM for browser find and select-all.
@@ -230,9 +256,11 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       }, () => {})
     }
 
-    const detailOf = (rec: Command): ReactElement => {
-      const target = rec.parent ?? rec.resultSeq
+    const detailOf = (view: CommandView): ReactElement => {
+      const rec = view.rec
+      const target = surfaceSeqOf(rec)
       const locatable = props.onLocate !== undefined && target !== undefined
+      const stamp = target !== undefined ? props.stampOf?.(target) ?? null : null
       const facts: ReactElement[] = []
       if (rec.exit !== undefined && rec.tool !== 'run_code') {
         facts.push(
@@ -264,22 +292,59 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       if (rec.denied === true) facts.push(<span key="deny">{t('cmds.denied')}</span>)
       if (rec.signal !== undefined) facts.push(<span key="sig">{t('cmds.signalOf', { s: rec.signal })}</span>)
       if (rec.sandbox !== undefined) facts.push(<span key="sand">{t('cmds.sandboxAsk', { s: rec.sandbox })}</span>)
-      const stamp = target !== undefined ? props.stampOf?.(target) ?? null : null
+      const result = target !== undefined ? results[target] : undefined
+      const factsEl = facts.length > 0 ? <div className="lc-cmd-detail-facts">{facts}</div> : null
+      const stampSuffix = stamp !== null ? ' · ' + t('browser.stepAt', { t: stamp.turn, s: stamp.step }) : ''
+      const resultCard = target !== undefined && props.fetchContent !== undefined ? (
+        <Section
+          label={t('block.result')}
+          meta={result !== undefined && result.state === 'ready'
+            ? <span className="lc-ts-card-meta">{t('cmds.lines', { n: result.text.split(/\r\n|\r|\n/).length })}</span>
+            : undefined}
+        >
+          {result === undefined || result.state === 'loading' ? (
+            <DetailNote state="loading" className="lc-cmd-result-note" />
+          ) : result.state === 'miss' ? (
+            <div className="lc-cmd-result-note">{t('browser.noContent')}</div>
+          ) : result.state === 'empty' ? (
+            <div className="lc-cmd-result-note">{t('cmds.result.empty')}</div>
+          ) : result.state === 'failed' ? (
+            <div className="lc-cmd-result-note">{t('cmds.result.failed')}</div>
+          ) : (
+            <pre className="lc-cmd-full">{result.text}</pre>
+          )}
+          {factsEl}
+        </Section>
+      ) : null
       return (
         <div className="lc-cmd-detail">
-          {rec.description !== undefined ? <div className="lc-cmd-why">{rec.description}</div> : null}
-          <pre className="lc-cmd-full">{rec.cmd}{rec.cmdTruncated === true ? ' …' : ''}</pre>
-          <div className="lc-cmd-facts">{facts}</div>
-          <div className="lc-cmd-actions">
-            {locatable ? (
-              <button type="button" className="lc-cmd-act" onClick={() => { props.onLocate?.(rec) }}>
-                {t('cmds.reveal')}{stamp !== null ? ` · ${t('browser.stepAt', { t: stamp.turn, s: stamp.step })}` : ''}
-              </button>
-            ) : null}
-            <button type="button" className="lc-cmd-act" onClick={() => { copyCommand(rec) }}>
-              {copiedSeq === rec.seq ? t('cmds.copied') : t('cmds.copy')}
-            </button>
-          </div>
+          <Section
+            label={t('cmds.kv.cmd')}
+            meta={<span className="lc-ts-card-meta">{t('cmds.lines', { n: view.shape.lines })}</span>}
+            actions={<>
+              {locatable ? (
+                <button
+                  type="button"
+                  className="lc-find-btn"
+                  title={t('cmds.revealTip') + stampSuffix}
+                  aria-label={t('cmds.act.reveal') + stampSuffix}
+                  onClick={() => { props.onLocate?.(rec) }}
+                ><IconShare size={13} /></button>
+              ) : null}
+              <button
+                type="button"
+                className={'lc-rich-copy' + (copiedSeq === rec.seq ? ' lc-rich-copy-on' : '')}
+                title={copiedSeq === rec.seq ? t('cmds.copied') : t('cmds.act.copy')}
+                aria-label={copiedSeq === rec.seq ? t('cmds.copied') : t('cmds.act.copy')}
+                onClick={() => { copyCommand(rec) }}
+              >{copiedSeq === rec.seq ? <IconCheck size={13} /> : <IconCopy size={13} />}</button>
+            </>}
+          >
+            {rec.description !== undefined ? <div className="lc-cmd-why">{rec.description}</div> : null}
+            <pre className="lc-cmd-full">{rec.cmd}{rec.cmdTruncated === true ? ' …' : ''}</pre>
+            {resultCard === null ? factsEl : null}
+          </Section>
+          {resultCard}
         </div>
       )
     }
@@ -289,7 +354,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       const open = openSeq === rec.seq
       const st = statusGlyphOf(rec)
       const d = durationOf(rec)
-      const target = rec.parent ?? rec.resultSeq
+      const target = surfaceSeqOf(rec)
       const stamp = target !== undefined ? props.stampOf?.(target) ?? null : null
       const locatable = props.onLocate !== undefined && target !== undefined
       return (
@@ -339,7 +404,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
               )
               : <span className="lc-cmd-time">{stamp !== null ? t('browser.stepAt', { t: stamp.turn, s: stamp.step }) + ' · ' : ''}{fmtTime(rec.time)}</span>}
           </button>
-          {open ? detailOf(rec) : null}
+          {open ? detailOf(view) : null}
         </div>
       )
     }

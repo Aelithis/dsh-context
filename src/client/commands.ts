@@ -56,6 +56,26 @@ function viewOf(rec: CommandRecord, workspace: string | undefined): CommandView 
   return { rec, program: programOf(rec), preview: previewOf(rec, workspace), shape: shapeOfCmd(rec.cmd) }
 }
 
+/** A run's result text for the detail's result block; nested tool-result blocks (a Code-Mode parent's dispatch
+ * result) flatten in. Null when the node carries no text. */
+export function resultTextOf(node: unknown): string | null {
+  const out: string[] = []
+  const walk = (blocks: readonly unknown[]): void => {
+    for (const b of blocks) {
+      const blk = b !== null && typeof b === 'object'
+        ? b as { type?: unknown; kind?: unknown; text?: unknown; content?: unknown }
+        : null
+      const kind = blk !== null ? (typeof blk.type === 'string' ? blk.type : typeof blk.kind === 'string' ? blk.kind : '') : ''
+      if (kind === 'text' && typeof blk?.text === 'string' && blk.text !== '') out.push(blk.text)
+      else if (kind === 'tool-result' && Array.isArray(blk?.content)) walk(blk.content)
+    }
+  }
+  const rec = node !== null && typeof node === 'object' ? node as { content?: unknown; blocks?: unknown } : null
+  const blocks = Array.isArray(rec?.content) ? rec.content : Array.isArray(rec?.blocks) ? rec.blocks : null
+  if (blocks !== null) walk(blocks)
+  return out.length > 0 ? out.join('\n') : null
+}
+
 export function viewsOf(records: readonly CommandRecord[], workspace: string | undefined): CommandView[] {
   return records.map(rec => viewOf(rec, workspace))
 }

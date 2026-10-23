@@ -31,6 +31,7 @@ export const IconSettings = resolveIcon('IconSettingsOutlineMedium')
 export const IconChevronDown = resolveIcon('IconChevronDownOutlineMedium')
 export const IconChevronUp = resolveIcon('IconChevronUpOutlineMedium')
 export const IconSearch = resolveIcon('IconSearchOutlineRegular')
+export const IconShare = resolveIcon('IconShareOutlineRegular')
 
 /** The harness's file-type glyph: its props are its own (`path`/`kind`), not an icon's. */
 export interface FileGlyphProps {

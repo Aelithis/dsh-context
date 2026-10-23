@@ -4,6 +4,7 @@ import { describe, test } from 'vitest'
 import { makeCommandPanel } from '../../../src/client/components/commandPanel'
 import type { Command } from '../../../src/client/commands'
 import { makeKit, mount, query, queryAll, text, click } from '../helpers/kit'
+import type { ConversationNodeLike } from '../../../src/client/services'
 
 const kit = makeKit()
 const Panel = makeCommandPanel(kit)
@@ -199,7 +200,7 @@ describe('CommandPanel — the row detail and actions', () => {
       assert.ok(text(detail).includes('exit 1'))
       assert.ok(text(detail).includes('6.2k chars'))
       assert.ok(text(detail).includes('stderr'))
-      assert.ok(text(detail).includes('Reveal in Context Browser'))
+      assert.ok(query(m.container, '.lc-cmd-detail .lc-find-btn') !== null, 'the reveal affordance rides the head')
       await click(rows[2])
       assert.equal(queryAll(m.container, '.lc-cmd-detail').length, 0, 'clicking again collapses')
     } finally {
@@ -252,8 +253,7 @@ describe('CommandPanel — the row detail and actions', () => {
       Object.defineProperty(globalThis.navigator, 'clipboard', { value: clipboard, configurable: true })
       const rows = queryAll(m.container, '.lc-cmd-row')
       await click(rows[3]) // git status --short
-      const copyBtn = queryAll(m.container, '.lc-cmd-act').find(b => text(b) === 'Copy command')
-      assert.ok(copyBtn !== undefined)
+      const copyBtn = query(m.container, '.lc-cmd-detail .lc-rich-copy')
       await click(copyBtn)
       assert.deepEqual(writes, ['git status --short'])
     } finally {
@@ -428,6 +428,99 @@ describe('CommandPanel — the summary rail', () => {
   })
 })
 
+describe('CommandPanel — the result block', () => {
+  const RESULT: ConversationNodeLike = { kind: 'tool', seq: 52, content: [{ type: 'text', text: 'progress 21:40\nVERDICT: PASS' }] }
+
+  test('the result block reads the target node through fetchContent; a cached re-expand skips the loading note', async () => {
+    const m = await mount(h(Panel, {
+      commands: richCommands(),
+      fetchContent: async (seq) => (seq === 52 ? RESULT : null),
+    }))
+    try {
+      await click(queryAll(m.container, '.lc-cmd-row')[2]) // the failed vitest run → resultSeq 52
+      const cards = queryAll(m.container, '.lc-cmd-detail .lc-ts-card')
+      assert.equal(cards.length, 2, 'one card for the command, one for the result')
+      assert.ok(text(cards[1]).includes('VERDICT: PASS'))
+      assert.ok(text(cards[1]).includes('2 lines'), 'the result head counts its lines')
+      assert.ok(query(cards[1], '.lc-cmd-detail-facts') !== null, 'the facts band closes the result card')
+      assert.equal(queryAll(cards[0], '.lc-cmd-detail-facts').length, 0, 'the command card stays clean')
+      await click(queryAll(m.container, '.lc-cmd-row')[2])
+      assert.equal(queryAll(m.container, '.lc-cmd-detail').length, 0, 'collapse')
+      await click(queryAll(m.container, '.lc-cmd-row')[2])
+      assert.ok(text(query(m.container, '.lc-cmd-detail')).includes('VERDICT: PASS'), 'the ready text survives the re-expand')
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('a pending read shows the loading note; a null, rejected, or text-less read shows the miss note', async () => {
+    let release: (node: unknown) => void = () => {}
+    const deferred = new Promise(resolve => { release = resolve })
+    const m = await mount(h(Panel, {
+      commands: [cmd(1, { resultSeq: 2 })],
+      fetchContent: () => deferred as Promise<null>,
+    }))
+    try {
+      await click(query(m.container, '.lc-cmd-row'))
+      assert.ok(text(query(m.container, '.lc-cmd-result-note')).includes('Loading history…'))
+      await act(async () => { release(null) })
+      assert.ok(text(query(m.container, '.lc-cmd-result-note')).includes('outside the loaded message window'), 'a null read misses')
+    } finally {
+      await m.unmount()
+    }
+    const rejected = await mount(h(Panel, {
+      commands: [cmd(1, { resultSeq: 2 })],
+      fetchContent: () => Promise.reject(new Error('down')),
+    }))
+    try {
+      await click(query(rejected.container, '.lc-cmd-row'))
+      await act(async () => {})
+      assert.ok(text(query(rejected.container, '.lc-cmd-result-note')).includes('Result failed to load'), 'a rejection states the failure')
+    } finally {
+      await rejected.unmount()
+    }
+    const textless = await mount(h(Panel, {
+      commands: [cmd(1, { resultSeq: 2 })],
+      fetchContent: async () => ({ kind: 'tool', seq: 2, content: [{ type: 'image' }] }),
+    }))
+    try {
+      await click(query(textless.container, '.lc-cmd-row'))
+      await act(async () => {})
+      assert.ok(text(query(textless.container, '.lc-cmd-result-note')).includes('No text output'), 'no text blocks — the empty note serves')
+    } finally {
+      await textless.unmount()
+    }
+  })
+
+  test('a late answer after unmount writes nothing', async () => {
+    let settle: (node: ConversationNodeLike | null, reject?: boolean) => void = () => {}
+    const fetcher = (): Promise<ConversationNodeLike | null> => new Promise((res, rej) => {
+      settle = (node, reject) => (reject === true ? rej(new Error('down')) : res(node))
+    })
+    for (const [node, reject] of [[RESULT, false], [null, true]] as const) {
+      const m = await mount(h(Panel, { commands: [cmd(1, { resultSeq: 2 })], fetchContent: fetcher }))
+      try {
+        await click(query(m.container, '.lc-cmd-row'))
+      } finally {
+        await m.unmount()
+      }
+      await act(async () => { settle(node, reject) })
+    }
+  })
+
+  test('without a fetcher the detail carries no result card and the facts close the command card', async () => {
+    const m = await mount(h(Panel, { commands: richCommands() }))
+    try {
+      await click(queryAll(m.container, '.lc-cmd-row')[2])
+      const cards = queryAll(m.container, '.lc-cmd-detail .lc-ts-card')
+      assert.equal(cards.length, 1, 'no fetcher — no result card')
+      assert.ok(query(cards[0], '.lc-cmd-detail-facts') !== null, 'the facts band closes the command card')
+    } finally {
+      await m.unmount()
+    }
+  })
+})
+
 describe('CommandPanel — empty and channel states', () => {
   test('an empty log, a loading channel, and a failed channel each render their note', async () => {
     const empty = await mount(h(Panel, { commands: [] }))
@@ -516,9 +609,8 @@ describe('CommandPanel — empty and channel states', () => {
       for (const part of ['fetch it', 'exit 28', '40.0s', '/repo/deep', 'timeout 40.0s', '30.0k chars', 'truncated', 'stderr', 'timed out', 'sandbox denied', 'signal SIGTERM', 'asked full']) {
         assert.ok(detail.includes(part), `detail shows: ${part}`)
       }
-      const reveal = queryAll(m.container, '.lc-cmd-act').find(b => text(b).startsWith('Reveal in Context Browser'))
-      assert.ok(reveal !== undefined)
-      assert.ok(text(reveal).includes('T3 S2'), 'the action carries the step stamp')
+      const reveal = query(m.container, '.lc-cmd-detail .lc-find-btn')
+      assert.ok((reveal.getAttribute('title') ?? '').includes('T3 S2'), 'the action carries the step stamp')
       await click(reveal)
       assert.deepEqual(located, [full])
     } finally {
@@ -536,10 +628,10 @@ describe('CommandPanel — empty and channel states', () => {
     try {
       const rows = queryAll(m.container, '.lc-cmd-row')
       await click(rows[0]) // latest-first: the seq-2 bash row
-      assert.ok(text(query(m.container, '.lc-cmd-facts')).includes('exit 0 ≈'), 'the inferred exit is marked')
+      assert.ok(text(query(m.container, '.lc-cmd-detail-facts')).includes('exit 0 ≈'), 'the inferred exit is marked')
       await click(rows[0])
       await click(queryAll(m.container, '.lc-cmd-row')[1]) // the run_code row
-      assert.ok(!text(query(m.container, '.lc-cmd-facts')).includes('exit 0'), 'a code program has no shell exit code')
+      assert.ok(!text(query(m.container, '.lc-cmd-detail-facts')).includes('exit 0'), 'a code program has no shell exit code')
     } finally {
       await m.unmount()
     }
@@ -549,12 +641,11 @@ describe('CommandPanel — empty and channel states', () => {
     const m = await mount(h(Panel, { commands: [cmd(1, { resultSeq: 2 })] }))
     try {
       await click(query(m.container, '.lc-cmd-row'))
-      const copyBtn = queryAll(m.container, '.lc-cmd-act').find(b => text(b) === 'Copy command')
-      assert.ok(copyBtn !== undefined)
+      const copyBtn = query(m.container, '.lc-cmd-detail .lc-rich-copy')
       // No clipboard at all: the click is a silent no-op.
       Object.defineProperty(globalThis.navigator, 'clipboard', { value: undefined, configurable: true })
       await click(copyBtn)
-      assert.equal(text(copyBtn), 'Copy command')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy')
       // A failing write never claims the copy.
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         value: { writeText: () => Promise.reject(new Error('denied')) },
@@ -562,7 +653,7 @@ describe('CommandPanel — empty and channel states', () => {
       })
       await click(copyBtn)
       await act(async () => {})
-      assert.equal(text(copyBtn), 'Copy command')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy')
       // A landed write flashes the label, then resets after the timeout.
       Object.defineProperty(globalThis.navigator, 'clipboard', {
         value: { writeText: () => Promise.resolve() },
@@ -570,9 +661,9 @@ describe('CommandPanel — empty and channel states', () => {
       })
       await click(copyBtn)
       await act(async () => {})
-      assert.equal(text(copyBtn), 'Copied')
+      assert.equal(copyBtn.getAttribute('title'), 'Copied')
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
-      assert.equal(text(copyBtn), 'Copy command')
+      assert.equal(copyBtn.getAttribute('title'), 'Copy')
     } finally {
       await m.unmount()
     }
@@ -603,8 +694,7 @@ describe('CommandPanel — empty and channel states', () => {
       detail = query(m.container, '.lc-cmd-detail')
       assert.ok(text(detail).includes('≈'))
       assert.ok(text(query(m.container, '.lc-cmd-full')).includes('…'))
-      const reveal = queryAll(m.container, '.lc-cmd-act').find(b => text(b) === 'Reveal in Context Browser')
-      assert.ok(reveal !== undefined, 'no stamp suffix when the stamp lookup misses')
+      assert.ok(query(m.container, '.lc-cmd-detail .lc-find-btn') !== null, 'no stamp suffix when the stamp lookup misses')
     } finally {
       await m.unmount()
     }
@@ -621,21 +711,19 @@ describe('CommandPanel — empty and channel states', () => {
       })
       const rows = queryAll(m.container, '.lc-cmd-row')
       await click(rows[0])
-      const firstCopy = queryAll(m.container, '.lc-cmd-act').find(b => text(b) === 'Copy command')
-      assert.ok(firstCopy !== undefined)
+      const firstCopy = query(m.container, '.lc-cmd-detail .lc-rich-copy')
       await click(firstCopy)
       await act(async () => {})
-      assert.equal(text(firstCopy), 'Copied')
+      assert.equal(firstCopy.getAttribute('title'), 'Copied')
       await click(rows[0]) // collapse the first row
       await click(queryAll(m.container, '.lc-cmd-row')[1])
-      const secondCopy = queryAll(m.container, '.lc-cmd-act').find(b => text(b) === 'Copy command')
-      assert.ok(secondCopy !== undefined)
+      const secondCopy = query(m.container, '.lc-cmd-detail .lc-rich-copy')
       await click(secondCopy)
       await act(async () => {})
-      assert.equal(text(secondCopy), 'Copied')
+      assert.equal(secondCopy.getAttribute('title'), 'Copied')
       // The first row's timer now fires while the SECOND seq is lit: it must not clear the newer flash.
       await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
-      assert.equal(text(secondCopy), 'Copy command')
+      assert.equal(secondCopy.getAttribute('title'), 'Copy')
     } finally {
       await m.unmount()
     }

@@ -12,6 +12,7 @@ import {
   previewOf,
   programOf,
   programsOf,
+  resultTextOf,
   surfaceSeqOf,
   viewsOf,
   tallyOfCommands,
@@ -227,5 +228,22 @@ describe('the rail derivations', () => {
     assert.equal(matchesQuery(rec, 'shell'), true)
     const rc = cmd(2, { tool: 'run_code', cmd: 'await x()' })
     assert.equal(matchesQuery(rc, 'run_code'), true)
+  })
+})
+
+describe("resultTextOf — the detail result preview", () => {
+  test('text blocks join; nested tool-result blocks flatten; the blocks field serves as fallback', () => {
+    assert.equal(resultTextOf({ content: [{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }] }), 'a\nb')
+    assert.equal(resultTextOf({ content: [{ type: 'tool-result', content: [{ kind: 'text', text: 'x' }] }, { type: 'text', text: 'y' }] }), 'x\ny')
+    assert.equal(resultTextOf({ blocks: [{ kind: 'text', text: 'k' }] }), 'k')
+  })
+
+  test('a node with no readable text reads null', () => {
+    assert.equal(resultTextOf(null), null)
+    assert.equal(resultTextOf(undefined), null)
+    assert.equal(resultTextOf('junk'), null)
+    assert.equal(resultTextOf({}), null)
+    assert.equal(resultTextOf({ content: [] }), null)
+    assert.equal(resultTextOf({ content: [null, 'str', { type: 'image' }, { type: 'text', text: '' }, { type: 'tool-result' }, { type: 42 }] }), null)
   })
 })

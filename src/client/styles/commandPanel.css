@@ -95,15 +95,16 @@
 .lc-cmd-time { flex: none; color: var(--dsw-alias-label-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lc-cmd-time-link { cursor: pointer; border-radius: 4px; padding: 0 3px; margin-right: -3px; }
 .lc-cmd-time-link:hover { color: var(--dsw-alias-brand-primary); text-decoration: underline; text-underline-offset: 2px; }
-.lc-cmd-detail { margin: 0 8px 8px 15px; padding: 2px 0 2px 10px; border-left: 2px solid var(--dsw-alias-border-l1); }
-.lc-cmd-why { font-size: 12px; color: var(--dsw-alias-label-secondary); margin: 4px 0; }
-.lc-cmd-full { margin: 4px 0; padding: 8px 10px; max-height: 220px; overflow-y: auto; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; font-family: var(--dsw-alias-mono-font-family, ui-monospace, monospace); font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--dsw-alias-label-primary); }
-.lc-cmd-facts { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--dsw-alias-label-secondary); margin: 6px 0; font-variant-numeric: tabular-nums; }
-.lc-cmd-facts em { font-style: normal; color: var(--dsw-alias-state-warn-primary); margin-left: 4px; }
+/* The expanded detail: the Context Browser's section-card idiom — one card wrapping the whole command (view, find,
+   copy), one for the run's result. The description rides inside the command card; the facts close the last card, so
+   no band floats loose between the cards. */
+.lc-cmd-detail { margin: 0 8px 8px 15px; display: flex; flex-direction: column; gap: 8px; }
+.lc-cmd-why { padding: 7px 10px 1px; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
+.lc-cmd-full { margin: 0; padding: 8px 10px; max-height: 220px; overflow-y: auto; font-family: var(--dsw-alias-mono-font-family, ui-monospace, monospace); font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--dsw-alias-label-primary); }
+.lc-cmd-result-note { padding: 6px 10px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.lc-cmd-detail-facts { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 10px; border-top: 1px solid var(--dsw-alias-border-l1); font-size: 11px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
+.lc-cmd-detail-facts em { font-style: normal; color: var(--dsw-alias-state-warn-primary); margin-left: 4px; }
 .lc-cmd-fact-cwd { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lc-cmd-actions { display: flex; gap: 8px; margin-top: 6px; }
-.lc-cmd-act { border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 6px; cursor: pointer; transition: color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
-.lc-cmd-act:hover { color: var(--dsw-alias-label-primary); }
 
 /* The rail folds to a compact top band, then drops entirely, as the card narrows. */
 @container lc-card (max-width: 719px) {

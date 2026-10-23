@@ -897,7 +897,7 @@ export function makeContextView(
           {cmdsMounted ? (
             /* Keyed like the trend faces: a session switch resets the panel's filter/query/expanded-row state. */
             <CommandPanel key={sessionId} commands={commandList} stats={data.commandStats} floor={data.commandsFloor}
-              workspace={workspace} stampOf={opStampOf} onLocate={locateCommand}
+              workspace={workspace} stampOf={opStampOf} onLocate={locateCommand} fetchContent={fetchContent}
               state={source.detailState} onRetry={source.retryDetail} />
           ) : (
             <div className="lc-card lc-col flex-1 min-w-[min(360px,100%)] lc-deferred-skeleton" style={{ minHeight: 320 }} aria-hidden="true" />
