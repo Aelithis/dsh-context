@@ -242,6 +242,22 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       )
     })
 
+    test('client: the subagent history-address resolver (issue #193)', () => {
+      // The sessions resolver every child history read names its direct parent through; its listed-summary arm is the
+      // extra evidence the 0.2.1 line added.
+      const seam = baseline.client.subagentAddress
+      assert.equal(
+        staging.dshHasString(baseline.tag, seam.needle, seam.file),
+        true,
+        'the sessions direct-parent resolver (subagentAddress)',
+      )
+      assert.equal(
+        staging.dshHasString(baseline.tag, seam.summaryNeedle, seam.file),
+        seam.summaryFallback,
+        'the listed-summary fallback',
+      )
+    })
+
     test('client: the Plugins-panel navigator the settings jump rides', () => {
       // The verb itself; then the tab reset that makes the jump land on the configuration page once a contributed
       // `plugins.tab` has claimed the remembered selection — present only where that slot exists.

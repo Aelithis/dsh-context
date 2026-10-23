@@ -4,7 +4,7 @@
 import { useSyncExternalStore } from 'react'
 import type {
   ClientCtx, ContentFetcher, ConversationNodeLike, HeaderFetcher,
-  HistoryEntryLike, SessionPageFace,
+  HistoryEntryLike, SessionAddressLike, SessionPageFace,
 } from './services'
 import type { HeaderEpochContent } from '../shared/types'
 
@@ -205,13 +205,14 @@ function rowsOf(response: unknown): readonly unknown[] {
   return rows
 }
 
-/** Cut pinned to `seq` (`beforeSeq` one past it); undefined without a face — callers keep their degradation. */
-function pageReaderOf(sessionId: string): ((seq: number) => Promise<unknown>) | undefined {
+/** Cut pinned to `seq` (`beforeSeq` one past it); undefined without a face — callers keep their degradation. The address
+ * resolves per read, so a parent the sessions service learns late still heals the retry. */
+function pageReaderOf(addressOf: () => SessionAddressLike): ((seq: number) => Promise<unknown>) | undefined {
   const page = declaredPage
   if (page === undefined) return undefined
   return (seq) => {
     return page({
-      address: { kind: 'session' as const, sessionId },
+      address: addressOf(),
       throughSeq: seq,
       beforeSeq: seq + 1,
     }, new AbortController().signal)
@@ -219,8 +220,10 @@ function pageReaderOf(sessionId: string): ((seq: number) => Promise<unknown>) | 
 }
 
 /** Per-session fetcher over the gateway history face; undefined when no face resolved at build time. */
-export function makeContentFetcher(sessionId: string): ContentFetcher | undefined {
-  const read = pageReaderOf(sessionId)
+export function makeContentFetcher(
+  addressOf: () => SessionAddressLike,
+): ContentFetcher | undefined {
+  const read = pageReaderOf(addressOf)
   if (read === undefined) return undefined
   const cache = new Map<number, ConversationNodeLike>()
   return async (seq) => {
@@ -262,8 +265,10 @@ function headerContentOf(event: { type: string; data: Record<string, unknown> })
 }
 
 /** On-demand System/Tools content: landed pages cache per seq, so stepping back through epochs reuses them. */
-export function makeHeaderFetcher(sessionId: string): HeaderFetcher | undefined {
-  const read = pageReaderOf(sessionId)
+export function makeHeaderFetcher(
+  addressOf: () => SessionAddressLike,
+): HeaderFetcher | undefined {
+  const read = pageReaderOf(addressOf)
   if (read === undefined) return undefined
   const cache = new Map<number, HeaderEpochContent>()
   return async (seq) => {

@@ -4,7 +4,7 @@ import { CATS } from '../categories'
 import { briefNodes, briefOf } from '../brief'
 import { headlineOf } from '../headline'
 import type { ContextViewProps } from '../services'
-import { conversationNodesOf, headersOf, imageLoaderOf, projectionOf, unsupportedOf } from '../services'
+import { conversationNodesOf, headersOf, imageLoaderOf, projectionOf, sessionAddressOf, unsupportedOf } from '../services'
 import type { ClientCtx, ConversationNodeLike } from '../services'
 import { makeContentFetcher, makeHeaderFetcher, useHistoryFace } from '../historyPage'
 import { useContextSession } from '../sessionData'
@@ -260,15 +260,15 @@ export function makeContextView(
 
     const fetchContent = useMemo(
       () => (typeof sessionId === 'string' && sessionId !== '' && historyFace !== undefined
-        ? makeContentFetcher(sessionId)
+        ? makeContentFetcher(() => sessionAddressOf(ctx, sessionId))
         : undefined),
-      [sessionId, historyFace],
+      [ctx, sessionId, historyFace],
     )
     const fetchHeader = useMemo(
       () => (typeof sessionId === 'string' && sessionId !== '' && historyFace !== undefined
-        ? makeHeaderFetcher(sessionId)
+        ? makeHeaderFetcher(() => sessionAddressOf(ctx, sessionId))
         : undefined),
-      [sessionId, historyFace],
+      [ctx, sessionId, historyFace],
     )
 
     const rootRef = useRef<HTMLDivElement | null>(null)

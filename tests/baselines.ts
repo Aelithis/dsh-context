@@ -29,6 +29,14 @@ export interface ClientSeam {
     sessionsFile: string
     sessionsOpen: boolean
   }
+  /** The subagent history-address resolver (issue #193): the sessions service's direct-parent resolver, plus the
+   * listed-summary fallback that exists only on the `0.2.1` line. */
+  subagentAddress: {
+    file: string
+    needle: string
+    summaryFallback: boolean
+    summaryNeedle: string
+  }
   /** The Plugins-panel navigator the settings jump rides: `pluginNavigation.openBundle` (the panel's own verb, never a DOM
    * walk), plus the `0.2.1` contributed-tab machinery whose remembered selection it resets. */
   pluginsNav: {
@@ -198,6 +206,12 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
         workspaceNeedle: 'openSession(target: SessionTarget): void',
         sessionsFile: 'packages/api/session-controller/src/client/contract/sessions.ts',
         sessionsOpen: false,
+      },
+      subagentAddress: {
+        file: 'packages/api/session-controller/src/client/sessions/manager.ts',
+        needle: 'subagentAddress',
+        summaryFallback: id === 'v0.2.1-rc.2',
+        summaryNeedle: 'summary?.origin',
       },
       pluginsNav: {
         file: 'packages/client/ui-plugin-manager/src/client/index.ts',

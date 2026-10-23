@@ -53,6 +53,52 @@ describe('ContextView — targeted content fetch and image loading', () => {
     ctx.dispose()
   })
 
+  test('a subagent session epoch reads its prompt under the durable parent address (issue #193)', async () => {
+    const calls: unknown[] = []
+    const ctx = new TestClientCtx({
+      services: {
+        sessions: { subagentAddress: () => ({ parentSessionId: 'sv-parent', childSessionId: 'sv-sys', mode: 'continuable' }) },
+        remote: {
+          session: {
+            page: (request: unknown) => {
+              calls.push(request)
+              return Promise.resolve({
+                ok: true,
+                value: {
+                  records: [{
+                    type: 'event',
+                    event: { type: 'system/message', seq: 1, time: 1, data: { message: { content: [{ type: 'text', text: 'SYSTEM FROM PAGE' }] } } },
+                  }],
+                },
+              })
+            },
+          },
+        },
+      },
+    })
+    ctx.setService('remote.session', { get page() { throw new Error('cannot get property "remote.session" without inject') } })
+    watchHistoryFaces(asClientCtx(ctx))
+    const View = makeView(ctx)
+    const m = await mount(h(View, {
+      sessionId: 'sv-sys',
+      useProjection: projectionsFor(timeline(), {
+        contextHeaders: { headers: [{ seq: 1, time: 0, systemTokens: 5, tools: [] }] },
+      }),
+    }))
+    const sysRow = queryAll(m.container, '.lc-br-cat-row').find(r => text(r).includes(DICT_EN['cat.system']))
+    assert.ok(sysRow !== undefined)
+    await click(sysRow)
+    await flush()
+    assert.deepEqual(calls, [{
+      address: { kind: 'subagent', parentSessionId: 'sv-parent', childSessionId: 'sv-sys', mode: 'continuable' },
+      throughSeq: 1,
+      beforeSeq: 2,
+    }])
+    assert.ok(text(m.container).includes('SYSTEM FROM PAGE'), 'the fetched prompt renders')
+    await m.unmount()
+    ctx.dispose()
+  })
+
   test('without a history face an uncached node shows the static note', async () => {
     const View = makeView(new TestClientCtx())
     const m = await mount(h(View, {

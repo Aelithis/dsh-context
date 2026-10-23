@@ -9,6 +9,7 @@ import {
   headersOf,
   imageLoaderOf,
   numOf,
+  sessionAddressOf,
   timelineOf,
   timingOf,
   tokenUsageOf,
@@ -740,6 +741,75 @@ describe('workspaceOf', () => {
     assert.equal(workspaceOf(ctxWith({ sessions: { list: { getSnapshot: () => ({ byId: Object.defineProperty({}, 'sv', { get: throwProp }) }) } } }), 'sv'), undefined)
     const ctxThrows = { get: throwProp } as unknown as ClientCtx
     assert.equal(workspaceOf(ctxThrows, 'sv'), undefined)
+  })
+})
+
+describe('sessionAddressOf — the address a history read must carry', () => {
+  const ctxWith = (services: Record<string, unknown>): ClientCtx => ({ get: (name: string) => services[name] }) as unknown as ClientCtx
+  const address = (id: string) => ({ parentSessionId: 'p', childSessionId: id, mode: 'continuable' })
+
+  test('a plain session keeps the session address', () => {
+    assert.deepEqual(sessionAddressOf(ctxWith({}), 's'), { kind: 'session', sessionId: 's' })
+    assert.deepEqual(sessionAddressOf(ctxWith({ sessions: { subagentAddress: () => undefined } }), 's'), { kind: 'session', sessionId: 's' })
+    assert.deepEqual(sessionAddressOf(ctxWith({}), ''), { kind: 'session', sessionId: '' })
+  })
+
+  test('a subagent child carries its direct parent and the harness mode', () => {
+    const ctx = ctxWith({ sessions: { subagentAddress: address } })
+    assert.deepEqual(sessionAddressOf(ctx, 'c'), { kind: 'subagent', parentSessionId: 'p', childSessionId: 'c', mode: 'continuable' })
+    assert.deepEqual(
+      sessionAddressOf(ctxWith({ sessions: { subagentAddress: () => ({ ...address('c'), mode: 'one-shot' }) } }), 'c'),
+      { kind: 'subagent', parentSessionId: 'p', childSessionId: 'c', mode: 'one-shot' },
+    )
+  })
+
+  test('an unrecognized or absent mode degrades to the host-accepted unknown', () => {
+    for (const mode of [undefined, 'external', 7]) {
+      const ctx = ctxWith({ sessions: { subagentAddress: () => ({ ...address('c'), mode }) } })
+      assert.deepEqual(sessionAddressOf(ctx, 'c'), { kind: 'subagent', parentSessionId: 'p', childSessionId: 'c', mode: 'unknown' })
+    }
+  })
+
+  test('the listed subagent row is the fallback the summary-less line needs', () => {
+    const ctx = ctxWith({ sessions: { list: { getSnapshot: () => ({ byId: { c: { origin: 'subagent', parentId: 'p' } } }) } } })
+    assert.deepEqual(sessionAddressOf(ctx, 'c'), { kind: 'subagent', parentSessionId: 'p', childSessionId: 'c', mode: 'unknown' })
+    const fork = ctxWith({ sessions: { list: { getSnapshot: () => ({ byId: { c: { parentId: 'p' } } }) } } })
+    assert.deepEqual(sessionAddressOf(fork, 'c'), { kind: 'session', sessionId: 'c' }, 'a fork seed is no subagent edge')
+  })
+
+  test('a shapeless parent never becomes an address', () => {
+    const cases = [
+      { parentSessionId: '' },
+      { parentSessionId: 7 },
+      { parentSessionId: 'c' },
+    ]
+    for (const shape of cases) {
+      const ctx = ctxWith({ sessions: { subagentAddress: () => ({ ...shape, childSessionId: 'c' }) } })
+      assert.deepEqual(sessionAddressOf(ctx, 'c'), { kind: 'session', sessionId: 'c' })
+    }
+    const rows = [
+      { origin: 'subagent', parentId: '' },
+      { origin: 'subagent', parentId: 7 },
+      { origin: 'subagent', parentId: 'c' },
+    ]
+    for (const row of rows) {
+      const ctx = ctxWith({ sessions: { list: { getSnapshot: () => ({ byId: { c: row } }) } } })
+      assert.deepEqual(sessionAddressOf(ctx, 'c'), { kind: 'session', sessionId: 'c' })
+    }
+  })
+
+  test('hostile faces fall back to the plain address', () => {
+    const throwAll = (): never => { throw new Error('boom') }
+    assert.deepEqual(sessionAddressOf({ get: throwAll } as unknown as ClientCtx, 'c'), { kind: 'session', sessionId: 'c' })
+    assert.deepEqual(
+      sessionAddressOf(ctxWith({ sessions: { subagentAddress: throwAll } }), 'c'),
+      { kind: 'session', sessionId: 'c' },
+    )
+    assert.deepEqual(
+      sessionAddressOf(ctxWith({ sessions: { subagentAddress: () => ({ parentSessionId: 'c', childSessionId: 'c' }) } }), 'c'),
+      { kind: 'session', sessionId: 'c' },
+      'a self-parent names no durable edge',
+    )
   })
 })
 

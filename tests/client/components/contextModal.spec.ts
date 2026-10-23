@@ -467,6 +467,53 @@ describe('ContextModal — the split generation', () => {
     await m.unmount()
   })
 
+  test('a subagent message reads its full body under the durable parent address (issue #193)', async () => {
+    const calls: unknown[] = []
+    const ctx = new TestClientCtx({
+      services: {
+        sessions: { subagentAddress: () => ({ parentSessionId: 'sm-parent', childSessionId: 'sm-body', mode: 'continuable' }) },
+      },
+    })
+    ctx.setService('remote.session', { get page() { throw new Error('cannot get property "remote.session" without inject') } })
+    ctx.setService('remote', {
+      session: {
+        page: (request: unknown) => {
+          calls.push(request)
+          return Promise.resolve({
+            ok: true,
+            value: {
+              records: [{
+                type: 'event',
+                event: { type: 'user/message', seq: 1, data: { content: [{ type: 'text', text: 'OLD FULL BODY' }] } },
+              }],
+            },
+          })
+        },
+      },
+    })
+    watchHistoryFaces(asClientCtx(ctx))
+    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
+    const m = await mount(h(ContextModal, {
+      sessionId: 'sm-body',
+      useContextModal: OPEN,
+      useProjection: (key: string) => (key === 'contextTimeline'
+        ? timeline({ nodes: [{ seq: 1, cat: 'user', tokens: 5, text: 'old msg' }] })
+        : undefined),
+    }))
+    const userRow = queryAll(m.container, '.lc-br-cat-row').find(r => text(r).includes(DICT_EN['cat.user']))
+    assert.ok(userRow !== undefined)
+    await click(userRow)
+    await flush()
+    assert.deepEqual(calls, [{
+      address: { kind: 'subagent', parentSessionId: 'sm-parent', childSessionId: 'sm-body', mode: 'continuable' },
+      throughSeq: 1,
+      beforeSeq: 2,
+    }])
+    assert.ok(text(m.container).includes('OLD FULL BODY'), 'the fetched body renders')
+    await m.unmount()
+    ctx.dispose()
+  })
+
   test('a mount that raced the declared inject heals when the face lands mid-open', async () => {
     // The race: the modal mounts and its fetchers snapshot the face BEFORE `remote` composes, so the
     // degraded note shows; when the inject fires, the open system section must auto-fetch.

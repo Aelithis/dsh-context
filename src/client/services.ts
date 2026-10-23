@@ -654,17 +654,30 @@ export interface SessionScopeFace {
 export interface SessionsFace {
   scope(id: string): SessionScopeFace | undefined
   refresh?(): Promise<unknown>
+  /** The direct-parent address the harness already knows for a subagent child, without opening it. */
+  subagentAddress?(id: string): unknown
 }
 
 export interface HistoryEntryLike {
   event?: unknown
 }
 
+/** The durable identity a session's own history read carries; the host refuses a subagent child read under a plain
+ * session address with `session/agent-busy`. */
+export type SessionAddressLike =
+  | { kind: 'session'; sessionId: string }
+  | {
+    kind: 'subagent'
+    parentSessionId: string
+    childSessionId: string
+    mode: 'one-shot' | 'continuable' | 'unknown'
+  }
+
 /** The gateway's `remote.session.page`: `throughSeq` inclusive and must exist in the log, `beforeSeq` exclusive; packed `chunks` runs are
  * skipped. */
 export interface SessionPageFace {
   page(request: {
-    address: { kind: 'session'; sessionId: string }
+    address: SessionAddressLike
     throughSeq: number
     beforeSeq?: number
     maxMessages?: number
@@ -708,6 +721,38 @@ export function workspaceOf(ctx: ClientCtx, sessionId: string | undefined): stri
   } catch {
     return undefined
   }
+}
+
+/** The narrowest address a history read of THIS session may carry. The harness's own resolver wins (it names the exact
+ * mode); the listed subagent row is the fallback for the line whose resolver reads no list summaries. */
+export function sessionAddressOf(ctx: ClientCtx, sessionId: string): SessionAddressLike {
+  const plain: SessionAddressLike = { kind: 'session', sessionId }
+  if (typeof sessionId !== 'string' || sessionId === '') return plain
+  try {
+    const sessions = asRecord(ctx.get('sessions'))
+    if (sessions === null) return plain
+    const resolve = sessions.subagentAddress
+    const address = asRecord(typeof resolve === 'function' ? resolve.call(sessions, sessionId) : undefined)
+    const parentSessionId = address?.parentSessionId
+    if (typeof parentSessionId === 'string' && parentSessionId !== '' && parentSessionId !== sessionId) {
+      const mode = address?.mode
+      return {
+        kind: 'subagent',
+        parentSessionId,
+        childSessionId: sessionId,
+        mode: mode === 'one-shot' || mode === 'continuable' ? mode : 'unknown',
+      }
+    }
+    const list = asRecord(sessions.list)
+    const getSnapshot = list?.getSnapshot
+    const snapshot = typeof getSnapshot === 'function' ? asRecord((getSnapshot as () => unknown).call(list)) : null
+    const row = asRecord(asRecord(snapshot?.byId)?.[sessionId])
+    const parentId = row?.parentId
+    if (row?.origin === 'subagent' && typeof parentId === 'string' && parentId !== '' && parentId !== sessionId) {
+      return { kind: 'subagent', parentSessionId: parentId, childSessionId: sessionId, mode: 'unknown' }
+    }
+  } catch { /* absent or hostile face — read this session the plain way */ }
+  return plain
 }
 
 /** Loopback AND the session controller's opener capability over an RPC round-trip; every absence, hostility, or transport failure

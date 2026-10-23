@@ -2,7 +2,7 @@ import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test, vi } from 'vitest'
 import { BASELINES } from '../../baselines'
-import { conversationNodesOf, imageLoaderOf, openResourceVia, openSessionVia } from '../../../src/client/services'
+import { conversationNodesOf, imageLoaderOf, openResourceVia, openSessionVia, sessionAddressOf } from '../../../src/client/services'
 import type { SessionStandardProps } from '../../../src/client/services'
 import { makeContentFetcher, watchHistoryFaces } from '../../../src/client/historyPage'
 import { makeRichText } from '../../../src/client/components/richText'
@@ -17,6 +17,9 @@ import { click, makeKit, mount, queryAll, text } from '../helpers/kit'
 import { baselineCtx, chatSeat, convNodes } from './baselineFaces'
 
 const kit = makeKit()
+
+/** The plain-session resolver a non-subagent caller passes. */
+const plainOf = (sessionId: string) => () => ({ kind: 'session' as const, sessionId })
 
 // The plugin must hand EVERY markdown render a well-formed `labels` object (the primitives REQUIRE it).
 const captured = vi.hoisted(() => ({ markdownProps: undefined as Record<string, unknown> | undefined }))
@@ -74,7 +77,7 @@ for (const baseline of BASELINES) {
       const { ctx, calls } = baselineCtx()
       // Arm the declared inject the way the client apply does; the slot is unloaded afterwards.
       watchHistoryFaces(asClientCtx(ctx))
-      const fetcher = makeContentFetcher('s-face')
+      const fetcher = makeContentFetcher(plainOf('s-face'))
       assert.ok(fetcher !== undefined, 'the baseline history face serves a fetcher')
       const node = await fetcher(4)
       assert.ok(node !== null)
@@ -86,7 +89,24 @@ for (const baseline of BASELINES) {
       // History is immutable: a re-read never re-fetches.
       assert.equal(calls.page.length, 1)
       ctx.dispose()
-      assert.equal(makeContentFetcher('s-face'), undefined, 'the unloaded slot leaves no face behind')
+      assert.equal(makeContentFetcher(plainOf('s-face')), undefined, 'the unloaded slot leaves no face behind')
+    })
+
+    test('a subagent child read carries its durable parent address (issue #193)', async () => {
+      const { ctx, calls } = baselineCtx()
+      ctx.setService('sessions', {
+        subagentAddress: (id: string) => ({ parentSessionId: 's-parent', childSessionId: id, mode: 'continuable' }),
+      })
+      watchHistoryFaces(asClientCtx(ctx))
+      const fetcher = makeContentFetcher(() => sessionAddressOf(asClientCtx(ctx), 's-child'))
+      assert.ok(fetcher !== undefined)
+      assert.equal((await fetcher(4))?.kind, 'user')
+      assert.deepEqual(calls.page, [{
+        address: { kind: 'subagent', parentSessionId: 's-parent', childSessionId: 's-child', mode: 'continuable' },
+        throughSeq: 4,
+        beforeSeq: 5,
+      }])
+      ctx.dispose()
     })
 
     test('the session jump rides this generation\'s navigation seam (issue #90)', () => {
@@ -107,7 +127,7 @@ for (const baseline of BASELINES) {
       const { ctx } = baselineCtx()
       ctx.setService('remote', { session: { page: () => Promise.resolve({ ok: false }) } })
       watchHistoryFaces(asClientCtx(ctx))
-      const fetcher = makeContentFetcher('s-face')
+      const fetcher = makeContentFetcher(plainOf('s-face'))
       assert.ok(fetcher !== undefined)
       await assert.rejects(fetcher(4))
       ctx.dispose()
@@ -173,7 +193,7 @@ for (const baseline of BASELINES) {
         get page() { throw new Error('cannot get property "remote.session" without inject') },
       })
       watchHistoryFaces(asClientCtx(ctx))
-      assert.equal(makeContentFetcher('s-face'), undefined, 'the hostile face left the slot unset')
+      assert.equal(makeContentFetcher(plainOf('s-face')), undefined, 'the hostile face left the slot unset')
       const settings = createContextSettings()
       const View = makeContextView(asClientCtx(ctx), kit, settings, makeAgentHeads())
       const nodes = convNodes()

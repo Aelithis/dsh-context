@@ -8,7 +8,7 @@ import { headlineOf } from '../headline'
 import { modalStoreOf, takePendingConsume } from '../modalStore'
 import type { ClientCtx, SessionStandardProps, SessionsFace } from '../services'
 import type { ContextSettings } from '../settings'
-import { contextBreakdownOf, contextPressureOf, conversationNodesOf, headersOf, imageLoaderOf, projectionOf, workspaceOf } from '../services'
+import { contextBreakdownOf, contextPressureOf, conversationNodesOf, headersOf, imageLoaderOf, projectionOf, sessionAddressOf, workspaceOf } from '../services'
 import { makeContentFetcher, makeHeaderFetcher, useHistoryFace } from '../historyPage'
 import { useTimelineSource } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
@@ -71,12 +71,16 @@ export function makeContextModal(
     const historyFace = useHistoryFace()
 
     const fetchContent = useMemo(
-      () => (sessionId !== '' && historyFace !== undefined ? makeContentFetcher(sessionId) : undefined),
-      [sessionId, historyFace],
+      () => (sessionId !== '' && historyFace !== undefined
+        ? makeContentFetcher(() => sessionAddressOf(ctx, sessionId))
+        : undefined),
+      [ctx, sessionId, historyFace],
     )
     const fetchHeader = useMemo(
-      () => (sessionId !== '' && historyFace !== undefined ? makeHeaderFetcher(sessionId) : undefined),
-      [sessionId, historyFace],
+      () => (sessionId !== '' && historyFace !== undefined
+        ? makeHeaderFetcher(() => sessionAddressOf(ctx, sessionId))
+        : undefined),
+      [ctx, sessionId, historyFace],
     )
 
     const close = useCallback(() => {
