@@ -63,6 +63,7 @@
 .lc-member-tasks-none { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
 .lc-member-opens { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
 .lc-member-opens .lc-inspector-btn { display: inline-flex; align-items: center; padding: 2px 6px; }
+.lc-member-foot .lc-member-meta { flex: 1; min-width: 0; }
 
 .lc-tasks-filter { cursor: pointer; color: var(--dsw-alias-brand-primary, var(--color-blue-500)); }
 .lc-tasks-group { margin-top: 10px; }

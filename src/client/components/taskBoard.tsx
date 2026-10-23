@@ -347,7 +347,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
 
   const renderAgentRow = (row: WorkRow, hue: string): ReactElement => {
     const node = row.node as AgentNode
-    const bits = runMetaOf(node, t, fmt)
+    const bits = runMetaOf(node, t)
     // The briefing prompt is the task's description; the opened row adds the final report-back. Both render as
     // Markdown, clamped to two lines when closed; the opened brief prefers the full read's unclipped prompt.
     const prompt = props.detailOf(node.id)?.detail?.initialPrompt

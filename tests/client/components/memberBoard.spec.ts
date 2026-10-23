@@ -267,7 +267,7 @@ describe('MemberBoard — the other-agents cards', () => {
     assert.ok(text(m.container).includes(DICT_EN['fleet.board.others']))
     assert.deepEqual(otherNames(m.container), ['scout', 'archivist', 'lounger'])
     const cards = otherCards(m.container)
-    assert.ok(text(cards[0]).includes('800 · 42s · 5 steps'))
+    assert.ok(text(cards[0]).includes('42s · 5 steps'))
     assert.ok(!text(cards[0]).includes('%'))
     assert.ok(text(cards[0]).includes('deepseek-flash (max)'))
     assert.ok(text(cards[0]).includes('running'))

@@ -94,7 +94,7 @@ describe('TaskBoard — the owner-grouped board', () => {
     const m = await mount(h(TaskBoard, propsOf()))
     const scout = query(m.container, '[data-task="s1"]')
     assert.ok(text(scout).includes('in progress'))
-    assert.ok(text(scout).includes('800 · 42s · 5 steps'))
+    assert.ok(text(scout).includes('42s · 5 steps'))
     assert.ok(query(scout, '.lc-team-task-subject').className.includes('lc-team-task-subject-clamp'))
     assert.ok(query(scout, '.lc-team-task-head .lc-member-icon') !== null, 'the row wears the agent hue')
     assert.ok(text(query(m.container, '[data-task="s2"]')).includes('completed'))

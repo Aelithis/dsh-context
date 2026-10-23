@@ -43,16 +43,15 @@ export function memberStyle(hue: string): CSSProperties {
   return { '--lc-member-hue': hue } as CSSProperties
 }
 
-export function runMetaOf(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): string[] {
+export function runMetaOf(node: AgentNode, t: ViewKit['t']): string[] {
   const bits: string[] = []
-  if (node.head !== null && node.head.tokens > 0) bits.push(fmt(node.head.tokens))
   if (node.durationMs !== null) bits.push(fmtDurationCompact(node.durationMs))
   if (node.requests > 0) bits.push(t('agents.steps', { n: node.requests }))
   return bits
 }
 
-function memberMeta(node: AgentNode, t: ViewKit['t'], fmt: ViewKit['fmt']): ReactElement | null {
-  const bits = runMetaOf(node, t, fmt)
+function memberMeta(node: AgentNode, t: ViewKit['t']): ReactElement | null {
+  const bits = runMetaOf(node, t)
   if (bits.length === 0) return null
   return (
     <div className="lc-member-meta">
@@ -273,8 +272,8 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       {t('fleet.members.reply')} {detail.lastReply.text}
                     </div>
                   ) : null}
-                  {node !== undefined ? memberMeta(node, t, fmt) : null}
                   <div className="lc-member-foot">
+                    {node !== undefined ? memberMeta(node, t) : null}
                     {activeTasks.length > 0 ? (
                       <button
                         type="button"
@@ -355,8 +354,8 @@ export function MemberBoard(props: MemberBoardProps): ReactElement {
                       {t('fleet.members.reply')} {detail.lastReply.text}
                     </div>
                   ) : null}
-                  {memberMeta(node, t, fmt)}
                   <div className="lc-member-foot">
+                    {memberMeta(node, t)}
                     {opens(node.id)}
                   </div>
                 </div>
