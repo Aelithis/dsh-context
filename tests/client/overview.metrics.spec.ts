@@ -90,6 +90,16 @@ describe('timingSumOf', () => {
     assert.equal('speedMs' in (sum as object), false)
   })
 
+  test('folds every family member — a null self and the dispatched subagents alike', () => {
+    const self = { wallMs: 100, ttftMs: 10, genMs: 60, calls: 2, toolsMs: 30, toolCalls: 3, tools: { read: { calls: 2, ms: 20 } } }
+    const kid = { wallMs: 50, ttftMs: 5, genMs: 30, calls: 1, toolsMs: 10, toolCalls: 1, tools: { read: { calls: 1, ms: 5 }, write: { calls: 1, ms: 10 } } }
+    const sum = timingSumOf([rowOf({ family: [null, { timing: self }, { timing: kid }] as unknown as ContextTimeline[] })])
+    assert.deepEqual(sum, {
+      wallMs: 150, ttftMs: 15, genMs: 90, calls: 3, toolsMs: 40, toolCalls: 4,
+      tools: { read: { calls: 3, ms: 25 }, write: { calls: 1, ms: 10 } },
+    })
+  })
+
   test('the additive-optional fields sum their carriers only', () => {
     const split = {
       wallMs: 1, ttftMs: 1, genMs: 10, calls: 1, toolsMs: 0, toolCalls: 0, tools: {},
@@ -245,6 +255,31 @@ describe('kpisOf', () => {
     assert.equal(kpi.tokenParts?.total, 200)
     assert.deepEqual(kpi.tokenParts?.parts.find(p => p.key === 'system'), { key: 'system', color: 'var(--color-indigo-500)', value: 32 })
     assert.deepEqual(kpi.timing, { wallMs: 120_000, ttftMs: 1_000, genMs: 30_000, calls: 6, toolsMs: 20_000, toolCalls: 7, tools: {} })
+  })
+
+  test('an unbounded scope folds the whole family’s lifetime timing (self and subagents)', () => {
+    const self = {
+      counts: { turns: 3 },
+      timing: { wallMs: 90_000, ttftMs: 1_000, genMs: 30_000, calls: 4, toolsMs: 20_000, toolCalls: 7, tools: {} },
+    }
+    const kid = {
+      counts: { turns: 2 },
+      timing: { wallMs: 30_000, ttftMs: 0, genMs: 0, calls: 2, toolsMs: 0, toolCalls: 0, tools: {} },
+    }
+    const row = rowOf({
+      family: [self, kid] as unknown as ContextTimeline[],
+      familyCost: COST,
+      activity: { days: { '2026-09-16': { tokens: 5, requests: 1, cost: COST, turns: 9, wallMs: 999 } } },
+    })
+    const kpi = kpisOf([row], prices, 'usd')
+    assert.equal(kpi.turns, 5)
+    assert.equal(kpi.calls, 6)
+    assert.equal(kpi.wallMs, 120_000)
+    assert.equal(kpi.toolCalls, 7)
+    assert.equal(kpi.toolsMs, 20_000)
+    assert.equal(kpi.tokens, 200, 'usage rides familyCost without a scope and the ledger under the All preset')
+    assert.deepEqual(kpi.timing, { wallMs: 120_000, ttftMs: 1_000, genMs: 30_000, calls: 6, toolsMs: 20_000, toolCalls: 7, tools: {} })
+    assert.deepEqual(kpisOf([row], prices, 'usd', { start: null, end: null }), kpi, 'the All preset reads the same family timing')
   })
 
   test('a bounded scope folds only the daily ledger days inside the window', () => {

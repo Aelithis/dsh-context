@@ -530,34 +530,37 @@ export function windowTotalsOf(activity: ContextActivity | null, scope: RangeWin
   return { requests, turns, toolCalls, toolsMs, wallMs, usage }
 }
 
+/** The rows' team merge of lifetime timing totals — the same scope the KPI band's ledger merges. */
 export function timingSumOf(rows: readonly OverviewRow[]): TimingTotals | null {
   let out: TimingTotals | null = null
   for (const row of rows) {
-    const t = row.timeline?.timing
-    if (t === undefined) continue
-    if (out === null) {
-      out = { ...t, tools: { ...t.tools } }
-      continue
-    }
-    out.wallMs += t.wallMs
-    out.ttftMs += t.ttftMs
-    out.genMs += t.genMs
-    out.calls += t.calls
-    out.toolsMs += t.toolsMs
-    out.toolCalls += t.toolCalls
-    addOptionalOf(out, t, 'reasoningMs')
-    addOptionalOf(out, t, 'reasoningBlocks')
-    addOptionalOf(out, t, 'textMs')
-    addOptionalOf(out, t, 'textBlocks')
-    addOptionalOf(out, t, 'toolArgMs')
-    addOptionalOf(out, t, 'toolArgBlocks')
-    addOptionalOf(out, t, 'speedTokens')
-    addOptionalOf(out, t, 'speedMs')
-    for (const name of Object.keys(t.tools)) {
-      const tool = t.tools[name]
-      const outTools: Record<string, ToolTimingTotals | undefined> = out.tools
-      const prev = outTools[name]
-      out.tools[name] = prev === undefined ? { ...tool } : { calls: prev.calls + tool.calls, ms: prev.ms + tool.ms }
+    for (const member of row.family) {
+      const t = member?.timing
+      if (t === undefined) continue
+      if (out === null) {
+        out = { ...t, tools: { ...t.tools } }
+        continue
+      }
+      out.wallMs += t.wallMs
+      out.ttftMs += t.ttftMs
+      out.genMs += t.genMs
+      out.calls += t.calls
+      out.toolsMs += t.toolsMs
+      out.toolCalls += t.toolCalls
+      addOptionalOf(out, t, 'reasoningMs')
+      addOptionalOf(out, t, 'reasoningBlocks')
+      addOptionalOf(out, t, 'textMs')
+      addOptionalOf(out, t, 'textBlocks')
+      addOptionalOf(out, t, 'toolArgMs')
+      addOptionalOf(out, t, 'toolArgBlocks')
+      addOptionalOf(out, t, 'speedTokens')
+      addOptionalOf(out, t, 'speedMs')
+      for (const name of Object.keys(t.tools)) {
+        const tool = t.tools[name]
+        const outTools: Record<string, ToolTimingTotals | undefined> = out.tools
+        const prev = outTools[name]
+        out.tools[name] = prev === undefined ? { ...tool } : { calls: prev.calls + tool.calls, ms: prev.ms + tool.ms }
+      }
     }
   }
   return out
@@ -643,7 +646,8 @@ export function kpisOf(
   currency: CostCurrency,
   scope?: RangeWindow,
 ): OverviewKpis {
-  // Every figure folds the SAME daily ledger over the window; the lifetime heads serve only no-scope (or no-ledger) callers.
+  // Every figure folds the SAME daily ledger over the window; an unbounded scope (the All preset) reads the family's
+  // lifetime heads instead, so the band's active-time and call cells equal the team timing card beside them.
   let usage: SessionCostUsage | null = null
   let turns = 0
   let toolCalls = 0
@@ -657,19 +661,21 @@ export function kpisOf(
     const windowTotals = scope !== undefined && row.activity !== null ? windowTotalsOf(row.activity, scope) : null
     const rowUsage = windowTotals !== null ? windowTotals.usage : open ? row.familyCost : null
     usage = mergeCostUsage(usage, rowUsage)
-    if (windowTotals !== null) {
+    if (windowTotals !== null && !open) {
       turns += windowTotals.turns
       toolCalls += windowTotals.toolCalls
       toolsMs += windowTotals.toolsMs
       calls += windowTotals.requests
       wallMs += windowTotals.wallMs
     } else if (open) {
-      const timing = row.timeline?.timing
-      turns += turnsOf(row.timeline)
-      toolCalls += timing?.toolCalls ?? 0
-      toolsMs += timing?.toolsMs ?? 0
-      calls += timing?.calls ?? 0
-      wallMs += timing?.wallMs ?? 0
+      for (const member of row.family) {
+        turns += turnsOf(member)
+        const timing = member?.timing
+        toolCalls += timing?.toolCalls ?? 0
+        toolsMs += timing?.toolsMs ?? 0
+        calls += timing?.calls ?? 0
+        wallMs += timing?.wallMs ?? 0
+      }
     }
     // Each sub-line counts the sessions its own figure covers: a session with usage but no book rates feeds the cache-hit rate.
     if (estimateSessionCost(rowUsage, book, currency) !== null) costSessions++

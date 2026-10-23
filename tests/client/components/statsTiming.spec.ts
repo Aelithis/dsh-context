@@ -63,6 +63,18 @@ describe('StatsTiming', () => {
     await m.unmount()
   })
 
+  test('the scope subtitle names the session, or the whole team on the overview aggregate', async () => {
+    const own = await mount(h(StatsTiming, { timing: TIMING }))
+    assert.equal(query(own.container, '.lc-card-sub').textContent, 'session lifetime')
+    await own.unmount()
+    const team = await mount(h(StatsTiming, { timing: TIMING, scope: 'team' }))
+    assert.equal(query(team.container, '.lc-card-sub').textContent, 'team lifetime')
+    await team.unmount()
+    const zh = await mount(h(StatsTimingZh, { timing: TIMING, scope: 'team' }))
+    assert.equal(query(zh.container, '.lc-card-sub').textContent, '团队累计')
+    await zh.unmount()
+  })
+
   test('parallel tool overlap: the count keeps the true sum, the share caps at 100%', async () => {
     const timing: TimingTotals = { wallMs: 100_000, ttftMs: 25_000, genMs: 35_000, calls: 2, toolsMs: 200_000, toolCalls: 9, tools: { bash: { calls: 9, ms: 200_000 } } }
     const m = await mount(h(StatsTiming, { timing }))

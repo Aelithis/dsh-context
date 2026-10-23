@@ -24,15 +24,19 @@ function formatTokensPerSecond(tps: number): string {
   return clamped >= 10 ? String(Math.round(clamped)) : String(Math.round(clamped * 10) / 10)
 }
 
-export function makeStatsTiming(kit: ViewKit, Donut: (props: DonutProps) => ReactElement): (props: {
+export interface StatsTimingProps {
   timing: TimingTotals | null
   /** Per-step time slices; absent on the overview aggregate card and on rows folded before the collection existed. */
   spans?: TimingSpan[]
   locale?: string
-}) => ReactElement {
+  /** The aggregate covers the whole agent team (self + dispatched subagents); absent keeps the session's own. */
+  scope?: 'team'
+}
+
+export function makeStatsTiming(kit: ViewKit, Donut: (props: DonutProps) => ReactElement): (props: StatsTimingProps) => ReactElement {
   const { t, fmt, fmtDuration, fmtShare } = kit
   const TimingStrip = makeTimingStrip(kit)
-  return function StatsTiming(props: { timing: TimingTotals | null; spans?: TimingSpan[]; locale?: string }): ReactElement {
+  return function StatsTiming(props: StatsTimingProps): ReactElement {
     const [hoverKey, setHoverKey] = useState<string | null>(null)
     const timing = props.timing
     const wall = timing !== null && Number.isFinite(timing.wallMs) && timing.wallMs > 0 ? timing.wallMs : 0
@@ -127,7 +131,7 @@ export function makeStatsTiming(kit: ViewKit, Donut: (props: DonutProps) => Reac
       <div className="lc-card lc-col-donut flex-1 min-w-[min(360px,100%)]">
         <div className="lc-card-title">
           <span className="lc-card-title-text">{t('timing.title')}</span>
-          <span className="lc-card-sub">{t('timing.scope')}</span>
+          <span className="lc-card-sub">{t(props.scope === 'team' ? 'timing.scopeTeam' : 'timing.scope')}</span>
           {tps !== null && (
             <span className="lc-card-rate" title={t('timing.tpsTip')}>{t('timing.tps', { tps })}</span>
           )}
