@@ -341,29 +341,29 @@ describe('CommandPanel — the summary rail', () => {
       await click(failingBtn)
       assert.equal(rowTextsNow().length, 1)
       assert.ok(rowTextsNow()[0].includes('vitest'))
-      // Repeats → search the repeated command.
+      const latestChip = queryAll(m.container, '.lc-fa-sort .lc-gran-btn').find(b => text(b).startsWith('Latest'))
+      assert.ok(latestChip?.className.includes('lc-gran-on'), 'the previous slowest sort is cleared')
+      // Repeats → search the repeated command, clearing the previous failed filter.
       const repeatsBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Repeats'))
       assert.ok(repeatsBtn !== undefined)
       await click(repeatsBtn)
-      assert.equal(rowTextsNow().length, 0, 'the failed filter still narrows; git status is not failed')
-      const failedChip = queryAll(m.container, '.lc-cmd-chips .lc-gran-btn').find(b => text(b).startsWith('Failed'))
-      assert.ok(failedChip !== undefined)
-      await click(failedChip)
       const withRepeats = rowTextsNow()
-      assert.equal(withRepeats.length, 2, 'the search holds the two identical git status runs')
+      assert.equal(withRepeats.length, 2, 'the lens clears the failed filter; both git status runs show')
       assert.ok(withRepeats.every(r => r.includes('git status')))
+      const allChip = queryAll(m.container, '.lc-cmd-chips .lc-gran-btn').find(b => text(b).startsWith('All'))
+      assert.ok(allChip?.className.includes('lc-gran-on'), 'the All chip is active again')
       // A program row click filters the list to that program (git status ×2 + git diff ×1).
       const gitBtn = queryAll(m.container, '.lc-cmd-prog').find(b => text(b).startsWith('git'))
       assert.ok(gitBtn !== undefined)
       await click(gitBtn)
       assert.equal(rowTextsNow().length, 3)
-      // The Background attention row drives its chip too.
-      await typeSearch(m.container, '')
+      // The Background attention row drives its chip too, clearing the previous search.
       const bgBtn = queryAll(m.container, '.lc-cmd-attn-row').find(b => text(b).includes('Background'))
       assert.ok(bgBtn !== undefined)
       await click(bgBtn)
       assert.equal(rowTextsNow().length, 1)
       assert.ok(rowTextsNow()[0].includes('pnpm dev'))
+      assert.equal(query<HTMLInputElement>(m.container, '.lc-fa-search')?.value, '', 'the previous search is cleared')
     } finally {
       await m.unmount()
     }

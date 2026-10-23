@@ -71,6 +71,12 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
       const first = previewTextOf(cmd, props.workspace)
       return first.length > 34 ? first.slice(0, 34) + '…' : first
     }
+    /** An attention row is an exclusive lens: it clears the previous filter, query and sort before applying its own. */
+    const applyLens = (patch: { filter?: CommandFilter; query?: string; sort?: CommandSort }): void => {
+      setFilter(patch.filter ?? 'all')
+      setQuery(patch.query ?? '')
+      setSort(patch.sort ?? 'latest')
+    }
 
     interface AttentionRow {
       key: string
@@ -83,21 +89,21 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     const attentionRows: AttentionRow[] = []
     if (attention.slowest !== undefined) {
       const s = attention.slowest
-      attentionRows.push({ key: 'slowest', label: t('cmds.rail.slowest'), value: railPreview(s.cmd), n: fmtDuration(s.ms), title: s.cmd, apply: () => { setSort('slowest') } })
+      attentionRows.push({ key: 'slowest', label: t('cmds.rail.slowest'), value: railPreview(s.cmd), n: fmtDuration(s.ms), title: s.cmd, apply: () => { applyLens({ sort: 'slowest' }) } })
     }
     if (attention.failing !== undefined) {
       const f = attention.failing
       // The click lands on exactly the named program's failures (the query lens covers program identity).
-      attentionRows.push({ key: 'failing', label: t('cmds.rail.failing'), value: f.program, n: '×' + fmt(f.count), apply: () => { setFilter('failed'); setQuery(f.program) } })
+      attentionRows.push({ key: 'failing', label: t('cmds.rail.failing'), value: f.program, n: '×' + fmt(f.count), apply: () => { applyLens({ filter: 'failed', query: f.program }) } })
     }
     if (attention.repeats !== undefined) {
       const r = attention.repeats
       // The full text searches exactly the repeated command (a prefix would catch look-alikes).
-      attentionRows.push({ key: 'repeats', label: t('cmds.rail.repeats'), value: railPreview(r.cmd), n: '×' + fmt(r.count), title: r.cmd, apply: () => { setQuery(r.cmd) } })
+      attentionRows.push({ key: 'repeats', label: t('cmds.rail.repeats'), value: railPreview(r.cmd), n: '×' + fmt(r.count), title: r.cmd, apply: () => { applyLens({ query: r.cmd }) } })
     }
     if (attention.background !== undefined) {
       const bg = attention.background
-      attentionRows.push({ key: 'background', label: t('cmds.rail.bgRuns'), value: '', n: '×' + fmt(bg), apply: () => { setFilter('background') } })
+      attentionRows.push({ key: 'background', label: t('cmds.rail.bgRuns'), value: '', n: '×' + fmt(bg), apply: () => { applyLens({ filter: 'background' }) } })
     }
     const totalPrograms = Math.max(1, programs.reduce((sum, p) => sum + p.n, 0))
     const topProgramN = Math.max(1, ...programs.map(p => p.n))
