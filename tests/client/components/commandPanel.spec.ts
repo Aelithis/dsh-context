@@ -552,15 +552,23 @@ describe('CommandPanel — the result block', () => {
       await click(query(cards[0], '.lc-find-btn'))
       const input = query<HTMLInputElement>(cards[0], '.lc-find-input')
       assert.equal(document.activeElement, input, 'the find input takes focus on open')
-      await act(async () => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-        setter?.call(input, 'status')
-        input.dispatchEvent(new Event('input', { bubbles: true }))
-      })
-      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
+      const find = async (value: string): Promise<void> => {
+        await act(async () => {
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+          setter?.call(input, value)
+          input.dispatchEvent(new Event('input', { bubbles: true }))
+        })
+        await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
+      }
+      await find('status')
       assert.equal(query(cards[0], '.lc-find-count')?.textContent, '1/1', 'one match in the command card')
       assert.ok(query(cards[0], '.lc-find-mark') !== null, 'the match is marked in the command body')
       assert.equal(queryAll(cards[1], '.lc-find').length, 0, 'the lens stays scoped to its own card')
+      // The colored body leaves the command's tokens in separate runs; a phrase crossing them still matches.
+      await find('git status')
+      assert.equal(query(cards[0], '.lc-find-count')?.textContent, '1/1', 'the phrase matches across token runs')
+      assert.ok(queryAll(cards[0], '.lc-find-mark').length > 1, 'one mark per run the phrase covers')
+      assert.equal(queryAll(cards[0], '.lc-find-mark').map(x => text(x)).join(''), 'git status')
     } finally {
       await m.unmount()
     }

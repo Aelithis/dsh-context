@@ -414,6 +414,31 @@ describe('useRichFind', () => {
     await m.unmount()
   })
 
+  test('a match spanning two text nodes is marked across both, and the restore rebuilds them', async () => {
+    vi.useFakeTimers()
+    const Body = () => h('div', {},
+      h('span', { style: { color: 'red' } }, 'alpha '),
+      h('span', {}, 'beta gamma'))
+    function SplitHarness() {
+      const find = useRichFind('alpha beta gamma', 'raw')
+      return h('div', {}, find.button, find.bar,
+        h('div', { key: find.bodyKey, ref: find.bodyRef, className: 'split-body' }, h(Body, {})))
+    }
+    const m = await mount(h(SplitHarness, {}))
+    const input = await openFind(m.container)
+    await type(input, 'alpha beta')
+    await settle()
+    const marks = queryAll(m.container, '.lc-find-mark')
+    assert.deepEqual(marks.map(x => x.textContent), ['alpha ', 'beta'], 'one mark per text node the match covers')
+    assert.equal(query(m.container, '.lc-find-count').textContent, '1/1', 'the pieces count as one match')
+    assert.ok(marks.every(mark => mark.className.includes('lc-find-mark-on')), 'every piece of the active match carries the active tone')
+    await type(input, '')
+    const body = query(m.container, '.split-body')
+    assert.equal(queryAll(body, '.lc-find-mark').length, 0)
+    assert.deepEqual(queryAll(body, 'span').map(span => span.textContent), ['alpha ', 'beta gamma'], 'the split nodes are back in one piece each')
+    await m.unmount()
+  })
+
   test('deleting the whole query clears the marks at once, without the debounce', async () => {
     vi.useFakeTimers()
     const m = await mount(h(FindHarness, { text: 'alpha beta' }))
