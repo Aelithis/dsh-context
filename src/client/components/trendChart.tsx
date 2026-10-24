@@ -280,7 +280,7 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
     const riseCls = props.rise ? RISE_CLASS : ''
     return (
       <div
-        className={'lc-bar hover:bg-(--dsw-alias-bg-layer-2)'
+        className={'lc-bar hover:bg-(--dsw-alias-interactive-bg-hover)'
           + (props.selected ? ' lc-bar-selected' : '')
           + (props.hovered ? ' lc-bar-hovered' : '')
           + (props.inTurn ? ' lc-bar-in-turn' : '')}
