@@ -155,18 +155,21 @@ describe('TrendChart lazy DNA bands', () => {
     }
   })
 
-  test('a delta axis reads each step exactly once, and a re-render re-reads none', async () => {
-    const reqs = requestList(400)
+  test('a delta axis walk stays out of the band cache, and a re-render re-reads only the window', async () => {
+    const reqs = requestList(600)
     const lazy = lazyBands()
     viewport.clientW = 400
+    const total = (): number => [...lazy.calls.values()].reduce((a, b) => a + b, 0)
     const m = await mount(h(TrendChart, propsOf(reqs, { dnaAt: lazy.at, mode: 'delta' })))
     try {
       assert.equal(lazy.calls.size, reqs.length, 'the axis walk read every step')
-      assert.ok([...lazy.calls.values()].every(n => n === 1), 'each step was read once')
-      // A props change re-renders the card; the memoized walk and the bounded cache answer without re-reading.
+      const afterMount = total()
+      // A props change re-renders the card: the memoized walk keeps its answer, so only the painted window re-reads.
       await m.update(h(TrendChart, propsOf(reqs, { dnaAt: lazy.at, mode: 'delta', markers: [] })))
       await flush()
-      assert.ok([...lazy.calls.values()].every(n => n === 1), 'a re-render re-reads no step')
+      const reread = total() - afterMount
+      assert.ok(reread <= 400, `a re-render re-reads at most the window (${reread} of ${reqs.length})`)
+      assert.ok(reread < reqs.length, 'the whole-log walk never re-runs on a hover/scroll re-render')
     } finally {
       await m.unmount()
     }

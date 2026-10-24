@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type UIEvent } from 'react'
 import type { Category, ContextEventRecord, RequestRecord } from '../../shared/types'
 import { CATS } from '../categories'
-import { deltaBandsOf, dnaBaseLabel } from '../dna'
+import { deltaBandsOf, deltaTotalsOf, dnaBaseLabel } from '../dna'
 import { lruTouch, lruTrim } from '../lru'
 import type { DnaDelta, TrendBand } from '../dna'
 import { containHorizontalOverscroll } from '../overscroll'
@@ -25,10 +25,9 @@ export const RISE_CAP = 200
 const DNA_WINDOW_OVERSCAN = 8
 const DNA_WINDOW_HYSTERESIS = 2
 
-/** Bands/deltas kept by the chart's per-source cache: a delta axis touches every retained step, so the bound matches
- * the fold's own step cap (maxRequestSteps defaults to 1,500) — one cache serves the axis walk and the bars, and a
- * superseded data revision drops the whole map. */
-const BAND_STORE_MAX = 2048
+/** Bands/deltas kept for the RENDERED bars: a DNA band pins its assembled context (~tens of KB per step), and the
+ * axis walk reads its steps without caching, so this only has to cover the window plus its overscan. */
+const BAND_STORE_MAX = 512
 
 export interface TrendChartProps {
   requests: RequestRecord[]
@@ -463,26 +462,28 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
         : { total, up, down, activeMs })
     }
     // Net totals cannot bound churn (keys grow and shrink against each other), so a DNA delta axis walks the per-key
-    // bands of EVERY step. That walk is memoized: it is O(log), and pointer hovers re-render this card.
+    // bands of EVERY step. The walk reads them RAW (two steps at a time) so the band cache stays sized to the window,
+    // and it is memoized: it is O(log), and pointer hovers re-render this card.
     const dnaMaxima = useMemo(() => {
+      const rawBandAt = (idx: number): TrendBand[] => {
+        const seq = requests[idx].seq
+        return dnaAt !== null ? dnaAt(seq) : (dnaArray as TrendBand[][])[idx]
+      }
       let up = 0
       let down = 0
-      if (dnaDeltaOn) {
+      // The adaptive face paints the VISIBLE window's scale once measured, so only its first paint needs the log.
+      if (dnaDeltaOn && (!adaptive || visMax === null)) {
         let prev: TrendBand[] | null = null
         for (let i = 0; i < requests.length; i++) {
-          const bands = bandAt(i)
-          const d = deltaBandsOf(bands, prev)
-          let su = 0
-          let sd = 0
-          for (const b of d.up) su += b.tokens
-          for (const b of d.down) sd -= b.tokens
-          if (su > up) up = su
-          if (sd > down) down = sd
+          const bands = rawBandAt(i)
+          const totals = deltaTotalsOf(bands, prev)
+          if (totals.up > up) up = totals.up
+          if (totals.down > down) down = totals.down
           prev = bands
         }
       }
       return { up, down }
-    }, [requests, dnaDeltaOn, bandAt])
+    }, [requests, dnaDeltaOn, bandAt, dnaAt, dnaArray, adaptive, visMax])
     let maxTotal = 1
     let maxUp = 0
     let maxDown = 0
