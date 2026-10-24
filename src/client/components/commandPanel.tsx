@@ -1,6 +1,9 @@
-import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement, type ReactNode } from 'react'
+import { memo, Fragment, useEffect, useMemo, useRef, useState, type ComponentType, type MouseEvent, type ReactElement, type ReactNode } from 'react'
+import { useCodeHighlighter } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { HighlightSpan } from '@deepseek-ai/dsh-client-ui-primitives'
 import { attentionOf, byLatest, bySlowest, durationOf, matchesFilter, matchesQuery, previewTextOf, programsOf, resultTextOf, surfaceSeqOf, tallyOfCommands, viewsOf } from '../commands'
 import type { Command, CommandFilter, CommandSort, CommandView } from '../commands'
+import { grammarOfTool, highlightRuns } from '../commandHighlight'
 import type { ContentFetcher } from '../services'
 import { nameColorOf } from '../nameColor'
 import type { CommandStats } from '../../shared/types'
@@ -28,6 +31,24 @@ export interface CommandPanelProps {
   fetchContent?: ContentFetcher
   state?: DetailState
   onRetry?: () => void
+}
+
+/** Command text as its highlight runs (one span per run), or the plain text when no run set reached the renderer. The
+ *  runs carry the text verbatim, so browser find, select-all, the copy control and the panel's find lens all read the
+ *  same characters they would without coloring. */
+function CmdText(props: { text: string; runs: readonly HighlightSpan[][] | undefined }): ReactElement {
+  const { runs } = props
+  if (runs === undefined) return <>{props.text}</>
+  return (
+    <>
+      {runs.map((line, index) => (
+        <Fragment key={index}>
+          {index === 0 ? null : '\n'}
+          {line.map((run, at) => <span key={at} style={run.style}>{run.text}</span>)}
+        </Fragment>
+      ))}
+    </>
+  )
 }
 
 export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps> {
@@ -79,6 +100,15 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
   return memo(function CommandPanel(props: CommandPanelProps): ReactElement {
     // The memo must not block a locale switch: the tick re-renders on it even when the props are reference-stable.
     kit.useLocaleTick()
+    // One binding per shell grammar, held for the mount; a lazy grammar (powershell) colors its rows on the load tick,
+    // which the hook's own store subscription drives, and stays plain until then.
+    const highlightShell = useCodeHighlighter('bash')
+    const highlightPwsh = useCodeHighlighter('powershell')
+    const runsOf = (tool: string, text: string): readonly HighlightSpan[][] | undefined => {
+      const grammar = grammarOfTool(tool)
+      if (grammar === undefined) return undefined
+      return highlightRuns(grammar === 'bash' ? highlightShell : highlightPwsh, grammar, text)
+    }
     const { commands } = props
     const [filter, setFilter] = useState<CommandFilter>('all')
     const [sort, setSort] = useState<CommandSort>('latest')
@@ -365,7 +395,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             trailing={resultCard === null ? factsEl : undefined}
           >
             {rec.description !== undefined ? <div className="lc-cmd-why">{rec.description}</div> : null}
-            <pre className="lc-cmd-full">{rec.cmd}{rec.cmdTruncated === true ? ' …' : ''}</pre>
+            <pre className="lc-cmd-full"><CmdText text={rec.cmd} runs={runsOf(rec.tool, rec.cmd)} />{rec.cmdTruncated === true ? ' …' : ''}</pre>
           </FindCard>
           {resultCard}
         </div>
@@ -393,7 +423,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             <span className="lc-cmd-cmd">
               {rec.tool !== 'bash' ? <span className="lc-cmd-tool">{rec.tool === 'run_code' ? t('cmds.tool.code') : rec.tool}</span> : null}
               {rec.codeMode === true && rec.tool === 'bash' ? <span className="lc-cmd-tool">{t('cmds.tool.nested')}</span> : null}
-              {view.preview}
+              <CmdText text={view.preview} runs={runsOf(rec.tool, view.preview)} />
             </span>
             <span className="lc-cmd-badges">
               {view.shape.lines > 1 ? <span className="lc-cmd-badge">{t('cmds.lines', { n: view.shape.lines })}</span> : null}

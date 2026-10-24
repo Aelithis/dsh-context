@@ -123,6 +123,63 @@ describe('CommandPanel — rendering', () => {
   })
 })
 
+describe('CommandPanel — command coloring', () => {
+  test('the collapsed row and the expanded command carry the harness token runs', async () => {
+    const m = await mount(h(Panel, { commands: [cmd(1, { cmd: 'git status --short', resultSeq: 51 })] }))
+    try {
+      const preview = query(m.container, '.lc-cmd-cmd')
+      const runs = queryAll(preview, 'span')
+      assert.ok(runs.length > 1, 'a span per token run')
+      assert.equal(runs[0].style.color, 'var(--shiki-token-function)')
+      assert.equal(text(preview), 'git status --short', 'the runs carry the preview verbatim')
+
+      await click(query(m.container, '.lc-cmd-row'))
+      const full = query(m.container, '.lc-cmd-full')
+      assert.ok(queryAll(full, 'span').length > 1, 'the detail colors the whole command')
+      assert.equal(text(full), 'git status --short')
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('the expanded command keeps its source newlines between the colored lines', async () => {
+    const source = "cd /repo && python3 - <<'PY'\nprint('hi')\nPY"
+    const m = await mount(h(Panel, { commands: [cmd(1, { cmd: source, resultSeq: 51 })] }))
+    try {
+      await click(query(m.container, '.lc-cmd-row'))
+      const full = query(m.container, '.lc-cmd-full')
+      assert.equal(text(full), source, 'the runs carry the command text verbatim')
+      assert.ok(queryAll(full, 'span').length > 3, 'every line carries its token runs')
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('a tool the panel does not color, and an over-long line, render plain', async () => {
+    const long = 'x'.repeat(1001)
+    const m = await mount(h(Panel, {
+      commands: [
+        cmd(1, { tool: 'run_code', cmd: 'return 1 + 1' }),
+        cmd(2, { cmd: long }),
+        cmd(3, { tool: 'pwsh', cmd: 'Get-ChildItem -Recurse' }),
+      ],
+    }))
+    try {
+      // Latest first: the pwsh run leads, then the over-long line, then the code-mode program.
+      const rows = queryAll(m.container, '.lc-cmd-cmd')
+      // The pwsh grammar loads lazily: the preview text reads the same colored or plain.
+      assert.ok(text(rows[0]).endsWith('Get-ChildItem -Recurse'), 'the pwsh preview renders')
+      assert.equal(queryAll(rows[1], 'span').length, 0)
+      assert.equal(text(rows[1]), long)
+      assert.equal(queryAll(rows[2], '.lc-cmd-tool').length, 1)
+      assert.ok(text(rows[2]).endsWith('return 1 + 1'), 'the code program stays plain')
+      assert.equal(queryAll(rows[2], '.lc-cmd-tool + span').length, 0, 'no token runs follow the tool tag')
+    } finally {
+      await m.unmount()
+    }
+  })
+})
+
 describe('CommandPanel — filtering, search, sort', () => {
   test('the chips filter the list and toggle back off', async () => {
     const m = await mount(h(Panel, { commands: richCommands() }))
