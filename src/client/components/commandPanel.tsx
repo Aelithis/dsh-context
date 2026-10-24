@@ -203,7 +203,11 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
     // search threshold with a stale query, and an invisible box cannot be cleared.
     const shownPrograms = programs.length > 6 && pq !== '' ? programs.filter(p => p.name.toLowerCase().includes(pq)) : programs
 
-    const rail = commands.length > 0 ? (
+    const loadingChannel = commands.length === 0 && props.state === 'loading'
+    const failedChannel = commands.length === 0 && props.state === 'failed'
+    const showRail = !loadingChannel && !failedChannel
+    const totalTime = commands.length === 0 ? '0' : fmtDuration(tally.ms)
+    const rail = showRail ? (
       <div className="lc-cmd-rail">
         <div className="lc-cmd-rail-sec">
           <div className="lc-cmd-rail-h">{t('cmds.rail.summary')}</div>
@@ -213,7 +217,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
               <b>{fmt(tally.failed)}</b>
               <span>{t('cmds.rail.failed')}{tally.runs > 0 ? ' · ' + kit.fmtShare(tally.failed, tally.runs) : ''}</span>
             </div>
-            <div className="lc-cmd-kpi lc-cmd-kpi-time"><b>{fmtDuration(tally.ms)}</b><span>{t('cmds.rail.totalTime')}</span></div>
+            <div className="lc-cmd-kpi lc-cmd-kpi-time"><b>{totalTime}</b><span>{t('cmds.rail.totalTime')}</span></div>
             <div className="lc-cmd-kpi lc-cmd-kpi-bg"><b>{fmt(tally.bg)}</b><span>{t('cmds.rail.background')}</span></div>
           </div>
         </div>
@@ -236,44 +240,46 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             ))}
           </div>
         ) : null}
-        <div className="lc-cmd-rail-sec lc-cmd-progs">
-          <div className="lc-cmd-rail-h lc-cmd-progs-h">
-            <span title={t('cmds.rail.topScope')}>{t('cmds.rail.top', { n: programs.length })}</span>
-            {programs.length > 6 ? (
-              <ClearableInput
-                className="lc-cmd-prog-search"
-                type="search"
-                value={progQuery}
-                placeholder={t('cmds.rail.topSearch')}
-                clearLabel={t('field.clear')}
-                onChange={setProgQuery}
-              />
-            ) : null}
+        {programs.length > 0 ? (
+          <div className="lc-cmd-rail-sec lc-cmd-progs">
+            <div className="lc-cmd-rail-h lc-cmd-progs-h">
+              <span title={t('cmds.rail.topScope')}>{t('cmds.rail.top', { n: programs.length })}</span>
+              {programs.length > 6 ? (
+                <ClearableInput
+                  className="lc-cmd-prog-search"
+                  type="search"
+                  value={progQuery}
+                  placeholder={t('cmds.rail.topSearch')}
+                  clearLabel={t('field.clear')}
+                  onChange={setProgQuery}
+                />
+              ) : null}
+            </div>
+            <div className="lc-cmd-progs-list" role="group" aria-label={t('cmds.rail.top', { n: programs.length })}>
+              {shownPrograms.map((p) => {
+                const color = nameColorOf(p.name)
+                const share = Math.round(p.n / totalPrograms * 100)
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    className="lc-cmd-prog"
+                    title={t('cmds.rail.topTip', { name: p.name })}
+                    onClick={() => { setQuery(p.name) }}
+                  >
+                    <i className="lc-cmd-prog-dot" style={{ background: color }} />
+                    <span className="lc-cmd-prog-name">{p.name}</span>
+                    <span className="lc-cmd-prog-n">{'×' + fmt(p.n)}</span>
+                    <span className="lc-cmd-prog-share">{share}%</span>
+                    {/* The underline bar is relative to the heaviest program (the Skills list's idiom). */}
+                    <i className="lc-cmd-prog-bar" style={{ width: `calc(${Math.round(p.n / topProgramN * 100)}% - ${Math.round(p.n / topProgramN * 12)}px)`, background: color }} />
+                  </button>
+                )
+              })}
+              {shownPrograms.length === 0 ? <div className="lc-cmd-prog-none">{t('cmds.noMatch')}</div> : null}
+            </div>
           </div>
-          <div className="lc-cmd-progs-list" role="group" aria-label={t('cmds.rail.top', { n: programs.length })}>
-            {shownPrograms.map((p) => {
-              const color = nameColorOf(p.name)
-              const share = Math.round(p.n / totalPrograms * 100)
-              return (
-                <button
-                  key={p.name}
-                  type="button"
-                  className="lc-cmd-prog"
-                  title={t('cmds.rail.topTip', { name: p.name })}
-                  onClick={() => { setQuery(p.name) }}
-                >
-                  <i className="lc-cmd-prog-dot" style={{ background: color }} />
-                  <span className="lc-cmd-prog-name">{p.name}</span>
-                  <span className="lc-cmd-prog-n">{'×' + fmt(p.n)}</span>
-                  <span className="lc-cmd-prog-share">{share}%</span>
-                  {/* The underline bar is relative to the heaviest program (the Skills list's idiom). */}
-                  <i className="lc-cmd-prog-bar" style={{ width: `calc(${Math.round(p.n / topProgramN * 100)}% - ${Math.round(p.n / topProgramN * 12)}px)`, background: color }} />
-                </button>
-              )
-            })}
-            {shownPrograms.length === 0 ? <div className="lc-cmd-prog-none">{t('cmds.noMatch')}</div> : null}
-          </div>
-        </div>
+        ) : null}
       </div>
     ) : null
 
@@ -472,9 +478,9 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
             {props.floor !== undefined && commands.length > 0 ? (
               <div className="lc-cmd-floor">{t('cmds.coverage', { n: fmt(commands.length) })}</div>
             ) : null}
-            {commands.length === 0 && props.state === 'loading' ? (
+            {loadingChannel ? (
               <DetailNote state="loading" className="lc-empty lc-lane" />
-            ) : commands.length === 0 && props.state === 'failed' && props.onRetry !== undefined ? (
+            ) : failedChannel ? (
               <DetailNote state="failed" onRetry={props.onRetry} className="lc-empty lc-lane" />
             ) : shown.length === 0 ? (
               <div className="lc-empty lc-lane">{t(commands.length === 0 ? 'cmds.empty' : 'cmds.noMatch')}</div>

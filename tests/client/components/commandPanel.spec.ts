@@ -371,10 +371,15 @@ describe('CommandPanel — the summary rail', () => {
     }
   })
 
-  test('the rail hides when the log is empty and when nothing is notable', async () => {
+  test('an empty log shows a zero summary and a blank list; a quiet log keeps the real rail', async () => {
     const empty = await mount(h(Panel, { commands: [] }))
     try {
-      assert.equal(queryAll(empty.container, '.lc-cmd-rail').length, 0)
+      assert.ok(query(empty.container, '.lc-cmd-rail') !== null, 'the summary renders with real zeroes')
+      assert.deepEqual(queryAll(empty.container, '.lc-cmd-kpi b').map(b => text(b)), ['0', '0', '0', '0'])
+      assert.equal(queryAll(empty.container, '.lc-cmd-progs').length, 0, 'no empty program ranking')
+      assert.equal(queryAll(empty.container, '.lc-cmd-attn').length, 0, 'no attention section without notable items')
+      assert.equal(queryAll(empty.container, '.lc-cmd-item').length, 0, 'the list stays blank')
+      assert.ok(text(empty.container).includes('No commands executed in this session'))
     } finally {
       await empty.unmount()
     }
@@ -382,6 +387,7 @@ describe('CommandPanel — the summary rail', () => {
     try {
       assert.ok(query(quiet.container, '.lc-cmd-rail') !== null, 'the summary still renders')
       assert.equal(queryAll(quiet.container, '.lc-cmd-attn').length, 0, 'no attention section without notable items')
+      assert.ok(query(quiet.container, '.lc-cmd-progs') !== null, 'a non-empty log still ranks programs')
     } finally {
       await quiet.unmount()
     }
@@ -584,14 +590,23 @@ describe('CommandPanel — empty and channel states', () => {
     const loading = await mount(h(Panel, { commands: [], state: 'loading' }))
     try {
       assert.equal(queryAll(loading.container, '.lc-detail-note, .lc-empty').length > 0, true)
+      assert.equal(queryAll(loading.container, '.lc-cmd-rail').length, 0, 'a pending channel owns the full width')
     } finally {
       await loading.unmount()
     }
     const failed = await mount(h(Panel, { commands: [], state: 'failed', onRetry: () => {} }))
     try {
       assert.equal(queryAll(failed.container, 'button').length > 0, true, 'the retry note carries a button')
+      assert.equal(queryAll(failed.container, '.lc-cmd-rail').length, 0, 'a failed channel owns the full width')
     } finally {
       await failed.unmount()
+    }
+    const failedNoRetry = await mount(h(Panel, { commands: [], state: 'failed' }))
+    try {
+      assert.ok(text(failedNoRetry.container).includes('History failed to load'), 'no retry still reads as a failure')
+      assert.equal(queryAll(failedNoRetry.container, '.lc-cmd-rail').length, 0)
+    } finally {
+      await failedNoRetry.unmount()
     }
   })
 
