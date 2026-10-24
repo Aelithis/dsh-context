@@ -71,7 +71,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     await m.unmount()
   })
 
-  test('the filter summary is populated before the DNA feed leaves its first-paint skeleton', async () => {
+  test('the feed paints its windowed rows and the filter summary on the first paint', async () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)
@@ -80,8 +80,9 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
       flushSync(() => {
         root.render(h(Browser, props({ data: dnaData, headers: dnaHeaders, dna: true, onDnaChange: () => {} })))
       })
-      assert.ok(query(container, '.lc-br-flat[aria-hidden="true"]'), 'the ready effect has not run yet')
+      // No skeleton stage: the rows and the summary come from the model at render time.
       assert.equal(text(query(container, '.lc-br-filter-stat')), '×6 ≈275')
+      assert.equal(queryAll(container, '.lc-br-flat > .lc-br-elem').length, 6, 'rows, then the header groups')
     } finally {
       await act(async () => { root.unmount() })
       container.remove()
