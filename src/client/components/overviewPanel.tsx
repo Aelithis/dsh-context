@@ -154,6 +154,7 @@ export function makeOverviewPanel(
     ), [scoped, group, groups, skill, scope, day, sort])
     const paged = pageOf(visible, page)
     const kpi = useMemo(() => kpisOf(ranged, book, currency, scope), [ranged, book, currency, scope])
+    const teamTiming = kpi.timing
     const days = useMemo(() => aggregateDays(covered, book, currency), [covered, book, currency])
     const skillStats = useMemo(() => skillLoadsOf(ranged, { scope, day, sort: skillSort }), [ranged, scope, day, skillSort])
     /** A preset pick applies at once and becomes the stored default where the settings form is writable. */
@@ -237,20 +238,20 @@ export function makeOverviewPanel(
                     </div>
                     <div className="lc-stat lc-ov-kpi">
                       <span className="lc-stat-label">{t('stats.toolCalls')}</span>
-                      <span className="lc-stat-value">{fmt(kpi.toolCalls)}</span>
-                      <span className="lc-stat-sub">{t('ov.kpi.toolSub', { dur: fmtDuration(kpi.toolsMs) })}</span>
+                      <span className="lc-stat-value">{fmt(teamTiming?.toolCalls ?? 0)}</span>
+                      <span className="lc-stat-sub">{t('ov.kpi.toolSub', { dur: fmtDuration(teamTiming?.toolsMs ?? 0) })}</span>
                     </div>
                     <div className="lc-stat lc-ov-kpi">
                       <span className="lc-stat-label">{t('timing.total')}</span>
-                      <span className="lc-stat-value">{fmtDuration(kpi.wallMs)}</span>
-                      <span className="lc-stat-sub">{t('ov.kpi.wallSub', { n: fmt(kpi.calls) })}</span>
+                      <span className="lc-stat-value">{fmtDuration(teamTiming?.wallMs ?? 0)}</span>
+                      <span className="lc-stat-sub">{t('ov.kpi.wallSub', { n: fmt(teamTiming?.calls ?? 0) })}</span>
                     </div>
                   </div>
                   <OverviewUsage days={days} currency={currency} today={todayKey()} />
                 </div>
                 <div className="lc-ov-stats">
                   <OverviewTokens tokens={kpi.tokenParts} />
-                  <StatsTiming timing={kpi.timing} scope="team" />
+                  <StatsTiming timing={teamTiming} scope="team" />
                 </div>
                 <div className="lc-ov-body">
                   <div className="lc-ov-left">
