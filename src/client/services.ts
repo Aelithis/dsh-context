@@ -534,107 +534,125 @@ export function headersOf(value: unknown): ContextHeaders | null {
   } as unknown as ContextHeaders
 }
 
-/** Absent stays null (an older host serves no such key); per-day re-proof drops just the bad entry or fee.
- * Two passes: a clean ledger proves with zero allocation and serves as-is; only a dirty one pays the rebuild. */
+/** Absent stays null (an older host serves no such key). ONE pass decides per DAY: a well-formed day rides by
+ * reference, a repairable one is rebuilt, an unreadable one drops — and the day map is copied only once a repair makes
+ * that necessary. The repair is deterministic: a host that once served a malformed fee or tally gets it scrubbed here
+ * regardless of what its sibling days look like. */
 export function activityOf(value: unknown): ContextActivity | null {
   const data = asRecord(value)
   if (data === null) return null
   const rawDays = asRecord(data.days)
   if (rawDays === null || Array.isArray(rawDays)) return null
-  if (activityClean(rawDays)) return data as unknown as ContextActivity
-  return { days: activityDaysRebuilt(rawDays) }
-}
-
-/** The clean-ledger proof: every own key a valid day shape; true means the original record serves whole. */
-function activityClean(rawDays: Record<string, unknown>): boolean {
+  let drops: Set<string> | null = null
+  let fixes: Map<string, ActivityDay> | null = null
   for (const key in rawDays) {
-    // Inherited keys never took part in the walk (the rebuild reads own keys only); skip, never fail.
+    // Inherited keys never took part in the walk; skip, never repair.
     if (!Object.hasOwn(rawDays, key)) continue
-    const entry = asRecord(rawDays[key])
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)
-      || entry === null || Array.isArray(entry)
-      || typeof entry.tokens !== 'number' || !Number.isFinite(entry.tokens) || entry.tokens < 0
-      || typeof entry.requests !== 'number' || !Number.isFinite(entry.requests) || entry.requests < 0) {
-      return false
-    }
-    if (!costServiceable(entry.cost)) return false
-    if (!skillTalliesServiceable(entry.skills)) return false
-    for (const k of ['turns', 'toolCalls', 'toolsMs', 'wallMs'] as const) {
-      const v = entry[k]
-      if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v) || v < 0)) return false
-    }
+    const repaired = dayEntryOf(key, rawDays[key])
+    if (repaired === undefined) (drops ??= new Set()).add(key)
+    else if (repaired !== rawDays[key]) (fixes ??= new Map()).set(key, repaired)
   }
-  return true
-}
-
-/** The dirty-ledger rebuild: a malformed day or fee drops alone, the rest re-prove into plain day entries. */
-function activityDaysRebuilt(rawDays: Record<string, unknown>): Record<string, ActivityDay> {
+  if (drops === null && fixes === null) return data as unknown as ContextActivity
+  // Rebuilt only for a real repair — a dynamic `delete` would deopt the kept record.
   const days: Record<string, ActivityDay> = {}
   for (const key of Object.keys(rawDays)) {
-    const entry = asRecord(rawDays[key])
-    const tokens = entry?.tokens
-    const requests = entry?.requests
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)
-      || entry === null || Array.isArray(entry)
-      || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0
-      || typeof requests !== 'number' || !Number.isFinite(requests) || requests < 0) {
-      continue
-    }
-    const costRaw = costOf(entry.cost)
-    const cost = costRaw !== undefined && Object.keys(costRaw).length > 0 ? costRaw : undefined
-    const skills = skillTalliesOf(entry.skills)
-    const turns = nonNegativeOf(entry.turns)
-    const toolCalls = nonNegativeOf(entry.toolCalls)
-    const toolsMs = nonNegativeOf(entry.toolsMs)
-    const wallMs = nonNegativeOf(entry.wallMs)
-    days[key] = {
-      tokens,
-      requests,
-      ...(cost !== undefined ? { cost } : {}),
-      ...(turns !== undefined ? { turns } : {}),
-      ...(toolCalls !== undefined ? { toolCalls } : {}),
-      ...(toolsMs !== undefined ? { toolsMs } : {}),
-      ...(wallMs !== undefined ? { wallMs } : {}),
-      ...(skills !== undefined ? { skills } : {}),
-    }
+    if (drops?.has(key) === true) continue
+    days[key] = fixes?.get(key) ?? rawDays[key] as ActivityDay
   }
-  return days
+  return { days }
+}
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/
+
+/** A day's served entry, or `undefined` when the day drops. A well-formed day returns ITSELF (the identity marks
+ * "nothing to repair"); anything else is rebuilt into a plain entry. */
+function dayEntryOf(key: string, raw: unknown): ActivityDay | undefined {
+  const entry = asRecord(raw)
+  const tokens = entry?.tokens
+  const requests = entry?.requests
+  if (!DAY_KEY.test(key)
+    || entry === null || Array.isArray(entry)
+    || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0
+    || typeof requests !== 'number' || !Number.isFinite(requests) || requests < 0) {
+    return undefined
+  }
+  const turns = nonNegativeOf(entry.turns)
+  const toolCalls = nonNegativeOf(entry.toolCalls)
+  const toolsMs = nonNegativeOf(entry.toolsMs)
+  const wallMs = nonNegativeOf(entry.wallMs)
+  const clean = costWellFormed(entry.cost)
+    && skillTalliesWellFormed(entry.skills)
+    && (entry.turns === undefined || turns !== undefined)
+    && (entry.toolCalls === undefined || toolCalls !== undefined)
+    && (entry.toolsMs === undefined || toolsMs !== undefined)
+    && (entry.wallMs === undefined || wallMs !== undefined)
+  if (clean) return entry as unknown as ActivityDay
+  const costRaw = costOf(entry.cost)
+  const cost = costRaw !== undefined && Object.keys(costRaw).length > 0 ? costRaw : undefined
+  const skills = skillTalliesOf(entry.skills)
+  return {
+    tokens,
+    requests,
+    ...(cost !== undefined ? { cost } : {}),
+    ...(turns !== undefined ? { turns } : {}),
+    ...(toolCalls !== undefined ? { toolCalls } : {}),
+    ...(toolsMs !== undefined ? { toolsMs } : {}),
+    ...(wallMs !== undefined ? { wallMs } : {}),
+    ...(skills !== undefined ? { skills } : {}),
+  }
 }
 
 function nonNegativeOf(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
-/** The exact conditions the rebuild's dirty flag used: a fee serves as-is unless `costOf` would have answered
- * undefined-or-empty (a non-record top level, or no own provider key carrying a record). Anything deeper — sparse or
- * garbage buckets — rode the wire untouched before and must keep doing so, so the fast path never rejects it. */
-function costServiceable(value: unknown): boolean {
+/** Every level and present field of a fee must already hold its served shape: a non-record level, or a present
+ * bucket field that is not a finite number, needs the repair pass. */
+function costWellFormed(value: unknown): boolean {
   if (value === undefined) return true
   const data = asRecord(value)
   if (data === null || Array.isArray(data)) return false
+  let any = false
   for (const provider in data) {
     if (!Object.hasOwn(data, provider)) continue
     const models = asRecord(data[provider])
-    if (models !== null && !Array.isArray(models)) return true
+    if (models === null || Array.isArray(models)) return false
+    any = true
+    for (const model in models) {
+      const periods = asRecord(models[model])
+      if (periods === null || Array.isArray(periods)) return false
+      for (const period of ['peak', 'off'] as const) {
+        const raw = periods[period]
+        if (raw === undefined) continue
+        const bucket = asRecord(raw)
+        if (bucket === null || Array.isArray(bucket)) return false
+        for (const k of ['uncached', 'cacheRead', 'cacheWrite', 'output']) {
+          const v = bucket[k]
+          if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v))) return false
+        }
+      }
+    }
   }
-  return false
+  // An empty fee record carries no figure: the repair drops it (as the old dirty path did).
+  return any
 }
 
-/** The exact conditions the rebuild's dirty flag used: a skill table serves as-is unless `skillTalliesOf` would have
- * answered undefined (a non-record top level, or no own key carrying a well-formed tally). */
-function skillTalliesServiceable(value: unknown): boolean {
+/** Every own tally must hold a served shape, and an empty table is not served at all (the repair drops it). */
+function skillTalliesWellFormed(value: unknown): boolean {
   if (value === undefined) return true
   const data = asRecord(value)
   if (data === null || Array.isArray(data)) return false
+  let any = false
   for (const name in data) {
     if (!Object.hasOwn(data, name)) continue
     const tally = asRecord(data[name])
     const n = tally?.n
     const last = tally?.last
-    if (typeof n === 'number' && Number.isFinite(n) && n >= 0
-      && typeof last === 'number' && Number.isFinite(last)) return true
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return false
+    if (typeof last !== 'number' || !Number.isFinite(last)) return false
+    any = true
   }
-  return false
+  return any
 }
 
 /** True when a cost usage record is already in the merged shape a `mergeCostUsage` output would take — every own

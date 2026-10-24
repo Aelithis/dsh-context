@@ -880,13 +880,23 @@ describe('activityOf', () => {
     })
   })
 
-  test('a record-shaped fee with deep garbage or sparse buckets rides the wire untouched (the old dirty flag never fired for it)', () => {
+  test('a sparse bucket rides by reference; a garbage leaf repairs its own day only', () => {
     const sparse = { deepseek: { 'deepseek-v4': { peak: { uncached: 1 } } } }
     const sparseWire = { days: { '2026-09-16': { tokens: 15, requests: 1, cost: sparse } } }
-    assert.ok(activityOf(sparseWire) === (sparseWire as never))
+    assert.ok(activityOf(sparseWire) === (sparseWire as never), 'missing fields are not malformed')
     const garbage = { deepseek: { 'deepseek-v4': { peak: { uncached: 'x', cacheRead: 5, cacheWrite: 0, output: 2 } } } }
-    const garbageWire = { days: { '2026-09-16': { tokens: 15, requests: 1, cost: garbage } } }
-    assert.ok(activityOf(garbageWire) === (garbageWire as never))
+    const mixed = activityOf({
+      days: {
+        '2026-09-16': { tokens: 15, requests: 1, cost: garbage },
+        '2026-09-15': { tokens: 3, requests: 1 },
+      },
+    })
+    assert.deepEqual(mixed, {
+      days: {
+        '2026-09-16': { tokens: 15, requests: 1, cost: { deepseek: { 'deepseek-v4': { peak: { uncached: 0, cacheRead: 5, cacheWrite: 0, output: 2 } } } } },
+        '2026-09-15': { tokens: 3, requests: 1 },
+      },
+    }, 'the malformed leaf zero-fills; the sibling day rides untouched')
   })
 
   test('empty fee and skill records drop (costOf and skillTalliesOf answered undefined for them)', () => {
@@ -907,16 +917,17 @@ describe('activityOf', () => {
     assert.ok(activityOf(wire) === (wire as never))
   })
 
-  test('the fast proof fails exactly where the old dirty flag fired', () => {
+  test('a malformed fee repairs deterministically: a bad level drops, a bad leaf zero-fills', () => {
     const inheritedCost = Object.assign(Object.create({ 'injected-model': { peak: { uncached: 1, cacheRead: 1, cacheWrite: 1, output: 1 } } }), {})
-    // One walk per fixture: activityClean stops at its first failing day, so each depth needs its own ledger.
     const cases: [unknown, unknown][] = [
       [inheritedCost, undefined],
       [{}, undefined],
       [{ deepseek: 7 }, undefined],
       [{ deepseek: [1] }, undefined],
-      [{ deepseek: { 'deepseek-v4': [1] } }, { deepseek: { 'deepseek-v4': [1] } }],
-      [{ deepseek: { 'deepseek-v4': 7 } }, { deepseek: { 'deepseek-v4': 7 } }],
+      [{ deepseek: { 'deepseek-v4': [1] } }, { deepseek: {} }],
+      [{ deepseek: { 'deepseek-v4': 7 } }, { deepseek: {} }],
+      [{ deepseek: { 'deepseek-v4': { peak: { uncached: 1, cacheRead: 1, cacheWrite: 1, output: 'x' } } } },
+        { deepseek: { 'deepseek-v4': { peak: { uncached: 1, cacheRead: 1, cacheWrite: 1, output: 0 } } } }],
     ]
     for (const [cost, expected] of cases) {
       const out = activityOf({ days: { '2026-09-16': { tokens: 1, requests: 1, cost } } })
@@ -1085,6 +1096,47 @@ describe('costFullyQuantified', () => {
     assert.equal(costFullyQuantified({ deepseek: { m: { peak: { uncached: 'x', cacheRead: 1, cacheWrite: 1, output: 1 } } } }), false, 'a non-numeric bucket field')
     assert.equal(costFullyQuantified({ deepseek: { m: { peak: [1] } } }), false)
     assert.equal(costFullyQuantified({ deepseek: { m: { peak: { uncached: 1, cacheRead: 2 } } } }), false, 'a sparse bucket')
+  })
+
+  test('a garbage day repairs its scalar fields too; a malformed period or non-record fee drops the fee', () => {
+    const out = activityOf({
+      days: {
+        // Non-numeric scalars and a non-record period repair the day in place.
+        '2026-09-16': {
+          tokens: 5, requests: 1, turns: 'x', toolCalls: -1, toolsMs: Number.NaN, wallMs: 7,
+          cost: { deepseek: { m: { peak: [1], off: { uncached: 2, cacheRead: 2, cacheWrite: 2, output: 2 } } } },
+        },
+        '2026-09-15': { tokens: 5, requests: 1, skills: { tdd: { n: 0, last: 5 } } },
+      },
+    })
+    assert.deepEqual(out, {
+      days: {
+        // The array-valued `peak` drops, the readable `off` bucket survives.
+        '2026-09-16': {
+          tokens: 5, requests: 1, wallMs: 7,
+          cost: { deepseek: { m: { off: { uncached: 2, cacheRead: 2, cacheWrite: 2, output: 2 } } } },
+        },
+        '2026-09-15': { tokens: 5, requests: 1, skills: { tdd: { n: 0, last: 5 } } },
+      },
+    })
+  })
+
+  test('a repaired day keeps its readable counters, and a bad tally `last` fails the proof on its own', () => {
+    const out = activityOf({
+      days: {
+        '2026-09-16': {
+          tokens: 9, requests: 2, turns: 3, toolCalls: 4, toolsMs: 500, wallMs: 900,
+          cost: { deepseek: 7 },
+          skills: { tdd: { n: 1, last: 'x' } },
+        },
+      },
+    })
+    assert.deepEqual(out, {
+      days: { '2026-09-16': { tokens: 9, requests: 2, turns: 3, toolCalls: 4, toolsMs: 500, wallMs: 900 } },
+    }, 'the malformed fee drops, the bad-last tally drops the table, the counters stay')
+    // A non-finite `last` (not a non-number) is its own failing arm of the same guard.
+    const nanLast = activityOf({ days: { '2026-09-16': { tokens: 1, requests: 1, skills: { tdd: { n: 1, last: Number.NaN } } } } })
+    assert.deepEqual(nanLast, { days: { '2026-09-16': { tokens: 1, requests: 1 } } })
   })
 
   test('an own __proto__ key at either level never aliases (the merge it stands in for drops it)', () => {
