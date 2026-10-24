@@ -296,7 +296,10 @@ export function makeContextView(
     const leftColRef = useRef<HTMLDivElement | null>(null)
     const [browserCap, setBrowserCap] = useState<number | null>(null)
     const [capTick, setCapTick] = useState(0)
-    useLayoutEffect(() => {
+    // Measured AFTER paint: a layout effect reads every just-mounted card's rect before the first frame, which made the
+    // tab's paint wait for the whole panel's layout (issue #198). The cap lands a frame later; the cards are already
+    // stacked top-to-bottom, so only the flush bottom edge settles late.
+    useEffect(() => {
       const col = leftColRef.current
       /* v8 ignore next 1 -- the loading frame renders no left column; every carded render attaches it. */
       if (col === null) return
