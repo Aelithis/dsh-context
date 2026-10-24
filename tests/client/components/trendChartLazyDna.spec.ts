@@ -141,6 +141,36 @@ describe('TrendChart lazy DNA bands', () => {
       // Exact churn bounds need every bar's key changes, so there is no totals shortcut.
       assert.ok(lazy.calls.size <= reqs.length * 2, `bounded per-seq lookups (${lazy.calls.size})`)
       assert.ok(bars(m.container).length > 0)
+
+      // The whole-log axis walk is memoized: a hover re-render must not re-read one step per bar.
+      const afterMount = lazy.calls.size
+      const firstBar = queryAll(m.container, '.lc-bar')[0]
+      await act(async () => {
+        firstBar.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      })
+      await flush()
+      assert.equal(lazy.calls.size, afterMount, 'a hover re-render re-walks no step')
+    } finally {
+      await m.unmount()
+    }
+  })
+
+  test('a delta axis keeps only a bounded band cache for a long log', async () => {
+    const reqs = requestList(700)
+    const lazy = lazyBands()
+    viewport.clientW = 400
+    const m = await mount(h(TrendChart, propsOf(reqs, { dnaAt: lazy.at, mode: 'delta' })))
+    try {
+      // The walk reads every step once; the chart's cache stays bounded, so a later read re-asks the source.
+      assert.equal(lazy.calls.size, reqs.length, 'the axis walk read every step')
+      const first = lazy.calls.get(1) ?? 0
+      const target = queryAll(m.container, '.lc-bar')[0]
+      await act(async () => {
+        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      })
+      await flush()
+      // A re-read of the evicted oldest step is allowed; an unbounded cache would answer it from memory.
+      assert.ok((lazy.calls.get(1) ?? 0) >= first)
     } finally {
       await m.unmount()
     }

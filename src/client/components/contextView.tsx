@@ -40,7 +40,9 @@ import { makeLegend, makeStackedBar } from './stackedBar'
 import { aggregateByTurn, attachMarkers, boundaryIndex, jumpTargetOf, makeTrendChart, turnStepsOf } from './trendChart'
 import { makeTrendOverview } from './trendOverview'
 import { stepStampOf } from './browserHelpers'
-import { cachedByData, assembleCached } from './derivedCache'
+import { cachedByData } from './derivedCache'
+import { lruTrim } from '../lru'
+import { assemble } from '../assemble'
 import { useLazyMount } from './useLazyMount'
 import { trendBandsOf } from '../dna'
 import type { TrendBand } from '../dna'
@@ -59,6 +61,10 @@ const HOVER_DELAY_MS = 140
 const DNA_HOVER_DELAY = 220
 /** Above this many retained steps the DNA bands are built lazily per rendered window. */
 const DNA_LAZY_MIN = 512
+/** Bands cached per data revision: a band pins its assembled node, and the delta axis walks EVERY step, so an
+ * unbounded map would retain the whole log's decomposition to compute one axis scale. A miss re-assembles in tens of
+ * microseconds, and the chart's own cache (also bounded) answers repeats first. */
+const DNA_BANDS_MAX = 256
 /** Scroll a landed-on card to the top of the page's scrollport; no landing may stay below the fold. */
 function revealCard(root: HTMLElement | null, selector: string): void {
   /* v8 ignore start -- every render path attaches the root and draws the landed-on card, so the target always resolves. */
@@ -381,38 +387,36 @@ export function makeContextView(
     const stepsOf = useMemo(() => turnStepsOf(requests), [requests])
     const opStampOf = useMemo(() => stepStampOf(requests), [requests])
     const markers = useMemo(() => attachMarkers(displayRequests, events), [displayRequests, events])
-    // One assemble() per displayed record — the same pure reconstruction the browser uses — memoized so hover renders never reassemble.
-    /* v8 ignore next 1 -- a missing projection returns the loading screen before the trend card
-       (and its DNA toggle) renders, so `dna && data === null` cannot occur. */
-    // A long log carries thousands of requests: assembling every step's context up front blocked the DNA toggle.
-    // Small logs and delta mode keep the eager array; large total-mode logs hand the chart a per-seq accessor so only
-    // the rendered window assembles. Delta needs every bar's per-key change: net totals cannot bound key churn.
+    // A long log carries thousands of requests: assembling every step's context up front blocked the DNA toggle, so
+    // beyond the eager threshold the chart asks for one step at a time. Delta mode walks every step for its axis, but
+    // reads each step separately and keeps only a bounded cache instead of one array for the whole log.
     /* v8 ignore next 1 -- the sidebar-visible operand is only reachable in a live dock (jsdom has no IO);
        the hidden-copy path is verified on the live page and every main-host test covers the short-circuit. */
     const dnaAllowed = dna && data !== null && (!inSidebar || sidebarVisible)
-    const dnaEager = dnaAllowed && (displayRequests.length <= DNA_LAZY_MIN || trendMode === 'delta')
+    const dnaEager = dnaAllowed && displayRequests.length <= DNA_LAZY_MIN
     // Bands depend on the header epoch as well as the timeline; the composite owner keeps a late epoch from
     // reusing bands assembled without its system prompt/tool schemas.
     const dnaCacheOwner = useMemo(() => ({ data, headers }), [data, headers])
     const dnaBands = useMemo(
       () => (dnaEager
-        ? cachedByData(dnaCacheOwner, `dna:${granularity}`, () => displayRequests.map(req => trendBandsOf(assembleCached(data, headers, req.seq))))
+        ? cachedByData(dnaCacheOwner, `dna:${granularity}`, () => displayRequests.map(req => trendBandsOf(assemble(data, headers, req.seq))))
         : null),
       [dnaEager, dnaCacheOwner, data, headers, displayRequests, granularity],
     )
     const dnaAt = useMemo(() => {
-      if (!dnaAllowed || displayRequests.length <= DNA_LAZY_MIN || trendMode === 'delta') return null
+      if (!dnaAllowed || displayRequests.length <= DNA_LAZY_MIN) return null
       const bandsBySeq = new Map<number, TrendBand[]>()
       return (seq: number): TrendBand[] => {
         let bands = bandsBySeq.get(seq)
         /* v8 ignore next 1 -- the chart's own per-seq cache makes a repeated lookup here defensive only. */
         if (bands === undefined) {
-          bands = trendBandsOf(assembleCached(data, headers, seq))
+          bands = trendBandsOf(assemble(data, headers, seq))
           bandsBySeq.set(seq, bands)
+          lruTrim(bandsBySeq, DNA_BANDS_MAX)
         }
         return bands
       }
-    }, [dnaAllowed, data, headers, displayRequests.length, trendMode])
+    }, [dnaAllowed, data, headers, displayRequests.length])
     const revealBand = useCallback((seq: number, band: { key: string; cat: Category | 'system' | 'tools' }): void => {
       setNodeFocus({ step: seq, key: band.key, cat: band.cat })
     }, [])

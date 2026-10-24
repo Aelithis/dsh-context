@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { Category, ContextEventRecord, RequestRecord } from '../../shared/types'
 import { CATS } from '../categories'
 import { deltaBandsOf, dnaBaseLabel } from '../dna'
+import { lruTouch, lruTrim } from '../lru'
 import type { DnaDelta, TrendBand } from '../dna'
 import { containHorizontalOverscroll } from '../overscroll'
 import type { ViewKit } from '../viewkit'
@@ -23,6 +24,10 @@ export const RISE_CAP = 200
 /** DNA bars carry one long inline gradient each: a tighter window bounds the style recalc that dominates the toggle. */
 const DNA_WINDOW_OVERSCAN = 8
 const DNA_WINDOW_HYSTERESIS = 2
+
+/** Bands/deltas kept by the chart's per-source cache: a delta axis touches every step, and a band pins its assembled
+ * node; the visible window is always the most recently read, so a bounded LRU keeps what the reader sees warm. */
+const BAND_STORE_MAX = 512
 
 export interface TrendChartProps {
   requests: RequestRecord[]
@@ -375,7 +380,8 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
       () => preprocessTrend(props.requests, delta, dnaOn ? null : props.focusCat),
       [props.requests, delta, props.focusCat, dnaOn],
     )
-    // Per-render caches keyed by the active DNA source: a lazy source assembles a step only when a bar (or its delta base) renders.
+    // Caches keyed by the active DNA source: a lazy source reads a step when a bar, its delta base, or the whole-log
+    // axis walk asks for it. Bounded — a DNA band pins its assembled node, and the delta axis touches every step.
     const bandStore = useMemo(() => ({
       bands: new Map<number, TrendBand[]>(),
       deltas: new Map<number, DnaDelta>(),
@@ -383,16 +389,24 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
     const bandAt = useCallback((idx: number): TrendBand[] => {
       const seq = requests[idx].seq
       const hit = bandStore.bands.get(seq)
-      if (hit !== undefined) return hit
+      if (hit !== undefined) {
+        lruTouch(bandStore.bands, seq)
+        return hit
+      }
       const bands = dnaAt !== null ? dnaAt(seq) : (dnaArray as TrendBand[][])[idx]
       bandStore.bands.set(seq, bands)
+      lruTrim(bandStore.bands, BAND_STORE_MAX)
       return bands
     }, [bandStore, requests, dnaAt, dnaArray])
     const deltaAt = useCallback((idx: number): DnaDelta => {
       const hit = bandStore.deltas.get(idx)
-      if (hit !== undefined) return hit
+      if (hit !== undefined) {
+        lruTouch(bandStore.deltas, idx)
+        return hit
+      }
       const d = deltaBandsOf(bandAt(idx), idx > 0 ? bandAt(idx - 1) : null)
       bandStore.deltas.set(idx, d)
+      lruTrim(bandStore.deltas, BAND_STORE_MAX)
       return d
     }, [bandStore, bandAt])
     const markers = props.markers
@@ -447,21 +461,33 @@ export function makeTrendChart(kit: ViewKit): (props: TrendChartProps) => ReactE
         ? prev
         : { total, up, down, activeMs })
     }
+    // Net totals cannot bound churn (keys grow and shrink against each other), so a DNA delta axis walks the per-key
+    // bands of EVERY step. That walk is memoized: it is O(log), and pointer hovers re-render this card.
+    const dnaMaxima = useMemo(() => {
+      let up = 0
+      let down = 0
+      if (dnaDeltaOn) {
+        let prev: TrendBand[] | null = null
+        for (let i = 0; i < requests.length; i++) {
+          const bands = bandAt(i)
+          const d = deltaBandsOf(bands, prev)
+          let su = 0
+          let sd = 0
+          for (const b of d.up) su += b.tokens
+          for (const b of d.down) sd -= b.tokens
+          if (su > up) up = su
+          if (sd > down) down = sd
+          prev = bands
+        }
+      }
+      return { up, down }
+    }, [requests, dnaDeltaOn, bandAt])
     let maxTotal = 1
     let maxUp = 0
     let maxDown = 0
     if (dnaDeltaOn) {
-      // Net totals cannot bound churn (keys grow and shrink against each other), so delta axes walk the per-key bands.
-      // The context view hands delta mode its eager array, because this walk needs the full model.
-      for (let i = 0; i < requests.length; i++) {
-        const d = deltaAt(i)
-        let up = 0
-        let down = 0
-        for (const b of d.up) up += b.tokens
-        for (const b of d.down) down -= b.tokens
-        if (up > maxUp) maxUp = up
-        if (down > maxDown) maxDown = down
-      }
+      maxUp = dnaMaxima.up
+      maxDown = dnaMaxima.down
     } else {
       ({ maxTotal, maxUp, maxDown } = trendMaxima(requests, delta))
     }
