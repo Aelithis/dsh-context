@@ -150,11 +150,9 @@ body:not([data-ds-dark-theme]) .lc-ov-skill-unit .lc-ov-skill-detail { border: 0
 .lc-ov-list-title { font-weight: 600; white-space: nowrap; }
 .lc-ov-list-count { color: var(--dsw-alias-label-secondary); font-size: 11px; font-variant-numeric: tabular-nums; background: var(--lc-subpanel-bg); border-radius: 8px; padding: 1px 7px; }
 .lc-ov-day-chip { border: 1px solid color-mix(in srgb, var(--color-blue-500) 45%, transparent); color: var(--color-blue-500); background: color-mix(in srgb, var(--color-blue-500) 10%, transparent); border-radius: 999px; font-size: 11px; line-height: 1.4; padding: 1px 10px; cursor: pointer; font-family: inherit; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.lc-ov-search { border: var(--lc-line-strong, 1px solid var(--dsw-alias-border-l2)); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); outline: none; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
-.lc-ov-search:focus { border-color: var(--dsw-alias-brand-primary); }
-.lc-ov-search::placeholder { color: var(--dsw-alias-label-secondary); }
-/* The coverage picker neighbours the search box and keeps its one-height recipe; the 0.5px border-l4 hairline is dsh's own form-field border (l2 at 1px reads borderless on white). */
-.lc-ov-cover { flex: none; border: 0.5px solid var(--dsw-alias-border-l4); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); }
+.lc-ov-search { padding: 4px 10px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); }
+/* The coverage picker neighbours the search box and keeps its one-height recipe. */
+.lc-ov-cover { flex: none; border: var(--lc-line-strong, 1px solid var(--dsw-alias-border-l2)); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--dsw-alias-label-primary); }
 
 .lc-ov-groups { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 10px; }
 .lc-ov-chip { display: inline-flex; align-items: baseline; gap: 5px; border: var(--lc-line-strong, 1px solid var(--dsw-alias-border-l2)); background: transparent; color: var(--dsw-alias-label-secondary); border-radius: 999px; font: inherit; font-size: 11px; line-height: 1.5; padding: 2px 10px; cursor: pointer; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out), background-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }

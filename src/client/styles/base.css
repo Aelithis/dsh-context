@@ -59,7 +59,10 @@ body:not([data-ds-dark-theme]) .lc-stat { box-shadow: var(--lc-shadow-tile); }
 .lc-gran-on .lc-kind-n { opacity: 0.85; }
 /* Clearable field: the wrapper owns the flex slot, so these rules are the one sizing source for every field. */
 .lc-searchbox { position: relative; display: flex; flex: 1; min-width: 80px; }
-.lc-searchbox > input { flex: 1 1 0; min-width: 0; }
+/* One recipe for every clearable single-line input; the per-field classes only size it. */
+.lc-searchbox > input { flex: 1 1 0; min-width: 0; border: var(--lc-line-strong, 1px solid var(--dsw-alias-border-l2)); background: var(--dsw-alias-bg-layer-2); border-radius: 6px; outline: none; transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+.lc-searchbox > input:focus { border-color: var(--dsw-alias-state-business-primary); }
+.lc-searchbox > input::placeholder { color: var(--dsw-alias-label-dimmed); }
 .lc-searchbox:has(> .lc-fleet-search) { flex: 1 1 140px; min-width: 120px; max-width: 240px; }
 .lc-searchbox:has(> .lc-ov-search) { flex: 1 1 150px; min-width: 110px; }
 /* Must follow the ov rule: the skills field narrows that same class. */
@@ -94,8 +97,9 @@ body:not([data-ds-dark-theme]) .lc-stat { box-shadow: var(--lc-shadow-tile); }
 .lc-error-retry:hover { border-color: var(--dsw-alias-label-secondary); background: var(--dsw-alias-interactive-bg-hover); }
 /* Shared keyboard ring for the plugin's clickable rows and chips: bare buttons otherwise fall back to the UA outline. */
 :is(.lc-ov-session, .lc-ov-skill, .lc-ov-chip, .lc-ov-pager-btn, .lc-fa-row, .lc-fa-op, .lc-cmd-row, .lc-cmd-attn-row, .lc-cmd-prog, .lc-brief-row-link):focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
-/* Fields drop the UA outline, so the brand border is their keyboard focus. */
-:is(.lc-fa-search, .lc-br-tool-search, .lc-find-input, .lc-ov-search, .lc-ov-cover, .lc-fleet-sort, .lc-br-pick, .lc-cmd-prog-search):focus-visible { border-color: var(--dsw-alias-brand-primary); }
+/* The plugin's selects share the text fields' focus color and transition; the UA ring would be a third style. */
+:is(.lc-ov-cover, .lc-fleet-sort, .lc-br-pick) { transition: border-color var(--ds-transition-duration, 0.2s) var(--ds-ease-in-out, ease-in-out); }
+:is(.lc-ov-cover, .lc-fleet-sort, .lc-br-pick):focus { outline: none; border-color: var(--dsw-alias-state-business-primary); }
 .lc-foot { color: var(--dsw-alias-label-secondary); font-size: 12px; margin-top: 4px; }
 /* Hides the composer while a plugin surface owns the pane, but keeps it for approval/question/plan-review prompts. */
 [data-conversation-scroll]:has(.lc-root) > [data-composer-seat]:not(:has([data-approval-key], [data-question-key], [data-plan-review-key])) { display: none; }

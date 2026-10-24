@@ -237,7 +237,7 @@ export function makeFileCard(kit: ViewKit, settings: ContextSettings): Component
         <div>
           <div className="lc-fa-ctl">
             <ClearableInput
-              className="lc-fa-search focus:border-(--dsw-alias-label-dimmed)"
+              className="lc-fa-search"
               value={query}
               placeholder={t('files.search')}
               clearLabel={t('field.clear')}

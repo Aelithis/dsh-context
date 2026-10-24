@@ -455,7 +455,7 @@ export function makeCommandPanel(kit: ViewKit): ComponentType<CommandPanelProps>
           <div className="lc-cmd-main">
             <div className="lc-cmd-ctl">
               <ClearableInput
-                className="lc-fa-search focus:border-(--dsw-alias-label-dimmed)"
+                className="lc-fa-search"
                 value={query}
                 placeholder={t('cmds.search')}
                 clearLabel={t('field.clear')}

@@ -3,7 +3,7 @@ import { JsonTree, MarkdownText, writeClipboard } from '@deepseek-ai/dsh-client-
 import type { JsonTreeLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 import { IconCheck, IconChevronDown, IconChevronUp, IconClose, IconCopy, IconSearch } from '../primitives'
 import type { ViewKit } from '../viewkit'
-import { ClearableInput } from './clearableInput'
+import { ClearableInput, isBareEscape } from './clearableInput'
 
 export type RichMode = 'raw' | 'md' | 'json'
 
@@ -268,7 +268,7 @@ export function makeRichText(kit: ViewKit): RichKit {
     }, [count])
     const onKey = useCallback((ev: ReactKeyboardEvent<HTMLInputElement>) => {
       if (ev.key === 'Enter') { ev.preventDefault(); step(ev.shiftKey ? -1 : 1) }
-      else if (ev.key === 'Escape') { ev.preventDefault(); setOpen(false) }
+      else if (isBareEscape(ev) && ev.currentTarget.value === '') { ev.preventDefault(); setOpen(false) }
     }, [step])
 
     const findLabel = t('rich.find')
@@ -295,7 +295,7 @@ export function makeRichText(kit: ViewKit): RichKit {
       <div className="lc-find">
         <ClearableInput
           inputRef={inputRef}
-          className="lc-find-input focus:border-(--dsw-alias-label-dimmed)"
+          className="lc-find-input"
           value={query}
           placeholder={t('rich.findPlaceholder')}
           clearLabel={t('field.clear')}

@@ -386,7 +386,7 @@ describe('useRichFind', () => {
     await m.unmount()
   })
 
-  test('Escape folds the bar and clears the marks; the body text is byte-identical afterwards', async () => {
+  test('Escape clears the query and marks first, then folds the bar; the body text is byte-identical afterwards', async () => {
     vi.useFakeTimers()
     const source = 'Alpha beta ALPHA other'
     const m = await mount(h(FindHarness, { text: source }))
@@ -396,10 +396,20 @@ describe('useRichFind', () => {
     assert.equal(queryAll(m.container, '.lc-find-mark').length, 2)
     assert.equal(rawText(m.container), source, 'marks never alter the copyable source text')
     await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', shiftKey: true, bubbles: true, cancelable: true }))
+    })
+    assert.equal(input.value, 'alpha', 'a modified Escape does not clear')
+    assert.equal(queryAll(m.container, '.lc-find').length, 1, 'nor does it fold the bar')
+    await act(async () => {
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     })
-    assert.equal(queryAll(m.container, '.lc-find').length, 0)
+    assert.equal(input.value, '', 'the typed query is cleared first')
+    assert.equal(queryAll(m.container, '.lc-find').length, 1, 'the bar stays open for a fresh query')
     assert.equal(queryAll(m.container, '.lc-find-mark').length, 0)
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    })
+    assert.equal(queryAll(m.container, '.lc-find').length, 0, 'an empty field folds the bar')
     assert.equal(rawText(m.container), source, 'the restore rebuilt the exact original text nodes')
     await m.unmount()
   })
