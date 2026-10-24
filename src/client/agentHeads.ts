@@ -2,6 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react'
 import type { ContextTimeline } from '../shared/types'
 import type { SessionsFaceLike } from './agentTree'
 import { DETAIL_ROUTE } from './apiRoutes'
+import { lruTouch, lruTrim } from './lru'
 import { asRecord, timelineOf } from './services'
 
 export interface AgentHeads {
@@ -38,16 +39,13 @@ export function makeAgentHeads(): AgentHeads {
     headOf(id: string): Promise<ContextTimeline | null> {
       const cached = heads.get(id)
       if (cached !== undefined) {
-        // Re-inserting moves the entry to the map's newest end, so demotion targets the least recently read id.
-        heads.delete(id)
-        heads.set(id, cached)
+        lruTouch(heads, id)
         return cached
       }
       const fetcher = makeHeadFetcher(id)
       const pending = fetcher !== undefined ? fetcher() : Promise.resolve(null)
       heads.set(id, pending)
-      // Each call adds at most one entry, so the drop list stays empty until the cap crosses.
-      for (const oldest of [...heads.keys()].slice(0, heads.size - HEADS_MAX)) heads.delete(oldest)
+      lruTrim(heads, HEADS_MAX)
       return pending
     },
   }

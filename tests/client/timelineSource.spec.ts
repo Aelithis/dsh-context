@@ -529,6 +529,17 @@ describe('DetailStore', () => {
 })
 
 describe('detailStoreOf', () => {
+  test('the store map stays bounded while an ACTIVE store is never dropped', { timeout: 30_000 }, async () => {
+    stubDetailFetch(() => ({ body: { ok: true, value: detail(1) } }))
+    const held = detailStoreOf('held')
+    const off = held.subscribe(() => {})
+    // 80 idle stores, each read once then parked: the map caps and the held one survives every trim.
+    for (let i = 0; i < 80; i++) await visitStore(`idle-${i}`)
+    assert.equal(detailStoreOf('held'), held, 'the active store keeps its identity (no forked ledger)')
+    off()
+    held.release()
+  })
+
   test('one store per session, shared by every consumer; reset drops the cache', () => {
     stubDetailFetch(() => ({ body: { ok: true, value: detail(1) } }))
     const a = detailStoreOf('s1')
