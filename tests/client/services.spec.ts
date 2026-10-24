@@ -5,6 +5,7 @@ import {
   contextBreakdownOf,
   contextPressureOf,
   conversationNodesOf,
+  costFullyQuantified,
   entrySeated,
   headersOf,
   imageLoaderOf,
@@ -879,6 +880,68 @@ describe('activityOf', () => {
     })
   })
 
+  test('a record-shaped fee with deep garbage or sparse buckets rides the wire untouched (the old dirty flag never fired for it)', () => {
+    const sparse = { deepseek: { 'deepseek-v4': { peak: { uncached: 1 } } } }
+    const sparseWire = { days: { '2026-09-16': { tokens: 15, requests: 1, cost: sparse } } }
+    assert.ok(activityOf(sparseWire) === (sparseWire as never))
+    const garbage = { deepseek: { 'deepseek-v4': { peak: { uncached: 'x', cacheRead: 5, cacheWrite: 0, output: 2 } } } }
+    const garbageWire = { days: { '2026-09-16': { tokens: 15, requests: 1, cost: garbage } } }
+    assert.ok(activityOf(garbageWire) === (garbageWire as never))
+  })
+
+  test('empty fee and skill records drop (costOf and skillTalliesOf answered undefined for them)', () => {
+    const out = activityOf({
+      days: {
+        '2026-09-16': { tokens: 15, requests: 1, cost: {} },
+        '2026-09-15': { tokens: 3, requests: 1, skills: {} },
+      },
+    })
+    assert.deepEqual(out, {
+      days: { '2026-09-16': { tokens: 15, requests: 1 }, '2026-09-15': { tokens: 3, requests: 1 } },
+    })
+  })
+
+  test('the clean proof reads own keys only; an inherited key neither proves nor drops a record', () => {
+    const day = Object.assign(Object.create({ injected: { tokens: 1, requests: 1 } }), { tokens: 15, requests: 1 })
+    const wire = { days: Object.assign(Object.create({ '1999-01-01': { tokens: 1, requests: 1 } }), { '2026-09-16': day }) }
+    assert.ok(activityOf(wire) === (wire as never))
+  })
+
+  test('the fast proof fails exactly where the old dirty flag fired', () => {
+    const inheritedCost = Object.assign(Object.create({ 'injected-model': { peak: { uncached: 1, cacheRead: 1, cacheWrite: 1, output: 1 } } }), {})
+    // One walk per fixture: activityClean stops at its first failing day, so each depth needs its own ledger.
+    const cases: [unknown, unknown][] = [
+      [inheritedCost, undefined],
+      [{}, undefined],
+      [{ deepseek: 7 }, undefined],
+      [{ deepseek: [1] }, undefined],
+      [{ deepseek: { 'deepseek-v4': [1] } }, { deepseek: { 'deepseek-v4': [1] } }],
+      [{ deepseek: { 'deepseek-v4': 7 } }, { deepseek: { 'deepseek-v4': 7 } }],
+    ]
+    for (const [cost, expected] of cases) {
+      const out = activityOf({ days: { '2026-09-16': { tokens: 1, requests: 1, cost } } })
+      const day = (out as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16']
+      assert.deepEqual(day.cost ?? undefined, expected, `cost fixture ${JSON.stringify(cost)}`)
+      assert.deepEqual(day.tokens, 1)
+    }
+  })
+
+  test('the skill proof fails exactly where the old dirty flag fired', () => {
+    const inheritedSkills = Object.assign(Object.create({ ghost: { n: 1, last: 1 } }), { tdd: { n: 2, last: 3 } })
+    const rebuilt = activityOf({ days: { '2026-09-16': { tokens: 15, requests: 1, skills: inheritedSkills } } })
+    assert.deepEqual((rebuilt as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16'].skills, { tdd: { n: 2, last: 3 } })
+    const dropped = activityOf({ days: { '2026-09-16': { tokens: 15, requests: 1, skills: { tdd: 7 } } } })
+    assert.deepEqual((dropped as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16'].skills, undefined)
+    const array = activityOf({ days: { '2026-09-16': { tokens: 15, requests: 1, skills: [1] } } })
+    assert.deepEqual((array as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16'].skills, undefined)
+    const badTally = activityOf({ days: { '2026-09-16': { tokens: 15, requests: 1, skills: { tdd: { n: -1, last: 3 } } } } })
+    assert.deepEqual((badTally as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16'].skills, undefined)
+    // An own-key-less table (only inherited keys) dirties too: the rebuild's own-key walk would find nothing.
+    const inheritedOnly = Object.create({ ghost: { n: 1, last: 1 } }) as Record<string, unknown>
+    const inheritedOnlyOut = activityOf({ days: { '2026-09-16': { tokens: 15, requests: 1, skills: inheritedOnly } } })
+    assert.deepEqual((inheritedOnlyOut as unknown as { days: Record<string, Record<string, unknown>> }).days['2026-09-16'].skills, undefined)
+  })
+
   test('a well-formed skill table rides the pass-through; malformed tallies drop per name', () => {
     const skills = { tdd: { n: 2, last: 1_758_000_000_000 } }
     const wire = { days: { '2026-09-16': { tokens: 15, requests: 1, skills } } }
@@ -1003,5 +1066,24 @@ describe('seedConversationViewVia — the pre-jump view preference', () => {
     if (setItem !== undefined) Object.defineProperty(Storage.prototype, 'setItem', setItem)
     assert.equal(globalThis.localStorage.getItem('dsh.conversation.session-5'), null)
     globalThis.localStorage.clear()
+  })
+})
+
+describe('costFullyQuantified', () => {
+  test('a merged-shape record aliases; every deviation sends the rebuild', () => {
+    const bucket = { uncached: 1, cacheRead: 2, cacheWrite: 3, output: 4 }
+    assert.equal(costFullyQuantified({ deepseek: { 'deepseek-v4': { peak: bucket, off: { ...bucket } } } }), true)
+    assert.equal(costFullyQuantified(undefined), false, 'undefined is not a merged record')
+    assert.equal(costFullyQuantified(null), false)
+    assert.equal(costFullyQuantified(7), false)
+    assert.equal(costFullyQuantified([1]), false)
+    assert.equal(costFullyQuantified({}), false, 'no bucket ever merged')
+    assert.equal(costFullyQuantified({ deepseek: 7 }), false, 'a non-record model level')
+    assert.equal(costFullyQuantified({ deepseek: [1] }), false)
+    assert.equal(costFullyQuantified({ deepseek: { m: 7 } }), false, 'a non-record periods level')
+    assert.equal(costFullyQuantified({ deepseek: { m: [1] } }), false)
+    assert.equal(costFullyQuantified({ deepseek: { m: { peak: { uncached: 'x', cacheRead: 1, cacheWrite: 1, output: 1 } } } }), false, 'a non-numeric bucket field')
+    assert.equal(costFullyQuantified({ deepseek: { m: { peak: [1] } } }), false)
+    assert.equal(costFullyQuantified({ deepseek: { m: { peak: { uncached: 1, cacheRead: 2 } } } }), false, 'a sparse bucket')
   })
 })

@@ -9,7 +9,7 @@ import { cacheHitPercent } from './format'
 import { estimateSessionCost, mergeCostUsage } from './cost'
 import type { CostCurrency, ModelBook } from './cost'
 import { agentRowOf, familyChildrenOf, type AgentRow } from './agentTree'
-import { activityOf, asRecord, timelineOf, type ClientCtx, type SessionsFace } from './services'
+import { activityOf, asRecord, costFullyQuantified, timelineOf, type ClientCtx, type SessionsFace } from './services'
 import type { ActivityDay, ContextActivity, ContextTimeline, DefaultOverviewRange, SessionCostUsage, TimingTotals, TokenUsage, ToolTimingTotals } from '../shared/types'
 
 export interface OverviewRow {
@@ -180,6 +180,17 @@ export function rowsOfSnapshot(snapshot: unknown, workspaces?: unknown): Overvie
   }
   const childrenOf = familyChildrenOf(sessionRows)
   for (const row of rows) {
+    const kids = childrenOf.get(row.id) ?? []
+    // The childless family (the overwhelmingly common session) IS its own sole member: the merge walks would copy the
+    // whole ledger and cost tree to reproduce it, so the sanitized parts serve directly — the cost aliased only when
+    // it is already in the merged shape, re-merged otherwise (a sparse bucket must zero-fill like a merge output).
+    if (kids.length === 0) {
+      const cost = row.timeline?.cost
+      row.family = [row.timeline]
+      row.familyActivity = [row.activity]
+      row.familyCost = cost !== undefined && costFullyQuantified(cost) ? cost : mergeCostUsage(cost)
+      continue
+    }
     const timelines: (ContextTimeline | null)[] = [row.timeline]
     const activities: (ContextActivity | null)[] = [row.activity]
     const queue = [row.id]

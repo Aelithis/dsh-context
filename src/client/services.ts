@@ -534,14 +534,42 @@ export function headersOf(value: unknown): ContextHeaders | null {
   } as unknown as ContextHeaders
 }
 
-/** Absent stays null (an older host serves no such key); per-day re-proof drops just the bad entry or fee. */
+/** Absent stays null (an older host serves no such key); per-day re-proof drops just the bad entry or fee.
+ * Two passes: a clean ledger proves with zero allocation and serves as-is; only a dirty one pays the rebuild. */
 export function activityOf(value: unknown): ContextActivity | null {
   const data = asRecord(value)
   if (data === null) return null
   const rawDays = asRecord(data.days)
   if (rawDays === null || Array.isArray(rawDays)) return null
+  if (activityClean(rawDays)) return data as unknown as ContextActivity
+  return { days: activityDaysRebuilt(rawDays) }
+}
+
+/** The clean-ledger proof: every own key a valid day shape; true means the original record serves whole. */
+function activityClean(rawDays: Record<string, unknown>): boolean {
+  for (const key in rawDays) {
+    // Inherited keys never took part in the walk (the rebuild reads own keys only); skip, never fail.
+    if (!Object.hasOwn(rawDays, key)) continue
+    const entry = asRecord(rawDays[key])
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)
+      || entry === null || Array.isArray(entry)
+      || typeof entry.tokens !== 'number' || !Number.isFinite(entry.tokens) || entry.tokens < 0
+      || typeof entry.requests !== 'number' || !Number.isFinite(entry.requests) || entry.requests < 0) {
+      return false
+    }
+    if (!costServiceable(entry.cost)) return false
+    if (!skillTalliesServiceable(entry.skills)) return false
+    for (const k of ['turns', 'toolCalls', 'toolsMs', 'wallMs'] as const) {
+      const v = entry[k]
+      if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v) || v < 0)) return false
+    }
+  }
+  return true
+}
+
+/** The dirty-ledger rebuild: a malformed day or fee drops alone, the rest re-prove into plain day entries. */
+function activityDaysRebuilt(rawDays: Record<string, unknown>): Record<string, ActivityDay> {
   const days: Record<string, ActivityDay> = {}
-  let dirty = false
   for (const key of Object.keys(rawDays)) {
     const entry = asRecord(rawDays[key])
     const tokens = entry?.tokens
@@ -550,22 +578,15 @@ export function activityOf(value: unknown): ContextActivity | null {
       || entry === null || Array.isArray(entry)
       || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0
       || typeof requests !== 'number' || !Number.isFinite(requests) || requests < 0) {
-      dirty = true
       continue
     }
-    const proved = costOf(entry.cost)
-    const cost = proved !== undefined && Object.keys(proved).length > 0 ? proved : undefined
-    if (entry.cost !== undefined && cost === undefined) dirty = true
+    const costRaw = costOf(entry.cost)
+    const cost = costRaw !== undefined && Object.keys(costRaw).length > 0 ? costRaw : undefined
     const skills = skillTalliesOf(entry.skills)
-    if (entry.skills !== undefined && skills === undefined) dirty = true
     const turns = nonNegativeOf(entry.turns)
     const toolCalls = nonNegativeOf(entry.toolCalls)
     const toolsMs = nonNegativeOf(entry.toolsMs)
     const wallMs = nonNegativeOf(entry.wallMs)
-    if ((entry.turns !== undefined && turns === undefined)
-      || (entry.toolCalls !== undefined && toolCalls === undefined)
-      || (entry.toolsMs !== undefined && toolsMs === undefined)
-      || (entry.wallMs !== undefined && wallMs === undefined)) dirty = true
     days[key] = {
       tokens,
       requests,
@@ -577,11 +598,70 @@ export function activityOf(value: unknown): ContextActivity | null {
       ...(skills !== undefined ? { skills } : {}),
     }
   }
-  return dirty ? { days } : data as unknown as ContextActivity
+  return days
 }
 
 function nonNegativeOf(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+}
+
+/** The exact conditions the rebuild's dirty flag used: a fee serves as-is unless `costOf` would have answered
+ * undefined-or-empty (a non-record top level, or no own provider key carrying a record). Anything deeper — sparse or
+ * garbage buckets — rode the wire untouched before and must keep doing so, so the fast path never rejects it. */
+function costServiceable(value: unknown): boolean {
+  if (value === undefined) return true
+  const data = asRecord(value)
+  if (data === null || Array.isArray(data)) return false
+  for (const provider in data) {
+    if (!Object.hasOwn(data, provider)) continue
+    const models = asRecord(data[provider])
+    if (models !== null && !Array.isArray(models)) return true
+  }
+  return false
+}
+
+/** The exact conditions the rebuild's dirty flag used: a skill table serves as-is unless `skillTalliesOf` would have
+ * answered undefined (a non-record top level, or no own key carrying a well-formed tally). */
+function skillTalliesServiceable(value: unknown): boolean {
+  if (value === undefined) return true
+  const data = asRecord(value)
+  if (data === null || Array.isArray(data)) return false
+  for (const name in data) {
+    if (!Object.hasOwn(data, name)) continue
+    const tally = asRecord(data[name])
+    const n = tally?.n
+    const last = tally?.last
+    if (typeof n === 'number' && Number.isFinite(n) && n >= 0
+      && typeof last === 'number' && Number.isFinite(last)) return true
+  }
+  return false
+}
+
+/** True when a cost usage record is already in the merged shape a `mergeCostUsage` output would take — every own
+ * level a record and every present bucket carrying all four finite fields, with at least one bucket — so aliasing it
+ * equals re-merging it. Anything else must go through the merge's zero-filling rebuild. */
+export function costFullyQuantified(value: unknown): boolean {
+  const data = asRecord(value)
+  if (data === null || Array.isArray(data)) return false
+  let any = false
+  for (const provider of Object.keys(data)) {
+    const models = asRecord(data[provider])
+    if (models === null || Array.isArray(models)) return false
+    for (const model of Object.keys(models)) {
+      const periods = asRecord(models[model])
+      if (periods === null || Array.isArray(periods)) return false
+      for (const period of ['peak', 'off'] as const) {
+        const bucket = asRecord(periods[period])
+        if (bucket === null || Array.isArray(bucket)) continue
+        for (const k of ['uncached', 'cacheRead', 'cacheWrite', 'output']) {
+          const v = bucket[k]
+          if (typeof v !== 'number' || !Number.isFinite(v)) return false
+        }
+        any = true
+      }
+    }
+  }
+  return any
 }
 
 function skillTalliesOf(value: unknown): ActivityDay['skills'] | undefined {
