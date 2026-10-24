@@ -119,10 +119,11 @@ export function makeOverviewPanel(
 
     const currency = activeCurrency()
     // The stage below is memoized on the scope's identity, so the clock feeds it at minute grain: a keystroke or an
-    // unrelated session's push re-renders within the same minute against the same scope object. Every scope consumer
-    // reads day grain (dayInScope compares day keys; the rolling floors move one minute in ~1/1440 of their span), so
-    // the bucket cannot flip a figure a reader could see. The cards keep the live clock: their relative-time labels
-    // bucket at minute grain, and a minute-stale stamp would shift a just-crossed label.
+    // unrelated session's push re-renders within the same minute against the same scope object. The ledger reads are
+    // day-grained (dayInScope compares day keys), so their admitted days cannot change inside a minute; only a row's
+    // ms-grain `updatedAt` membership can, by under a minute, at a rolling window's opening edge — self-correcting on
+    // the next minute. The cards keep the live clock: their relative-time labels bucket at minute grain, and a
+    // minute-stale stamp would shift a just-crossed label.
     const nowMinute = Math.floor(Date.now() / 60_000) * 60_000
     const nowForCards = Date.now()
     const allRows = rows ?? []

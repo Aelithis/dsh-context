@@ -645,9 +645,12 @@ export function costFullyQuantified(value: unknown): boolean {
   if (data === null || Array.isArray(data)) return false
   let any = false
   for (const provider of Object.keys(data)) {
+    // A JSON-parsed own `__proto__` key reads through the prototype, so the merge this aliases would have dropped it.
+    if (provider === '__proto__') return false
     const models = asRecord(data[provider])
     if (models === null || Array.isArray(models)) return false
     for (const model of Object.keys(models)) {
+      if (model === '__proto__') return false
       const periods = asRecord(models[model])
       if (periods === null || Array.isArray(periods)) return false
       for (const period of ['peak', 'off'] as const) {

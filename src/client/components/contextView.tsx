@@ -41,7 +41,6 @@ import { aggregateByTurn, attachMarkers, boundaryIndex, jumpTargetOf, makeTrendC
 import { makeTrendOverview } from './trendOverview'
 import { stepStampOf } from './browserHelpers'
 import { cachedByData } from './derivedCache'
-import { lruTrim } from '../lru'
 import { assemble } from '../assemble'
 import { useLazyMount } from './useLazyMount'
 import { trendBandsOf } from '../dna'
@@ -61,10 +60,6 @@ const HOVER_DELAY_MS = 140
 const DNA_HOVER_DELAY = 220
 /** Above this many retained steps the DNA bands are built lazily per rendered window. */
 const DNA_LAZY_MIN = 512
-/** Bands cached per data revision: a band pins its assembled node, and the delta axis walks EVERY step, so an
- * unbounded map would retain the whole log's decomposition to compute one axis scale. A miss re-assembles in tens of
- * microseconds, and the chart's own cache (also bounded) answers repeats first. */
-const DNA_BANDS_MAX = 256
 /** Scroll a landed-on card to the top of the page's scrollport; no landing may stay below the fold. */
 function revealCard(root: HTMLElement | null, selector: string): void {
   /* v8 ignore start -- every render path attaches the root and draws the landed-on card, so the target always resolves. */
@@ -403,19 +398,10 @@ export function makeContextView(
         : null),
       [dnaEager, dnaCacheOwner, data, headers, displayRequests, granularity],
     )
+    // The chart owns the per-seq band cache (bounded by the fold's own step cap), so this stays a pure builder.
     const dnaAt = useMemo(() => {
       if (!dnaAllowed || displayRequests.length <= DNA_LAZY_MIN) return null
-      const bandsBySeq = new Map<number, TrendBand[]>()
-      return (seq: number): TrendBand[] => {
-        let bands = bandsBySeq.get(seq)
-        /* v8 ignore next 1 -- the chart's own per-seq cache makes a repeated lookup here defensive only. */
-        if (bands === undefined) {
-          bands = trendBandsOf(assemble(data, headers, seq))
-          bandsBySeq.set(seq, bands)
-          lruTrim(bandsBySeq, DNA_BANDS_MAX)
-        }
-        return bands
-      }
+      return (seq: number): TrendBand[] => trendBandsOf(assemble(data, headers, seq))
     }, [dnaAllowed, data, headers, displayRequests.length])
     const revealBand = useCallback((seq: number, band: { key: string; cat: Category | 'system' | 'tools' }): void => {
       setNodeFocus({ step: seq, key: band.key, cat: band.cat })

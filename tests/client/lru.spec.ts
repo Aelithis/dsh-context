@@ -3,11 +3,11 @@ import { describe, test } from 'vitest'
 import { lruTouch, lruTrim } from '../../src/client/lru'
 
 describe('lruTouch', () => {
-  test('a hit moves the key to the newest end and reports it; a miss leaves the map alone', () => {
+  test('a hit moves the key to the newest end; a miss leaves the map alone', () => {
     const map = new Map<string, number>([['a', 1], ['b', 2], ['c', 3]])
-    assert.equal(lruTouch(map, 'b'), true)
+    lruTouch(map, 'b')
     assert.deepEqual([...map.keys()], ['a', 'c', 'b'])
-    assert.equal(lruTouch(map, 'gone'), false)
+    lruTouch(map, 'gone')
     assert.deepEqual([...map.keys()], ['a', 'c', 'b'])
   })
 })

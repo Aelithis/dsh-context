@@ -155,22 +155,18 @@ describe('TrendChart lazy DNA bands', () => {
     }
   })
 
-  test('a delta axis keeps only a bounded band cache for a long log', async () => {
-    const reqs = requestList(700)
+  test('a delta axis reads each step exactly once, and a re-render re-reads none', async () => {
+    const reqs = requestList(400)
     const lazy = lazyBands()
     viewport.clientW = 400
     const m = await mount(h(TrendChart, propsOf(reqs, { dnaAt: lazy.at, mode: 'delta' })))
     try {
-      // The walk reads every step once; the chart's cache stays bounded, so a later read re-asks the source.
       assert.equal(lazy.calls.size, reqs.length, 'the axis walk read every step')
-      const first = lazy.calls.get(1) ?? 0
-      const target = queryAll(m.container, '.lc-bar')[0]
-      await act(async () => {
-        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
-      })
+      assert.ok([...lazy.calls.values()].every(n => n === 1), 'each step was read once')
+      // A props change re-renders the card; the memoized walk and the bounded cache answer without re-reading.
+      await m.update(h(TrendChart, propsOf(reqs, { dnaAt: lazy.at, mode: 'delta', markers: [] })))
       await flush()
-      // A re-read of the evicted oldest step is allowed; an unbounded cache would answer it from memory.
-      assert.ok((lazy.calls.get(1) ?? 0) >= first)
+      assert.ok([...lazy.calls.values()].every(n => n === 1), 'a re-render re-reads no step')
     } finally {
       await m.unmount()
     }

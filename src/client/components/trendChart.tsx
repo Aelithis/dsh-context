@@ -25,9 +25,10 @@ export const RISE_CAP = 200
 const DNA_WINDOW_OVERSCAN = 8
 const DNA_WINDOW_HYSTERESIS = 2
 
-/** Bands/deltas kept by the chart's per-source cache: a delta axis touches every step, and a band pins its assembled
- * node; the visible window is always the most recently read, so a bounded LRU keeps what the reader sees warm. */
-const BAND_STORE_MAX = 512
+/** Bands/deltas kept by the chart's per-source cache: a delta axis touches every retained step, so the bound matches
+ * the fold's own step cap (maxRequestSteps defaults to 1,500) — one cache serves the axis walk and the bars, and a
+ * superseded data revision drops the whole map. */
+const BAND_STORE_MAX = 2048
 
 export interface TrendChartProps {
   requests: RequestRecord[]

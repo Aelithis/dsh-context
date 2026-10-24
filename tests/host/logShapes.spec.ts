@@ -110,6 +110,17 @@ describe('streamTimingOf', () => {
     assert.equal(hostile.firstToken, 2, 'the delta chunk still anchors the first token')
   })
 
+  test('a token-only read stops at the first token (a packed run answer ends the walk)', () => {
+    assert.equal(firstTokenTimeOfStream([
+      { type: 'text-chunks', time0: 100, index: 0, dt: [], texts: ['a'] },
+      { type: 'chunk', time: 500, chunk: { type: 'text-delta', text: 'later' } },
+    ]), 100, 'the packed run answers before the later raw chunk is read')
+    assert.equal(firstTokenTimeOfStream([
+      { type: 'chunk', time: 200, chunk: { type: 'text-delta', text: 'x' } },
+      { type: 'text-chunks', time0: 100, index: 0, dt: [], texts: ['a'] },
+    ]), 200)
+  })
+
   test('the first token wins in stream order across raw chunks and packed runs', () => {
     assert.equal(streamTimingOf([
       { type: 'chunk', time: 100, chunk: { type: 'block-start', index: 0, blockType: 'text' } },

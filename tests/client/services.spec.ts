@@ -1086,4 +1086,13 @@ describe('costFullyQuantified', () => {
     assert.equal(costFullyQuantified({ deepseek: { m: { peak: [1] } } }), false)
     assert.equal(costFullyQuantified({ deepseek: { m: { peak: { uncached: 1, cacheRead: 2 } } } }), false, 'a sparse bucket')
   })
+
+  test('an own __proto__ key at either level never aliases (the merge it stands in for drops it)', () => {
+    // Only JSON text can carry an own `__proto__` key (an object literal would set the prototype instead).
+    const protoProvider = JSON.parse('{"__proto__":{"m":{"peak":{"uncached":1,"cacheRead":2,"cacheWrite":3,"output":4}}}}') as Record<string, unknown>
+    assert.ok(Object.keys(protoProvider).includes('__proto__'), 'the fixture really holds an own __proto__ key')
+    assert.equal(costFullyQuantified(protoProvider), false)
+    const protoModel = JSON.parse('{"deepseek":{"__proto__":{"peak":{"uncached":1,"cacheRead":2,"cacheWrite":3,"output":4}}}}') as Record<string, unknown>
+    assert.equal(costFullyQuantified(protoModel), false)
+  })
 })

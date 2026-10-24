@@ -100,9 +100,12 @@ export function streamTimingOf(stream: unknown, endTime: number): StreamTiming {
       } else if (firstToken === undefined && isTokenChunk(chunk)) {
         firstToken = time as number
       }
+      // A token-only read (no marker decode) is answered at the first token: nothing later can change it.
+      if (!markersReadable && firstToken !== undefined) break
       continue
     }
     if (firstToken === undefined) firstToken = runFirstTokenTime(r)
+    if (!markersReadable && firstToken !== undefined) break
   }
   if (markersReadable) close(endTime)
   if (firstToken !== undefined) result.firstToken = firstToken
