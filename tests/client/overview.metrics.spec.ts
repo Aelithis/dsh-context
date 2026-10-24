@@ -216,6 +216,22 @@ describe('windowTotalsOf', () => {
       COST,
     )
   })
+
+  test('the per-ledger memo returns the same totals for the same boundary day keys, and does not grow per minute', () => {
+    const activity = { days: { '2026-09-16': { tokens: 1, requests: 1, turns: 1 } } }
+    const scope = dayRangeWindow({ from: '2026-09-16', to: '2026-09-16' })
+    assert.ok(scope !== null)
+    const first = windowTotalsOf(activity, scope)
+    assert.ok(windowTotalsOf(activity, scope) === first, 'the same window reuses the cached totals')
+    // A rolling preset's floor drifts per minute; the admitted day set (and therefore the totals) is identical.
+    const drifted = { start: (scope.start ?? 0) + 60_000, end: scope.end }
+    assert.ok(windowTotalsOf(activity, drifted) === first, 'a minute-shifted floor hits the same day-key entry')
+    // A different admitted day set is a different entry.
+    const wider = dayRangeWindow({ from: '2026-09-15', to: '2026-09-16' })
+    assert.ok(wider !== null)
+    assert.notEqual(windowTotalsOf(activity, wider), first)
+    assert.deepEqual(windowTotalsOf(activity, wider), { requests: 1, turns: 1, toolCalls: 0, toolsMs: 0, wallMs: 0, usage: null })
+  })
 })
 
 describe('kpisOf', () => {

@@ -118,33 +118,43 @@ export function makeOverviewPanel(
     useEffect(() => { setPage(0) }, [preset, custom, coverage, day, query, group, skill, sort])
 
     const currency = activeCurrency()
-    const now = Date.now()
+    // The stage below is memoized on the scope's identity, so the clock feeds it at minute grain: a keystroke or an
+    // unrelated session's push re-renders within the same minute against the same scope object. Every scope consumer
+    // reads day grain (dayInScope compares day keys; the rolling floors move one minute in ~1/1440 of their span), so
+    // the bucket cannot flip a figure a reader could see. The cards keep the live clock: their relative-time labels
+    // bucket at minute grain, and a minute-stale stamp would shift a just-crossed label.
+    const nowMinute = Math.floor(Date.now() / 60_000) * 60_000
+    const nowForCards = Date.now()
     const allRows = rows ?? []
-    const covered = coveredRowsOf(allRows, coverage)
+    const covered = useMemo(() => coveredRowsOf(allRows, coverage), [allRows, coverage])
     // The scope window every figure reads: the calendar's picked range (a malformed key keeps the preset), else the preset's floor.
-    const scope = (custom !== null ? dayRangeWindow(custom) : null) ?? rangeWindowOf(preset, now)
+    const scope = useMemo(
+      () => (custom !== null ? dayRangeWindow(custom) : null) ?? rangeWindowOf(preset, nowMinute),
+      [custom, preset, nowMinute],
+    )
     // The head's date span reads off that same window so the picker and presets can never disagree.
     const spanFrom = scope.start === null ? null : dayKeyOf(scope.start)
-    const spanTo = scope.start === null ? null : dayKeyOf(scope.end ?? now)
+    const spanTo = scope.start === null ? null : dayKeyOf(scope.end ?? nowMinute)
     const span = spanFrom !== null && spanTo !== null ? { from: spanFrom, to: spanTo } : null
     // The scope scopes the KPI band, composition donut and grid; the heatmap keeps its own fixed window.
-    const ranged = filterRows(covered, { scope, day: null, query: '' })
+    const ranged = useMemo(() => filterRows(covered, { scope, day: null, query: '' }), [covered, scope])
     // Group chips count the day/query-scoped rows BEFORE the group filter, so selecting a chip never collapses its row.
-    const scoped = filterRows(ranged, { scope, day, query })
-    const counts = groupCountsOf(scoped, wsSnapshot)
+    const scoped = useMemo(() => filterRows(ranged, { scope, day, query }), [ranged, scope, day, query])
+    const counts = useMemo(() => groupCountsOf(scoped, wsSnapshot), [scoped, wsSnapshot])
     // A selection whose group fell out of scope keeps a phantom chip (count 0) so the filter stays visible, one click out.
     const chips = group !== null && !counts.some(c => c.key === group)
       ? [...counts, { key: group, count: 0 }]
       : counts
-    const visible = sortRows(
+    const visible = useMemo(() => sortRows(
       (group === null ? scoped : scoped.filter(row => inGroup(row, group, groups)))
         // The skill row pin narrows the list to the skill's loaders within the card's own scope (scope window + pinned day).
         .filter(row => skill === null || rowLoadedSkill(row, skill, { scope, day })),
       sort,
-    )
+    ), [scoped, group, groups, skill, scope, day, sort])
     const paged = pageOf(visible, page)
-    const kpi = kpisOf(ranged, book, currency, scope)
-    const days = aggregateDays(covered, book, currency)
+    const kpi = useMemo(() => kpisOf(ranged, book, currency, scope), [ranged, book, currency, scope])
+    const days = useMemo(() => aggregateDays(covered, book, currency), [covered, book, currency])
+    const skillStats = useMemo(() => skillLoadsOf(ranged, { scope, day, sort: skillSort }), [ranged, scope, day, skillSort])
     /** A preset pick applies at once and becomes the stored default where the settings form is writable. */
     const pickPreset = (range: OverviewRange): void => {
       setPicked(range)
@@ -264,14 +274,14 @@ export function makeOverviewPanel(
                     </div>
                     {/* Scope: the range group plus the heatmap's pinned day; the list's search and group chips are list-local. */}
                     <OverviewSkills
-                      stats={skillLoadsOf(ranged, { scope, day, sort: skillSort })}
+                      stats={skillStats}
                       day={day}
                       selected={skill}
                       onSelect={setSkill}
                       sort={skillSort}
                       onSort={setSkillSort}
                       catalog={catalog}
-                      now={now}
+                      now={nowForCards}
                     />
                   </div>
 
@@ -348,7 +358,7 @@ export function makeOverviewPanel(
                               row={row}
                               {...(groups?.[row.id] !== undefined ? { group: groups[row.id] } : {})}
                               costLabel={cardCostOf(row, book, currency)}
-                              now={now}
+                              now={nowForCards}
                               onOpen={openOne}
                             />
                           ))}

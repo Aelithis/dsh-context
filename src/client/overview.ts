@@ -520,25 +520,41 @@ export interface WindowTotals {
   usage: SessionCostUsage | null
 }
 
+/** Per-ledger window sums, weakly keyed so a superseded projection dies with its entries. The admitted days depend
+ * only on the scope's boundary DAY KEYS (dayInScope compares day keys), so the key is those two keys: a rolling
+ * preset's minute-drifting floor cannot accumulate one entry per minute against an unchanged ledger. */
+const windowTotals = new WeakMap<ContextActivity, Map<string, WindowTotals>>()
+
 export function windowTotalsOf(activity: ContextActivity | null, scope: RangeWindow): WindowTotals {
+  if (activity === null) {
+    return { requests: 0, turns: 0, toolCalls: 0, toolsMs: 0, wallMs: 0, usage: null }
+  }
+  const key = `${scope.start === null ? 'open' : dayKeyOf(scope.start)}:${scope.end === null ? 'open' : dayKeyOf(scope.end)}`
+  let byScope = windowTotals.get(activity)
+  if (byScope === undefined) {
+    byScope = new Map()
+    windowTotals.set(activity, byScope)
+  }
+  const hit = byScope.get(key)
+  if (hit !== undefined) return hit
   let requests = 0
   let turns = 0
   let toolCalls = 0
   let toolsMs = 0
   let wallMs = 0
   let usage: SessionCostUsage | null = null
-  if (activity !== null) {
-    for (const [key, day] of Object.entries(activity.days)) {
-      if (!dayInScope(key, scope)) continue
-      requests += day.requests
-      turns += day.turns ?? 0
-      toolCalls += day.toolCalls ?? 0
-      toolsMs += day.toolsMs ?? 0
-      wallMs += day.wallMs ?? 0
-      if (day.cost !== undefined) usage = mergeCostUsage(usage, day.cost)
-    }
+  for (const [dayKey, day] of Object.entries(activity.days)) {
+    if (!dayInScope(dayKey, scope)) continue
+    requests += day.requests
+    turns += day.turns ?? 0
+    toolCalls += day.toolCalls ?? 0
+    toolsMs += day.toolsMs ?? 0
+    wallMs += day.wallMs ?? 0
+    if (day.cost !== undefined) usage = mergeCostUsage(usage, day.cost)
   }
-  return { requests, turns, toolCalls, toolsMs, wallMs, usage }
+  const totals = { requests, turns, toolCalls, toolsMs, wallMs, usage }
+  byScope.set(key, totals)
+  return totals
 }
 
 /** The rows' team merge of lifetime timing totals — the same scope the KPI band's ledger merges. */
