@@ -484,7 +484,37 @@ describe('StatsContext', () => {
     }))
     await flush()
     assert.ok(headsOf(m.container).totals[3] === '1/—')
-    assert.ok(text(queryAll(m.container, '.lc-stat-tip')[1]).includes('unavailable'))
+    assert.ok(text(queryAll(m.container, '.lc-stat-tip')[1]).includes('Not priced: future-provider / mystery-model'))
+    await m.unmount()
+  })
+
+  test('an ambiguous book face names the disagreement instead of an outage', async () => {
+    setModelPricesLoader(() => Promise.resolve({
+      a: { models: { x: { cost: { input: 1, output: 2 } } } },
+      b: { models: { x: { cost: { input: 2, output: 3 } } } },
+    }))
+    const m = await mount(h(StatsContext, {
+      counts: NO_COUNTS,
+      files: NO_FILES,
+      tools: [],
+      cost: { gateway: { x: { peak: { uncached: 1, cacheRead: 0, cacheWrite: 0, output: 0 } } } },
+      locale: 'en',
+    }))
+    await flush()
+    assert.ok(text(queryAll(m.container, '.lc-stat-tip')[1]).includes('has 2 models.dev entries with different rates'))
+    await m.unmount()
+  })
+
+  test('an inferred maker price says it is a reference estimate', async () => {
+    const m = await mount(h(StatsContext, {
+      counts: NO_COUNTS,
+      files: NO_FILES,
+      tools: [],
+      cost: { 'future-provider': { 'deepseek-v4-flash': { peak: { uncached: 1, cacheRead: 0, cacheWrite: 0, output: 0 } } } },
+      locale: 'en',
+    }))
+    await flush()
+    assert.ok(text(queryAll(m.container, '.lc-stat-tip')[1]).includes('reference estimate'))
     await m.unmount()
   })
 
@@ -681,7 +711,7 @@ describe('StatsContext — the subagent split (injected seat)', () => {
     assert.equal(headsOf(m.container).totals[3], '1.0M/$0.30')
     assert.deepEqual(rowsOf(flowNodes(m.container)[4]), ['Current Agent1.0M/$0.30', 'Subagents × 1?1/—'])
     const tips = queryAll(m.container, '.lc-stat-tip').map(el => text(el))
-    assert.ok(tips[2].includes('unavailable'))
+    assert.ok(tips[2].includes('Not priced: future / mystery-model'))
     await m.unmount()
   })
 
