@@ -45,7 +45,7 @@ afterEach(() => {
 })
 
 describe('ContextModal', () => {
-  test('renders null without a useContextModal hook or while closed, without reading the session', async () => {
+  test('renders null without a useContextModal hook or while closed, and shows the loading view when opened without a projection', async () => {
     const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
 
@@ -54,11 +54,7 @@ describe('ContextModal', () => {
     await m1.unmount()
 
     const closedProjection = vi.fn(() => timeline())
-    const m2 = await mount(h(ContextModal, {
-      sessionId: 'sm-closed',
-      useContextModal: () => false,
-      useProjection: closedProjection,
-    }))
+    const m2 = await mount(h(ContextModal, { sessionId: 'sm-closed', useContextModal: () => false, useProjection: closedProjection, }))
     assert.equal(m2.container.childElementCount, 0)
     assert.equal(closedProjection.mock.calls.length, 0, 'a closed modal never mounts the detail reader')
 
@@ -71,35 +67,23 @@ describe('ContextModal', () => {
     assert.ok(openProjection.mock.calls.length > 0, 'opening mounts the detail reader')
     assert.ok(m2.container.querySelector('.lc-modal-backdrop') !== null)
     await m2.unmount()
-  })
 
-  test('open with no projection hook (or an empty one) shows the loading view', async () => {
-    const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-
-    const m1 = await mount(h(ContextModal, { sessionId: 'sm-load1', useContextModal: OPEN }))
-    assert.ok(text(m1.container).includes(DICT_EN.loading))
-    assert.ok(m1.container.querySelector('.lc-modal-card') !== null)
-    await m1.unmount()
-
-    const m2 = await mount(h(ContextModal, {
-      sessionId: 'sm-load2',
-      useContextModal: OPEN,
-      useProjection: () => undefined,
-    }))
-    assert.ok(text(m2.container).includes(DICT_EN.loading))
-    await m2.unmount()
+    for (const [sid, useProjection] of [
+      ['sm-load1', undefined],
+      ['sm-load2', () => undefined],
+    ] as const) {
+      const loading = await mount(h(ContextModal, { sessionId: sid, useContextModal: OPEN, ...(useProjection !== undefined ? { useProjection } : {}), }))
+      assert.ok(text(loading.container).includes(DICT_EN.loading), 'no projection hook (or an empty one) shows the loading view')
+      assert.ok(loading.container.querySelector('.lc-modal-card') !== null)
+      await loading.unmount()
+    }
   })
 
   test('a cold read that settles without data surfaces the retryable failure, not a stall', async () => {
     vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 500, json: async () => null } as Response))
     const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const m = await mount(h(ContextModal, {
-      sessionId: 'sm-cold-fail',
-      useContextModal: OPEN,
-      useProjection: () => undefined,
-    }))
+    const m = await mount(h(ContextModal, { sessionId: 'sm-cold-fail', useContextModal: OPEN, useProjection: () => undefined, }))
     await until(() => text(m.container).includes(DICT_EN['detail.loadFailed']), 'the failure note never surfaced')
     assert.ok(!text(m.container).includes(DICT_EN.loading), 'no spinner remains once failed')
     await act(async () => {
@@ -141,11 +125,7 @@ describe('ContextModal', () => {
         headers: [{ seq: 1, time: 0, system: 'SYS', tools: [{ name: 'bash', tokens: 12, description: 'run' }] }],
       },
     }
-    const m = await mount(h(ContextModal, {
-      sessionId: 'sm-full',
-      useContextModal: OPEN,
-      useProjection: (key: string) => projections[key],
-    }))
+    const m = await mount(h(ContextModal, { sessionId: 'sm-full', useContextModal: OPEN, useProjection: (key: string) => projections[key], }))
     assert.ok(text(m.container).includes('deepseek · deepseek-v4-flash (high)'))
 
     const compCard = query(m.container, '.lc-modal-card .lc-card')
@@ -156,65 +136,46 @@ describe('ContextModal', () => {
     await unhover(query(compCard, '.lc-stacked'))
     assert.ok(!query(compCard, '.lc-stacked').className.includes('lc-stacked-dim'))
     await m.unmount()
-  })
 
-  test('subtitle degrades to the model alone, then to nothing', async () => {
-    const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-
-    const m1 = await mount(h(ContextModal, {
+    const onlyModel = await mount(h(ContextModal, {
       sessionId: 'sm-sub1',
       useContextModal: OPEN,
       useProjection: (key: string) => key === 'contextTimeline' ? timeline({ model: 'only-model' }) : undefined,
     }))
-    assert.ok(text(m1.container).includes('only-model'))
-    assert.ok(!text(m1.container).includes('only-model ·'))
+    assert.ok(text(onlyModel.container).includes('only-model'))
+    assert.ok(!text(onlyModel.container).includes('only-model ·'))
+    await onlyModel.unmount()
+
+    const noModel = await mount(h(ContextModal, { sessionId: 'sm-sub2', useContextModal: OPEN, useProjection: (key: string) => key === 'contextTimeline' ? timeline() : undefined, }))
+    assert.equal(query(noModel.container, '.lc-modal-card .lc-card').querySelector('.lc-card-sub'), null)
+    await noModel.unmount()
+  })
+
+  test('a backdrop click without a sessionId and a card click both leave the modal open', async () => {
+    const sessions = new TestSessions()
+    const ctx = new TestClientCtx({ services: { sessions } })
+    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
+    const m1 = await mount(h(ContextModal, { useContextModal: OPEN, useProjection: () => undefined }))
+    await click(query(m1.container, '.lc-modal-backdrop'))
+    assert.ok(m1.container.querySelector('.lc-modal-backdrop') !== null)
+    assert.equal(sessions.bails.length, 0)
     await m1.unmount()
 
-    const m2 = await mount(h(ContextModal, {
-      sessionId: 'sm-sub2',
-      useContextModal: OPEN,
-      useProjection: (key: string) => key === 'contextTimeline' ? timeline() : undefined,
-    }))
-    const card = query(m2.container, '.lc-modal-card .lc-card')
-    assert.equal(card.querySelector('.lc-card-sub'), null)
+    const m2 = await mount(h(ContextModal, { sessionId: 'sm-card', useContextModal: OPEN, useProjection: () => undefined }))
+    await click(query(m2.container, '.lc-modal-card'))
+    assert.ok(m2.container.querySelector('.lc-modal-backdrop') !== null)
+    assert.equal(sessions.bails.length, 0)
     await m2.unmount()
   })
 
-  test('backdrop click without a sessionId is a no-op', async () => {
-    const sessions = new TestSessions()
-    const ctx = new TestClientCtx({ services: { sessions } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const m = await mount(h(ContextModal, { useContextModal: OPEN, useProjection: () => undefined }))
-    await click(query(m.container, '.lc-modal-backdrop'))
-    assert.ok(m.container.querySelector('.lc-modal-backdrop') !== null)
-    assert.equal(sessions.bails.length, 0)
-    await m.unmount()
-  })
-
-  test('clicking the card itself does not close (stopPropagation)', async () => {
-    const sessions = new TestSessions()
-    const ctx = new TestClientCtx({ services: { sessions } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const m = await mount(h(ContextModal, { sessionId: 'sm-card', useContextModal: OPEN, useProjection: () => undefined }))
-    await click(query(m.container, '.lc-modal-card'))
-    assert.ok(m.container.querySelector('.lc-modal-backdrop') !== null)
-    assert.equal(sessions.bails.length, 0)
-    await m.unmount()
-  })
-
-  test('close flips the store and bails a pending consume through the session scope', async () => {
+  test('close flips the store and bails a pending consume through the session scope; unguarded, serviceless, and unscoped closes stay quiet', async () => {
     const sessions = new TestSessions()
     const ctx = new TestClientCtx({ services: { sessions } })
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
     const sid = 'sm-close'
     modalStoreOf(sid).set(true)
     setPendingConsume(sid, { kind: 'bare-token', token: '/context' })
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
+    const m = await mount(h(ContextModal, { sessionId: sid, useContextModal: boundModalHook(sid), useProjection: () => undefined, }))
     assert.ok(m.container.querySelector('.lc-modal-backdrop') !== null)
 
     await click(query(m.container, '.lc-modal-close'))
@@ -225,64 +186,30 @@ describe('ContextModal', () => {
     assert.deepEqual(sessions.bails[0].payload, { guard: { kind: 'bare-token', token: '/context' } })
     assert.equal(takePendingConsume(sid), undefined)
     await m.unmount()
-  })
 
-  test('close without a pending consume sets the store but bails nothing', async () => {
-    const sessions = new TestSessions()
-    const ctx = new TestClientCtx({ services: { sessions } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-noguard'
-    modalStoreOf(sid).set(true)
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
-    await click(query(m.container, '.lc-modal-backdrop'))
-    assert.equal(modalStoreOf(sid).getSnapshot(), false)
-    assert.equal(sessions.bails.length, 0)
-    await m.unmount()
-  })
-
-  test('a pending consume without the sessions service closes quietly', async () => {
-    const ctx = new TestClientCtx()
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-nosvc'
-    modalStoreOf(sid).set(true)
-    setPendingConsume(sid, { kind: 'bare-token', token: '/context' })
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
-    await click(query(m.container, '.lc-modal-backdrop'))
-    assert.equal(modalStoreOf(sid).getSnapshot(), false)
-    assert.equal(m.container.querySelector('.lc-modal-backdrop'), null)
-    await m.unmount()
-  })
-
-  test('a pending consume whose scope is gone closes quietly', async () => {
     const scoped: string[] = []
-    const sessions = {
-      scope: (id: string) => {
-        scoped.push(id)
-        return undefined
+    const bails = sessions.bails.length
+    const cases: { sid: string; ctx: TestClientCtx; guard?: Parameters<typeof setPendingConsume>[1] }[] = [
+      { sid: 'sm-noguard', ctx: new TestClientCtx({ services: { sessions } }) },
+      { sid: 'sm-nosvc', ctx: new TestClientCtx(), guard: { kind: 'bare-token', token: '/context' } },
+      {
+        sid: 'sm-noscope',
+        ctx: new TestClientCtx({ services: { sessions: { scope: (id: string) => { scoped.push(id); return undefined } } } }),
+        guard: { kind: 'span', span: { start: 0, end: 8, draftRev: 3 } },
       },
+    ]
+    for (const { sid: quietSid, ctx, guard } of cases) {
+      const QuietModal = makeContextModal(asClientCtx(ctx), kit, settings)
+      modalStoreOf(quietSid).set(true)
+      if (guard !== undefined) setPendingConsume(quietSid, guard)
+      const quiet = await mount(h(QuietModal, { sessionId: quietSid, useContextModal: boundModalHook(quietSid), useProjection: () => undefined, }))
+      await click(query(quiet.container, '.lc-modal-backdrop'))
+      assert.equal(modalStoreOf(quietSid).getSnapshot(), false)
+      assert.equal(quiet.container.querySelector('.lc-modal-backdrop'), null)
+      await quiet.unmount()
     }
-    const ctx = new TestClientCtx({ services: { sessions } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-noscope'
-    modalStoreOf(sid).set(true)
-    setPendingConsume(sid, { kind: 'span', span: { start: 0, end: 8, draftRev: 3 } })
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
-    await click(query(m.container, '.lc-modal-backdrop'))
-    assert.equal(modalStoreOf(sid).getSnapshot(), false)
-    assert.deepEqual(scoped, [sid])
-    await m.unmount()
+    assert.equal(sessions.bails.length, bails, 'a close with no bail path closes quietly')
+    assert.deepEqual(scoped, ['sm-noscope'], 'the scope beats the service check')
   })
 
   test('the mask docks between the frame sidebars, follows template rewrites, and disconnects on close', async () => {
@@ -300,11 +227,7 @@ describe('ContextModal', () => {
     document.body.appendChild(frame)
 
     const disconnectSpy = vi.spyOn(MutationObserver.prototype, 'disconnect')
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
+    const m = await mount(h(ContextModal, { sessionId: sid, useContextModal: boundModalHook(sid), useProjection: () => undefined, }))
     // Relocate the mount container under the frame before opening, so the measure walks the real ancestor chain.
     seat.appendChild(m.container)
     await act(async () => {
@@ -328,20 +251,12 @@ describe('ContextModal', () => {
     assert.equal(disconnectSpy.mock.calls.length, 1)
     frame.remove()
     await m.unmount()
-  })
 
-  test('without a frame ancestor the mask stays full-viewport', async () => {
-    const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const m = await mount(h(ContextModal, {
-      sessionId: 'sm-noframe',
-      useContextModal: OPEN,
-      useProjection: () => undefined,
-    }))
-    const backdrop = query(m.container, '.lc-modal-backdrop')
-    assert.equal(backdrop.style.left, '0px')
-    assert.equal(backdrop.style.right, '0px')
-    await m.unmount()
+    const noFrame = await mount(h(ContextModal, { sessionId: 'sm-noframe', useContextModal: OPEN, useProjection: () => undefined, }))
+    const noFrameBackdrop = query(noFrame.container, '.lc-modal-backdrop')
+    assert.equal(noFrameBackdrop.style.left, '0px', 'without a frame ancestor the mask stays full-viewport')
+    assert.equal(noFrameBackdrop.style.right, '0px')
+    await noFrame.unmount()
   })
 
   test('Escape closes; other keys do not; the listener is removed on close', async () => {
@@ -350,11 +265,7 @@ describe('ContextModal', () => {
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
     const sid = 'sm-esc'
     modalStoreOf(sid).set(true)
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
+    const m = await mount(h(ContextModal, { sessionId: sid, useContextModal: boundModalHook(sid), useProjection: () => undefined, }))
     await keydown('a')
     assert.ok(m.container.querySelector('.lc-modal-backdrop') !== null)
 
@@ -371,79 +282,50 @@ describe('ContextModal', () => {
     await m.unmount()
   })
 
-  test('closing restores focus to the previously focused element', async () => {
+  test('closing restores focus when it can, and skips the restore when the previous element is gone or nothing was focused', async () => {
     const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-focus'
+
     const btn = document.createElement('button')
     document.body.appendChild(btn)
     btn.focus()
     assert.equal(document.activeElement, btn)
-
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
-    await act(async () => {
-      modalStoreOf(sid).set(true)
-    })
-    const closeBtn = query(m.container, '.lc-modal-close')
+    const m1 = await mount(h(ContextModal, { sessionId: 'sm-focus', useContextModal: boundModalHook('sm-focus'), useProjection: () => undefined, }))
+    await act(async () => { modalStoreOf('sm-focus').set(true) })
+    const closeBtn = query(m1.container, '.lc-modal-close')
     closeBtn.focus()
     assert.equal(document.activeElement, closeBtn)
-
     await click(closeBtn)
-    assert.equal(document.activeElement, btn)
+    assert.equal(document.activeElement, btn, 'the previous element takes focus back')
     btn.remove()
-    await m.unmount()
-  })
+    await m1.unmount()
 
-  test('closing skips the focus restore when the previous element left the document', async () => {
-    const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-focus-gone'
-    const btn = document.createElement('button')
-    document.body.appendChild(btn)
-    btn.focus()
+    const gone = document.createElement('button')
+    document.body.appendChild(gone)
+    gone.focus()
+    const m2 = await mount(h(ContextModal, { sessionId: 'sm-focus-gone', useContextModal: boundModalHook('sm-focus-gone'), useProjection: () => undefined, }))
+    await act(async () => { modalStoreOf('sm-focus-gone').set(true) })
+    gone.remove()
+    await click(query(m2.container, '.lc-modal-close'))
+    assert.equal(modalStoreOf('sm-focus-gone').getSnapshot(), false)
+    assert.ok(!document.contains(gone))
+    await m2.unmount()
 
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
-    await act(async () => {
-      modalStoreOf(sid).set(true)
-    })
-    btn.remove()
-    await click(query(m.container, '.lc-modal-close'))
-    assert.equal(modalStoreOf(sid).getSnapshot(), false)
-    assert.ok(!document.contains(btn))
-    await m.unmount()
-  })
-
-  test('no focus bookkeeping when nothing was focused (activeElement not an element)', async () => {
-    const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const sid = 'sm-focus-null'
-    modalStoreOf(sid).set(true)
     // Environment control (not a plugin fake): jsdom always reports body;
     // the harness browser can report null before the body exists.
+    modalStoreOf('sm-focus-null').set(true)
     vi.spyOn(document, 'activeElement', 'get').mockReturnValue(null)
-    const m = await mount(h(ContextModal, {
-      sessionId: sid,
-      useContextModal: boundModalHook(sid),
-      useProjection: () => undefined,
-    }))
+    const m3 = await mount(h(ContextModal, { sessionId: 'sm-focus-null', useContextModal: boundModalHook('sm-focus-null'), useProjection: () => undefined, }))
     vi.restoreAllMocks()
-    await click(query(m.container, '.lc-modal-close'))
-    assert.equal(modalStoreOf(sid).getSnapshot(), false)
+    await click(query(m3.container, '.lc-modal-close'))
+    assert.equal(modalStoreOf('sm-focus-null').getSnapshot(), false)
     assert.equal(document.activeElement, document.body)
-    await m.unmount()
+    await m3.unmount()
   })
 })
 
 describe('ContextModal — the split generation', () => {
-  test('the modal shares the detail route: the browser lands the collections on open', async () => {
+  test('the modal shares the detail route: the browser lands the collections on open; a subagent body reads under its parent address', async () => {
     vi.stubGlobal('fetch', async () => ({
       ok: true,
       status: 200,
@@ -466,28 +348,23 @@ describe('ContextModal — the split generation', () => {
       last: { seq: 1, total: 21, prompt: 20 },
       detailRev: 1,
     })
-    const m = await mount(h(ContextModal, {
-      sessionId: 'sm-slim',
-      useContextModal: OPEN,
-      useProjection: (key: string) => (key === 'contextTimeline' ? head : undefined),
-    }))
+    const m = await mount(h(ContextModal, { sessionId: 'sm-slim', useContextModal: OPEN, useProjection: (key: string) => (key === 'contextTimeline' ? head : undefined), }))
     assert.ok(text(m.container).includes(DICT_EN['overview.title']))
     assert.ok(text(m.container).includes(DICT_EN['detail.loading']))
     await until(() => !text(m.container).includes(DICT_EN['detail.loading']), 'the modal detail never landed')
     assert.equal(queryAll(m.container, '.lc-br-pick option').length, 2, 'live + the one served step')
     assert.ok(text(m.container).includes('1 Item'), 'the assistant section counts the served node')
     await m.unmount()
-  })
 
-  test('a subagent message reads its full body under the durable parent address (issue #193)', async () => {
+    // A subagent message reads its full body under the durable parent address (issue #193).
     const calls: unknown[] = []
-    const ctx = new TestClientCtx({
+    const subCtx = new TestClientCtx({
       services: {
         sessions: { subagentAddress: () => ({ parentSessionId: 'sm-parent', childSessionId: 'sm-body', mode: 'continuable' }) },
       },
     })
-    ctx.setService('remote.session', { get page() { throw new Error('cannot get property "remote.session" without inject') } })
-    ctx.setService('remote', {
+    subCtx.setService('remote.session', { get page() { throw new Error('cannot get property "remote.session" without inject') } })
+    subCtx.setService('remote', {
       session: {
         page: (request: unknown) => {
           calls.push(request)
@@ -503,16 +380,16 @@ describe('ContextModal — the split generation', () => {
         },
       },
     })
-    watchHistoryFaces(asClientCtx(ctx))
-    const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
-    const m = await mount(h(ContextModal, {
+    watchHistoryFaces(asClientCtx(subCtx))
+    const SubModal = makeContextModal(asClientCtx(subCtx), kit, settings)
+    const subMount = await mount(h(SubModal, {
       sessionId: 'sm-body',
       useContextModal: OPEN,
       useProjection: (key: string) => (key === 'contextTimeline'
         ? timeline({ nodes: [{ seq: 1, cat: 'user', tokens: 5, text: 'old msg' }] })
         : undefined),
     }))
-    const userRow = queryAll(m.container, '.lc-br-cat-row').find(r => text(r).includes(DICT_EN['cat.user']))
+    const userRow = queryAll(subMount.container, '.lc-br-cat-row').find(r => text(r).includes(DICT_EN['cat.user']))
     assert.ok(userRow !== undefined)
     await click(userRow)
     await flush()
@@ -521,9 +398,9 @@ describe('ContextModal — the split generation', () => {
       throughSeq: 1,
       beforeSeq: 2,
     }])
-    assert.ok(text(m.container).includes('OLD FULL BODY'), 'the fetched body renders')
-    await m.unmount()
-    ctx.dispose()
+    assert.ok(text(subMount.container).includes('OLD FULL BODY'), 'the fetched body renders')
+    await subMount.unmount()
+    subCtx.dispose()
   })
 
   test('a mount that raced the declared inject heals when the face lands mid-open', async () => {
@@ -537,11 +414,7 @@ describe('ContextModal — the split generation', () => {
       contextTimeline: timeline(),
       contextHeaders: { headers: [{ seq: 1, time: 0, systemTokens: 5, tools: [] }] },
     }
-    const m = await mount(h(ContextModal, {
-      sessionId: 'sm-race',
-      useContextModal: OPEN,
-      useProjection: (key: string) => projections[key],
-    }))
+    const m = await mount(h(ContextModal, { sessionId: 'sm-race', useContextModal: OPEN, useProjection: (key: string) => projections[key], }))
     const sysRow = queryAll(m.container, '.lc-br-cat-row').find(r => text(r).includes(DICT_EN['cat.system']))
     assert.ok(sysRow !== undefined)
     await click(sysRow)

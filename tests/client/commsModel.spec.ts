@@ -20,25 +20,18 @@ function row(over: Partial<CommsRow> & { seq: number; to: string; time: number; 
 }
 
 describe('party keys', () => {
-  test('an id wins over a name; a name-only party gets its own key; the bare arrow is unknown', () => {
+  test('an id outranks a name; name-only parties key by name; the bare arrow is unknown; channels are unordered and agent scope matches either side', () => {
     assert.equal(fromPartyOf(row({ seq: 1, to: 'a', time: 1, text: 'x', from: 'b', fromName: 'Bee' })), 'b')
     assert.equal(fromPartyOf(row({ seq: 1, to: 'a', time: 1, text: 'x', fromName: 'Bee' })), NAME_PARTY_PREFIX + 'Bee')
     assert.equal(fromPartyOf(row({ seq: 1, to: 'a', time: 1, text: 'x' })), UNKNOWN_PARTY)
     assert.equal(nameOfParty(NAME_PARTY_PREFIX + 'Bee'), 'Bee')
     assert.equal(nameOfParty('session-a'), undefined)
-  })
-
-  test('the channel key is unordered', () => {
     const forward = row({ seq: 1, to: 'b', time: 1, text: 'x', from: 'a' })
     const back = row({ seq: 2, to: 'a', time: 2, text: 'y', from: 'b' })
     assert.equal(channelKeyOf(forward), channelKeyOf(back))
-  })
-
-  test('agent scope matches either side', () => {
-    const forwarded = row({ seq: 1, to: 'b', time: 1, text: 'x', from: 'a' })
-    assert.equal(includesAgent(forwarded, 'a'), true)
-    assert.equal(includesAgent(forwarded, 'b'), true)
-    assert.equal(includesAgent(forwarded, 'c'), false)
+    assert.equal(includesAgent(forward, 'a'), true)
+    assert.equal(includesAgent(forward, 'b'), true)
+    assert.equal(includesAgent(forward, 'c'), false)
   })
 })
 
@@ -51,7 +44,7 @@ describe('channelsOf', () => {
     row({ key: 'c:1:50:relay', seq: 1, to: 'c', time: 50, text: 'side', fromName: 'legacy' }),
   ]
 
-  test('one channel per unordered pair, anchor first, directional counts and kinds', () => {
+  test('one channel per unordered pair, anchor first; without an anchor the larger sender leads; self and empty cases hold', () => {
     const channels = channelsOf(rows, 'b')
     assert.equal(channels.length, 2)
     const main = channels[0]!
@@ -67,36 +60,29 @@ describe('channelsOf', () => {
     assert.equal(side.b, 'c')
     assert.equal(side.out, 1)
     assert.equal(side.back, 0)
-  })
 
-  test('without an anchor the party that sent more leads; a tie is deterministic', () => {
-    const channels = channelsOf(rows)
-    const main = channels.find(channel => channel.key === channelKeyOf(rows[0]!))!
-    assert.equal(main.a, 'a')
-    assert.equal(main.b, 'b')
+    const unanchored = channelsOf(rows)
+    const leader = unanchored.find(channel => channel.key === channelKeyOf(rows[0]!))!
+    assert.equal(leader.a, 'a')
+    assert.equal(leader.b, 'b')
     const tied = channelsOf([
       row({ key: 'x:1:1:relay', seq: 1, to: 'y', time: 1, text: 'x', from: 'x' }),
       row({ key: 'y:2:2:relay', seq: 2, to: 'x', time: 2, text: 'y', from: 'y' }),
     ])
     assert.equal(tied[0]!.a, 'x')
-  })
 
-  test('a self-addressed row still forms a channel', () => {
-    const channels = channelsOf([row({ key: 'a:1:1:relay', seq: 1, to: 'a', time: 1, text: 'me', from: 'a' })])
-    assert.equal(channels.length, 1)
-    assert.equal(channels[0]!.a, 'a')
-    assert.equal(channels[0]!.b, 'a')
-    assert.equal(channels[0]!.out, 1)
-    assert.equal(channels[0]!.back, 0)
-  })
-
-  test('an empty row list makes no channels', () => {
+    const self = channelsOf([row({ key: 'a:1:1:relay', seq: 1, to: 'a', time: 1, text: 'me', from: 'a' })])
+    assert.equal(self.length, 1)
+    assert.equal(self[0]!.a, 'a')
+    assert.equal(self[0]!.b, 'a')
+    assert.equal(self[0]!.out, 1)
+    assert.equal(self[0]!.back, 0)
     assert.deepEqual(channelsOf([]), [])
   })
 })
 
 describe('display helpers', () => {
-  test('settled tones and kind groups', () => {
+  test('settled tones and kind groups; previews strip fences and markup and cap at 600; initials cover CJK, hyphens, single words, and blanks', () => {
     assert.equal(settledToneOf('finished'), 'done')
     assert.equal(settledToneOf('finishedFinal'), 'done')
     assert.equal(settledToneOf('failed'), 'error')
@@ -105,18 +91,14 @@ describe('display helpers', () => {
     assert.equal(settledToneOf(null), 'idle')
     assert.equal(kindGroupOf(row({ seq: 1, to: 'a', time: 1, text: '' })), 'message')
     assert.equal(kindGroupOf({ key: 'a', seq: 1, to: 'a', time: 1, kind: 'settled', text: '' }), 'report')
-  })
 
-  test('previews strip fences and markup; unparseable payloads fall back to raw text and cap at 600', () => {
     assert.equal(previewOf('# Title\n\n| a | b |\n|---|---|\n| 1 | 2 |'), 'Title a b 1 2')
     assert.equal(previewOf('```js\nconst x = 1\n```'), '```js const x = 1 ```')
     assert.equal(previewOf('`inline` **bold** [link](https://x)'), 'inline bold link')
     const long = previewOf('x'.repeat(800))
     assert.equal(long.length, 601)
     assert.ok(long.endsWith('…'))
-  })
 
-  test('initials cover CJK, hyphenated names, single words, and empty names', () => {
     assert.equal(initialsOf('分析 Agent'), '分')
     assert.equal(initialsOf('host-cleaner'), 'HC')
     assert.equal(initialsOf('lead'), 'L')

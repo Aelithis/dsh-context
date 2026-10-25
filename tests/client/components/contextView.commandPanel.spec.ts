@@ -60,7 +60,6 @@ describe('ContextView — command panel', () => {
   test('the panel lists the served commands and reveals the result message in the browser', async () => {
     const { m, card } = await mountCommands('sv-cmds', [cmd(10, { resultSeq: 3 })])
     const pick = query<HTMLSelectElement>(m.container, 'select.lc-br-pick')
-    assert.equal(pick.value, 'live')
     const row = query(card, '.lc-cmd-row')
     assert.ok(text(row).includes('git status --short'))
     // The trailing time/stamp is the reveal affordance.

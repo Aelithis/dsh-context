@@ -74,15 +74,12 @@ describe('ContextBrowser focus bridges', () => {
 })
 
 describe('ContextBrowser — the split generation detail states', () => {
-  test('a pending detail read names the state on the note strip', async () => {
-    const m = await mount(h(Browser, { data: tl({}), headers: null, detailState: 'loading' }))
-    assert.ok(text(m.container).includes(DICT_EN['detail.loading']))
-    // The picker still offers the live surface; sections read zero until the detail lands.
-    assert.equal(queryAll(m.container, '.lc-br-pick option').length, 1)
-    await m.unmount()
-  })
+  test('a pending read names the loading state; a failed read arms the retry button; a landed or inline detail renders none', async () => {
+    const loading = await mount(h(Browser, { data: tl({}), headers: null, detailState: 'loading' }))
+    assert.ok(text(loading.container).includes(DICT_EN['detail.loading']))
+    assert.equal(queryAll(loading.container, '.lc-br-pick option').length, 1)
+    await loading.unmount()
 
-  test('a failed detail read arms the retry button on the strip', async () => {
     let retries = 0
     const m = await mount(h(Browser, {
       data: tl({}),
@@ -93,18 +90,16 @@ describe('ContextBrowser — the split generation detail states', () => {
     await click(query(m.container, '.lc-br-retry'))
     assert.equal(retries, 1)
     await m.unmount()
-  })
 
-  test('a landed (or inline) detail renders no strip', async () => {
     for (const state of ['ready', 'legacy'] as const) {
-      const m = await mount(h(Browser, { data: tl({}), headers: null, detailState: state }))
-      assert.ok(!text(m.container).includes(DICT_EN['detail.loading']))
-      assert.ok(!text(m.container).includes(DICT_EN['detail.loadFailed']))
-      await m.unmount()
+      const ready = await mount(h(Browser, { data: tl({}), headers: null, detailState: state }))
+      assert.ok(!text(ready.container).includes(DICT_EN['detail.loading']))
+      assert.ok(!text(ready.container).includes(DICT_EN['detail.loadFailed']))
+      await ready.unmount()
     }
-    const m = await mount(h(Browser, { data: tl({}), headers: null }))
-    assert.ok(queryAll(m.container, '.lc-br-retry').length === 0)
-    await m.unmount()
+    const inline = await mount(h(Browser, { data: tl({}), headers: null }))
+    assert.equal(queryAll(inline.container, '.lc-br-retry').length, 0)
+    await inline.unmount()
   })
 })
 
@@ -131,22 +126,20 @@ describe('ContextBrowser open-category reporting', () => {
     await pickStep(m, '20')
     assert.deepEqual(opens, [null, 'user', null, 'tool', null], 'a step pick closes the open category')
     await m.unmount()
-  })
 
-  test('a pin change and a brief reveal report their reset / target category', async () => {
-    const data = tl({ requests: [req({ seq: 10, turn: 1, step: 0 })], nodes: [surfaceNode({ seq: 1, cat: 'user', text: 'hi' })] })
-    const opens: (string | null)[] = []
-    const onOpenCat = (c: string | null): void => { opens.push(c) }
-    const m = await mount(h(Browser, props({ data, onOpenCat })))
-    await m.update(h(Browser, props({ data, onOpenCat, pinSeq: 10 })))
-    assert.deepEqual(opens, [null, null], 'pinning resets the accordion')
-    await m.update(h(Browser, props({
-      data, onOpenCat, pinSeq: 10,
+    const data2 = tl({ requests: [req({ seq: 10, turn: 1, step: 0 })], nodes: [surfaceNode({ seq: 1, cat: 'user', text: 'hi' })] })
+    const opens2: (string | null)[] = []
+    const onOpenCat2 = (c: string | null): void => { opens2.push(c) }
+    const m2 = await mount(h(Browser, props({ data: data2, onOpenCat: onOpenCat2 })))
+    await m2.update(h(Browser, props({ data: data2, onOpenCat: onOpenCat2, pinSeq: 10 })))
+    assert.deepEqual(opens2, [null, null], 'pinning resets the accordion')
+    await m2.update(h(Browser, props({
+      data: data2, onOpenCat: onOpenCat2, pinSeq: 10,
       nodeFocus: { step: 'live', key: 'n1', cat: 'tool' },
       onNodeFocusHandled: () => {},
     })))
-    assert.deepEqual(opens, [null, null, 'tool'], 'the reveal opens the node category')
-    await m.unmount()
+    assert.deepEqual(opens2, [null, null, 'tool'], 'the reveal opens the node category')
+    await m2.unmount()
   })
 
   test('catFocus opens the named category on the live surface, picking the kind chip', async () => {

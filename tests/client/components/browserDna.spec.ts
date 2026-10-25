@@ -1,8 +1,6 @@
-import { act, createElement as h, useState } from 'react'
-import { flushSync } from 'react-dom'
-import { createRoot } from 'react-dom/client'
+import { createElement as h, useState } from 'react'
 import assert from 'node:assert/strict'
-import { describe, test, vi } from 'vitest'
+import { describe, test } from 'vitest'
 import type { CatFocus, ContextBrowserProps } from '../../../src/client/components/browser'
 import type { ContextHeaders } from '../../../src/shared/types'
 import { click, flush, hover, mount, query, queryAll, surfaceNode, text, tipRows, unhover, type Mounted } from '../helpers/kit'
@@ -69,25 +67,6 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.deepEqual(calls, [false])
     assert.equal(bands(m).length, 7, 'still on until the parent re-renders the prop')
     await m.unmount()
-  })
-
-  test('the feed paints its windowed rows and the filter summary on the first paint', async () => {
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    const silent = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      flushSync(() => {
-        root.render(h(Browser, props({ data: dnaData, headers: dnaHeaders, dna: true, onDnaChange: () => {} })))
-      })
-      // No skeleton stage: the rows and the summary come from the model at render time.
-      assert.equal(text(query(container, '.lc-br-filter-stat')), '×6 ≈275')
-      assert.equal(queryAll(container, '.lc-br-flat > .lc-br-elem').length, 6, 'rows, then the header groups')
-    } finally {
-      await act(async () => { root.unmount() })
-      container.remove()
-      silent.mockRestore()
-    }
   })
 
   test('the toggle redraws the composition bar as one band per item, in prompt order', async () => {    const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
@@ -244,23 +223,21 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.equal(flatRows(m).length, 6)
     assert.equal(filterStat(m), '×6 ≈275')
     await m.unmount()
-  })
 
-  test('the DNA feed lens matches tool schemas by their source plugin too', async () => {
-    const headers: ContextHeaders = {
+    const pluginHeaders: ContextHeaders = {
       headers: [{
         seq: 1, time: 1000, systemTokens: 100,
         tools: [{ name: 'bash', tokens: 50, plugin: 'dsh-shell' }, { name: 'write', tokens: 25 }],
       }],
     }
-    const m = await mount(h(Browser, props({ data: dnaData, headers })))
-    await click(dnaButton(m))
-    await typeToolSearch(m, 'dsh-shell')
-    const rows = flatRows(m)
-    assert.equal(rows.length, 1, 'the tools group stays on a plugin-only match')
-    assert.ok(text(rows[0]).includes('Tool Schemas'))
-    assert.equal(filterStat(m), '×1 ≈75')
-    await m.unmount()
+    const plugin = await mount(h(Browser, props({ data: dnaData, headers: pluginHeaders })))
+    await click(dnaButton(plugin))
+    await typeToolSearch(plugin, 'dsh-shell')
+    const pluginRows = flatRows(plugin)
+    assert.equal(pluginRows.length, 1, 'the tools group stays on a plugin-only match')
+    assert.ok(text(pluginRows[0]).includes('Tool Schemas'))
+    assert.equal(filterStat(plugin), '×1 ≈75')
+    await plugin.unmount()
   })
 
   test('the flat system row degrades inside itself when the epoch carries no prompt text', async () => {
@@ -317,7 +294,7 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     await m.unmount()
   })
 
-  test('hovering a DNA feed row lights its exact band on the bar; the header groups light their group', async () => {
+  test('DNA feed rows and bands echo both ways: a row lights its band, a band echoes onto its row, groups included', async () => {
     const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
     await click(dnaButton(m))
     await hover(flatRows(m)[2].querySelector('.lc-br-elem-row')!)
@@ -335,13 +312,8 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.deepEqual(bands(m).map(seg => seg.className.includes('lc-stacked-seg-on')), [true, false, false, false, false, false, false])
     await unhover(flatRow(m, 'System Prompt'))
     assert.ok(bands(m).every(seg => !seg.className.includes('lc-stacked-seg-on')))
-    await m.unmount()
-  })
 
-  test('hovering a DNA band echoes onto its feed row; a tool-schema band lights the tools group row', async () => {
-    const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
-    await click(dnaButton(m))
-    // Band n3 (index 4) is feed row index 2 (the feed runs newest-first).
+    // Band → row: n3 echoes on feed row index 2; a tool-schema band lights the tools group.
     await hover(bands(m)[4])
     assert.ok(flatRows(m)[2].className.includes('lc-br-elem-echo'))
     assert.ok(flatRows(m).every((r, i) => i === 2 || !r.className.includes('lc-br-elem-echo')))

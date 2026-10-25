@@ -34,6 +34,12 @@ export interface Mounted {
   unmount(): Promise<void>
 }
 
+const mounted = new Set<Mounted>()
+
+export async function cleanupMounts(): Promise<void> {
+  for (const m of [...mounted]) await m.unmount()
+}
+
 export async function mount(el: ReactElement): Promise<Mounted> {
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -41,7 +47,7 @@ export async function mount(el: ReactElement): Promise<Mounted> {
   await act(async () => {
     root.render(el)
   })
-  return {
+  const handle: Mounted = {
     container,
     root,
     async update(next) {
@@ -54,8 +60,11 @@ export async function mount(el: ReactElement): Promise<Mounted> {
         root.unmount()
       })
       container.remove()
+      mounted.delete(handle)
     },
   }
+  mounted.add(handle)
+  return handle
 }
 
 export async function flush(): Promise<void> {

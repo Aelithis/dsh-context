@@ -211,46 +211,36 @@ describe('useFleetDetails', () => {
     await m.unmount()
   })
 
-  test('a landing after unmount updates nothing', async () => {
-    const cache = new FleetDetailCache()
-    let release: (d: FleetDetail | null) => void = () => {}
-    vi.spyOn(cache, 'fetch').mockImplementation(() => new Promise((resolve) => { release = resolve }))
-    const { box, Probe } = probeDetails(cache)
-    const m = await mount(h(Probe))
-    const state = box.current as FleetDetailState
-    act(() => { state.request('a', 1) })
-    await m.unmount()
-    release(null)
-    await flush()
-    assert.equal(box.current?.landed.size, 0)
+  test('a landing after unmount updates nothing, for the excerpt and full ledgers alike', async () => {
+    for (const full of [false, true]) {
+      const cache = new FleetDetailCache()
+      let release: (d: FleetDetail | null) => void = () => {}
+      vi.spyOn(cache, 'fetch').mockImplementation((_id: string, _stamp: number, isFull?: boolean) => {
+        if (full && isFull !== true) return Promise.resolve(null)
+        return new Promise((resolve) => { release = resolve })
+      })
+      const { box, Probe } = probeDetails(cache)
+      const m = await mount(h(Probe))
+      const state = box.current as FleetDetailState
+      act(() => {
+        if (full) state.requestFull('a')
+        else state.request('a', 1)
+      })
+      await m.unmount()
+      release(null)
+      await flush()
+      assert.equal(box.current?.landed.size, 0)
+      assert.equal(box.current?.fullLanded.size, 0)
+    }
   })
 
-  test('a full landing after unmount updates nothing', async () => {
-    const cache = new FleetDetailCache()
-    let release: (d: FleetDetail | null) => void = () => {}
-    vi.spyOn(cache, 'fetch').mockImplementation((_id: string, _stamp: number, full?: boolean) => {
-      if (full !== true) return Promise.resolve(null)
-      return new Promise((resolve) => { release = resolve })
-    })
-    const { box, Probe } = probeDetails(cache)
-    const m = await mount(h(Probe))
-    const state = box.current as FleetDetailState
-    act(() => { state.requestFull('a') })
-    await m.unmount()
-    release({ messages: [], truncated: false, lastReply: { time: 1, text: 'late' } })
-    await flush()
-    assert.equal(box.current?.fullLanded.size, 0)
-  })
-
-  test('requestFull reads the full ledger once per session and lands fullLanded', async () => {
+  test('requestFull reads once per session, lands a detail or null, and never touches the excerpt ledger', async () => {
     let fullReads = 0
     const cache = new FleetDetailCache()
-    vi.spyOn(cache, 'fetch').mockImplementation((_id: string, _stamp: number, full?: boolean) => {
-      if (full === true) {
-        fullReads += 1
-        return Promise.resolve({ messages: [], truncated: false, lastReply: { time: 1, text: 'FULL' } })
-      }
-      return Promise.resolve(null)
+    vi.spyOn(cache, 'fetch').mockImplementation((id: string, _stamp: number, full?: boolean) => {
+      if (full !== true) return Promise.resolve(null)
+      fullReads += 1
+      return Promise.resolve(id === 'a' ? { messages: [], truncated: false, lastReply: { time: 1, text: 'FULL' } } : null)
     })
     const { box, Probe } = probeDetails(cache)
     const m = await mount(h(Probe))
@@ -264,27 +254,14 @@ describe('useFleetDetails', () => {
     assert.equal(box.current?.fullPending.size, 0)
     assert.equal(box.current?.fullLanded.get('a')?.lastReply?.text, 'FULL')
     assert.equal(box.current?.landed.size, 0, 'the excerpt ledger stays untouched')
-    await m.unmount()
-  })
 
-  test('a read serving nothing lands null once and never re-reads', async () => {
-    let fullReads = 0
-    const cache = new FleetDetailCache()
-    vi.spyOn(cache, 'fetch').mockImplementation((_id: string, _stamp: number, full?: boolean) => {
-      if (full !== true) return Promise.resolve(null)
-      fullReads += 1
-      return Promise.resolve(null)
-    })
-    const { box, Probe } = probeDetails(cache)
-    const m = await mount(h(Probe))
-    const state = box.current as FleetDetailState
-    act(() => { state.requestFull('a') })
+    act(() => { state.requestFull('b') })
     await act(async () => {})
-    assert.equal(box.current?.fullLanded.get('a') ?? null, null, 'the absence path lands as null')
+    assert.equal(box.current?.fullLanded.get('b') ?? null, null, 'the absence path lands as null')
     assert.equal(box.current?.fullPending.size, 0)
-    act(() => { state.requestFull('a') })
+    act(() => { state.requestFull('b') })
     await act(async () => {})
-    assert.equal(fullReads, 1, 'a settled ask is deduped even when it read nothing')
+    assert.equal(fullReads, 2, 'a settled ask is deduped even when it read nothing')
     await m.unmount()
   })
 

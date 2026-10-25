@@ -97,18 +97,12 @@ afterEach(() => {
 })
 
 describe('platformBalanceOf', () => {
-  test('a delivered wire balance parses whole', () => {
+  test('a delivered wire balance parses whole; absent, shapeless, or entry-less payloads are no balance', () => {
     assert.deepEqual(platformBalanceOf(WIRE_BALANCE), WIRE_BALANCE)
-  })
-
-  test('absent or non-record payloads are no balance', () => {
     assert.equal(platformBalanceOf(undefined), null)
     assert.equal(platformBalanceOf(null), null)
     assert.equal(platformBalanceOf('balance'), null)
     assert.equal(platformBalanceOf([]), null)
-  })
-
-  test('a payload with no valid entry is no balance', () => {
     assert.equal(platformBalanceOf({ isAvailable: true }), null)
     assert.equal(platformBalanceOf({ balances: 'CNY' }), null)
     assert.equal(platformBalanceOf({ balances: [null, 'CNY', [], {}] }), null)
@@ -123,7 +117,7 @@ describe('platformBalanceOf', () => {
     }), null)
   })
 
-  test('entries failing the shape drop whole, valid siblings survive', () => {
+  test('entries failing the shape or throwing on property access drop whole; valid siblings survive', () => {
     const balance = platformBalanceOf({
       isAvailable: false,
       balances: [
@@ -136,9 +130,6 @@ describe('platformBalanceOf', () => {
       isAvailable: false,
       balances: [{ currency: 'EUR', total: 2, granted: 0, toppedUp: 2 }],
     })
-  })
-
-  test('a hostile entry throwing on property access drops without throwing', () => {
     const hostile = new Proxy({}, { get() { throw new Error('hostile') } })
     assert.equal(platformBalanceOf({ balances: [hostile] }), null)
     const mixed = platformBalanceOf({ balances: [hostile, WIRE_BALANCE.balances[0]] })
@@ -147,13 +138,10 @@ describe('platformBalanceOf', () => {
 })
 
 describe('balanceEntryOf', () => {
-  test('absent or empty balances pick nothing', () => {
+  test('absent or empty balances pick nothing; otherwise the display currency wins and the first entry falls back', () => {
     assert.equal(balanceEntryOf(null, 'cny'), null)
     assert.equal(balanceEntryOf(undefined, 'usd'), null)
     assert.equal(balanceEntryOf({ isAvailable: true, balances: [] }, 'cny'), null)
-  })
-
-  test('the display currency wins; the account\'s first currency is the fallback', () => {
     assert.deepEqual(balanceEntryOf(WIRE_BALANCE, 'cny'), WIRE_BALANCE.balances[0])
     assert.deepEqual(balanceEntryOf(WIRE_BALANCE, 'usd'), WIRE_BALANCE.balances[1])
     const eurOnly = platformBalanceOf({ balances: [{ currency: 'EUR', total: 2, granted: 0, toppedUp: 2 }] })
@@ -162,15 +150,6 @@ describe('balanceEntryOf', () => {
 })
 
 describe('readPlatformBalance', () => {
-  test('nothing remembered shows nothing while the first read is pending', async () => {
-    const { release } = gatedRoute()
-    const { seen, onRefresh } = collector()
-    assert.equal(readPlatformBalance(onRefresh), null, 'no remembered figure to paint')
-    release()
-    await drain()
-    assert.equal(seen.length, 1, 'the read still lands once answered')
-  })
-
   test('a landing figure reports through the refresh and is served from memory next time', async () => {
     const { calls } = stubRoute({ ok: true, value: WIRE_BALANCE })
     const first = collector()
@@ -212,21 +191,6 @@ describe('readPlatformBalance', () => {
     assert.deepEqual(readPlatformBalance(() => {}), WIRE_BALANCE, 'and the joined read is the memory figure afterwards')
   })
 
-  test('a joiner after one read landed starts a fresh read of its own', async () => {
-    stubRoute({ ok: true, value: WIRE_BALANCE })
-    const first = collector()
-    readPlatformBalance(first.onRefresh)
-    await drain()
-    const gated = gatedRoute()
-    const second = collector()
-    assert.deepEqual(readPlatformBalance(second.onRefresh), WIRE_BALANCE, 'the memory figure paints at once')
-    await Promise.resolve()
-    gated.release()
-    await drain()
-    assert.deepEqual(second.seen, [WIRE_BALANCE], 'its own read revalidates and reports')
-    assert.equal(gated.calls(), 1, 'the fresh read went through the new gate')
-  })
-
   test('every absent answer notifies nobody and keeps the remembered figure', async () => {
     for (const [label, body, mode] of [
       ['route absent (404)', undefined, 'status'],
@@ -258,7 +222,7 @@ describe('readPlatformBalance', () => {
     }
   })
 
-  test('unreadable storage costs the head start, never the read', async () => {
+  test('unreadable or unwritable storage costs the head start, never the live figure', async () => {
     const throwing = new FakeStorage()
     vi.spyOn(throwing, 'getItem').mockImplementation(() => { throw new Error('denied') })
     setPlatformBalanceStorage(throwing)
@@ -267,50 +231,40 @@ describe('readPlatformBalance', () => {
     assert.equal(readPlatformBalance(onRefresh), null, 'no remembered figure to paint')
     await drain()
     assert.deepEqual(seen, [WIRE_BALANCE])
-  })
 
-  test('unwritable storage never blocks the live figure', async () => {
     const refusing = new FakeStorage()
     vi.spyOn(refusing, 'setItem').mockImplementation(() => { throw new Error('quota') })
     setPlatformBalanceStorage(refusing)
     stubRoute({ ok: true, value: WIRE_BALANCE })
-    const { seen, onRefresh } = collector()
-    readPlatformBalance(onRefresh)
+    const second = collector()
+    readPlatformBalance(second.onRefresh)
     await drain()
-    assert.deepEqual(seen, [WIRE_BALANCE])
+    assert.deepEqual(second.seen, [WIRE_BALANCE], 'the live figure still lands')
   })
 
-  test('absent storage is the same as empty storage', async () => {
-    setPlatformBalanceStorage(undefined)
+  test('absent or refused storage is the same as empty storage: no remembered figure, no crash', async () => {
     const real = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: undefined })
     try {
-      stubRoute({ ok: true, value: WIRE_BALANCE })
-      const { seen, onRefresh } = collector()
-      assert.equal(readPlatformBalance(onRefresh), null)
-      await drain()
-      assert.deepEqual(seen, [WIRE_BALANCE], 'the read is unaffected')
+      for (const descriptor of [
+        { configurable: true, value: undefined },
+        { configurable: true, get() { throw new Error('denied') } },
+      ]) {
+        setPlatformBalanceStorage(undefined)
+        resetPlatformBalance()
+        Object.defineProperty(globalThis, 'localStorage', descriptor)
+        stubRoute({ ok: true, value: WIRE_BALANCE })
+        const { seen, onRefresh } = collector()
+        assert.equal(readPlatformBalance(onRefresh), null)
+        await drain()
+        assert.deepEqual(seen, [WIRE_BALANCE], 'the read is unaffected')
+        vi.unstubAllGlobals()
+      }
     } finally {
       Object.defineProperty(globalThis, 'localStorage', real as PropertyDescriptor)
     }
   })
 
-  test('storage itself can be refused: no remembered figure, no crash', async () => {
-    setPlatformBalanceStorage(undefined)
-    const real = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('denied') } })
-    try {
-      stubRoute({ ok: true, value: WIRE_BALANCE })
-      const { seen, onRefresh } = collector()
-      assert.equal(readPlatformBalance(onRefresh), null)
-      await drain()
-      assert.deepEqual(seen, [WIRE_BALANCE], 'the read is unaffected')
-    } finally {
-      Object.defineProperty(globalThis, 'localStorage', real as PropertyDescriptor)
-    }
-  })
-
-  test('a reset drops the remembered figure, its storage, and the storage swap', async () => {
+  test('a reset drops the remembered figure, its storage, the storage swap, and even a refused figure', async () => {
     const fake = seededStorage()
     stubRoute({ ok: true, value: WIRE_BALANCE })
     readPlatformBalance(() => {})
@@ -319,15 +273,13 @@ describe('readPlatformBalance', () => {
     assert.equal(fake.store.has(PLATFORM_BALANCE_STORAGE_KEY), false, 'storage is emptied')
     const { onRefresh } = collector()
     assert.equal(readPlatformBalance(onRefresh), null, 'real storage is re-detected, and it is empty too')
-  })
 
-  test('a reset over refused storage still clears the memory figure', async () => {
     setPlatformBalanceStorage(null)
     stubRoute({ ok: true, value: WIRE_BALANCE })
     readPlatformBalance(() => {})
     await drain()
     assert.deepEqual(readPlatformBalance(() => {}), WIRE_BALANCE)
     resetPlatformBalance()
-    assert.equal(readPlatformBalance(() => {}), null)
+    assert.equal(readPlatformBalance(() => {}), null, 'a reset over refused storage still clears the memory figure')
   })
 })

@@ -166,9 +166,6 @@ describe('fallback identity', () => {
     assert.deepEqual(fallbackAgentOf('deadbeef-0000-1111-2222-333333333333', titles, attested, kit.t), {
       id: 'deadbeef-0000-1111-2222-333333333333', name: kit.t('fleet.comms.agentId', { id: 'deadbeef…' }), role: 'other', self: false, hue: NEUTRAL_HUE,
     })
-  })
-
-  test('the resolver prefers a known family identity and falls through to the fallback', () => {
     const known = new Map([['root', { id: 'root', name: 'Lead', role: 'lead' as const, self: true, hue: BRAND_HUE }]])
     const resolve = agentResolverOf(known, titles, attested, kit.t)
     assert.equal(resolve('root').name, 'Lead')

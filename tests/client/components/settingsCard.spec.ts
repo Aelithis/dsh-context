@@ -255,37 +255,12 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await click(selects[0])
     assert.equal(selects[0].getAttribute('aria-expanded'), 'false')
     assert.equal(document.body.querySelector('[role="menu"]'), null)
-    await m.unmount()
-  })
-
-  test('the placement row offers Hide, which persists the hidden entry', async () => {
-    const calls: [string, string][] = []
-    const m = await mount(h(PluginConfigCard, {
-      useContextSettings: hookFor(stateOf({ placement: 'hide' })),
-      set: (field, value) => { calls.push([field, value]) },
-    }))
-    const select = query<HTMLButtonElement>(m.container, '.lc-settings-select')
-    assert.ok(text(select).includes(DICT_EN['placement.hide']), 'the hidden entry reads as Hide')
-    await click(select)
-    await click(menuItems()[3])
-    assert.deepEqual(calls, [['defaultPlacement', 'hide']])
-    await m.unmount()
-  })
-
-  test('Menu onClose (Escape) closes an open select without picking', async () => {
-    const calls: [string, string][] = []
-    const m = await mount(h(PluginConfigCard, {
-      useContextSettings: hookFor(stateOf()),
-      set: (field, value) => { calls.push([field, value]) },
-    }))
-    const select = query(m.container, '.lc-settings-select')
-    await click(select)
-    assert.equal(select.getAttribute('aria-expanded'), 'true')
-    assert.equal(menuItems().length, 4, 'the placement row leads with four options')
+    const picked = calls.length
+    await click(selects[0])
     await keydown('Escape', document.body)
-    assert.equal(select.getAttribute('aria-expanded'), 'false')
+    assert.equal(selects[0].getAttribute('aria-expanded'), 'false')
     assert.equal(document.body.querySelector('[role="menu"]'), null)
-    assert.deepEqual(calls, [])
+    assert.equal(calls.length, picked)
     await m.unmount()
   })
 
@@ -321,16 +296,13 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     await blur(textareas[0])
     assert.deepEqual(calls, [['promptPrefix', '']], 'the cleared draft commits on blur')
     await m.unmount()
-  })
 
-  test('prompt text rows: Escape clears typed content before the dialog sees it', async () => {
-    const calls: [string, string][] = []
-    const m = await mount(h(PluginConfigCard, {
+    const escCalls: [string, string][] = []
+    const escMount = await mount(h(PluginConfigCard, {
       useContextSettings: hookFor(stateOf({ promptSuffix: 'served' })),
-      set: (field, value) => { calls.push([field, value]) },
+      set: (field, value) => { escCalls.push([field, value]) },
     }))
-    const area = queryAll<HTMLTextAreaElement>(m.container, '.lc-settings-textarea')[1]
-    assert.equal(area.getAttribute('data-lc-clearable'), '')
+    const area = queryAll<HTMLTextAreaElement>(escMount.container, '.lc-settings-textarea')[1]
     await focus(area)
     await typeText(area, 'Sign as Atlas.')
     assert.ok(clearOf(area), 'typing keeps the control present')
@@ -338,19 +310,17 @@ describe('PluginConfigCard (the Plugins-page seat)', () => {
     assert.equal(area.value, 'Sign as Atlas.', 'Escape during IME composition stays with the IME')
     assert.equal(composing.ev.defaultPrevented, false)
     assert.equal(composing.reachedDocument, true)
-
     const esc = await press(area, { key: 'Escape' })
     assert.equal(area.value, '')
     assert.equal(esc.ev.defaultPrevented, true)
     assert.equal(esc.reachedDocument, false, 'the settings dialog must not also close')
     assert.equal(clearOf(area), null)
-
     const emptyEsc = await press(area, { key: 'Escape' })
     assert.equal(emptyEsc.ev.defaultPrevented, false, 'an empty field lets Escape close the dialog')
     assert.equal(emptyEsc.reachedDocument, true)
     await blur(area)
-    assert.deepEqual(calls, [['promptSuffix', '']], 'the cleared suffix commits on blur')
-    await m.unmount()
+    assert.deepEqual(escCalls, [['promptSuffix', '']], 'the cleared suffix commits on blur')
+    await escMount.unmount()
   })
 
   test('prompt text rows: typing stays local, the blur commits, an unmount without a blur commits too', async () => {

@@ -35,14 +35,18 @@ function bigTimeline() {
   return timeline({ requests, nodes })
 }
 
+function mountBig(sessionId: string) {
+  const View = makeViewNoAutoOverview()
+  return mount(h(View, {
+    sessionId,
+    useProjection: projectionsFor(bigTimeline()),
+    useChat: (selector => selector({ legacy: { nodes: [] } })) as UseChatLike,
+  }))
+}
+
 describe('ContextView lazy DNA bands', () => {
   test('a long log builds DNA bands only for the rendered window', async () => {
-    const View = makeViewNoAutoOverview()
-    const m = await mount(h(View, {
-      sessionId: 'sv-lazy-dna',
-      useProjection: projectionsFor(bigTimeline()),
-      useChat: (selector => selector({ legacy: { nodes: [] } })) as UseChatLike,
-    }))
+    const m = await mountBig('sv-lazy-dna')
     try {
       await act(async () => { buttonByText(m.container, kit.t('trend.dna')).click() })
       await flush()
@@ -56,12 +60,7 @@ describe('ContextView lazy DNA bands', () => {
   })
 
   test('delta mode on a long log reads the axis sequentially and paints only the window', async () => {
-    const View = makeViewNoAutoOverview()
-    const m = await mount(h(View, {
-      sessionId: 'sv-lazy-dna-delta',
-      useProjection: projectionsFor(bigTimeline()),
-      useChat: (selector => selector({ legacy: { nodes: [] } })) as UseChatLike,
-    }))
+    const m = await mountBig('sv-lazy-dna-delta')
     try {
       await act(async () => { buttonByText(m.container, kit.t('trend.dna')).click() })
       await act(async () => { buttonByText(m.container, kit.t('gran.delta')).click() })

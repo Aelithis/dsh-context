@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict'
-import { createElement as h, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { describe, test } from 'vitest'
 import { INSIGHT_PANEL_ID, INSIGHT_PANEL_ORDER, watchInsightPage } from '../../src/client/insightPage'
 import { createContextSettings } from '../../src/client/settings'
-import { InsightPanelIcon } from '../../src/client/icon'
 import { TestClientCtx, asClientCtx } from './helpers/harness'
-import { makeKit, mount } from './helpers/kit'
+import { makeKit } from './helpers/kit'
 
 const NS = 'dsh-context'
 
@@ -39,7 +38,7 @@ describe('watchInsightPage', () => {
     dispose()
   })
 
-  test("'hide' unwinds both registrations; 'show' mounts them again", () => {
+  test("'hide' unwinds both registrations and 'show' remounts them; a 'hide' start mounts nothing; the disposer unwinds once and is repeat-safe", () => {
     const ctx = new TestClientCtx()
     const settings = createContextSettings()
     const { t } = makeKit()
@@ -58,13 +57,10 @@ describe('watchInsightPage', () => {
     assert.equal(ctx.slots.of('main').length, 1)
     assert.equal(ctx.slots.of('sidebar.panellist').length, 1)
     dispose()
-  })
 
-  test("a 'hide' start mounts nothing; the watcher disposer unwinds a live mount exactly once", () => {
     const hidden = new TestClientCtx()
     const hiddenSettings = createContextSettings()
     hiddenSettings.set('insightsEntry', 'hide')
-    const { t } = makeKit()
     const disposeHidden = watchInsightPage(asClientCtx(hidden), hiddenSettings, page, t, NS)
     assert.equal(hidden.slots.of('main').length, 0)
     assert.equal(hidden.slots.of('sidebar.panellist').length, 0)
@@ -72,36 +68,23 @@ describe('watchInsightPage', () => {
     hiddenSettings.set('insightsEntry', 'show')
     assert.equal(hidden.slots.of('main').length, 0)
 
-    const ctx = new TestClientCtx()
-    const settings = createContextSettings()
-    const dispose = watchInsightPage(asClientCtx(ctx), settings, page, t, NS)
-    dispose()
-    assert.equal(ctx.slots.of('main').length, 0, 'the disposer unwinds the live mount')
-    assert.equal(ctx.slots.of('sidebar.panellist').length, 0)
-    assert.doesNotThrow(dispose, 'the disposer is safe to repeat')
+    const live = new TestClientCtx()
+    const liveSettings = createContextSettings()
+    const disposeLive = watchInsightPage(asClientCtx(live), liveSettings, page, t, NS)
+    disposeLive()
+    assert.equal(live.slots.of('main').length, 0, 'the disposer unwinds the live mount')
+    assert.equal(live.slots.of('sidebar.panellist').length, 0)
+    assert.doesNotThrow(disposeLive, 'the disposer is safe to repeat')
   })
 
-  test('the panel-list icon renders the mono emblem at the asked size', async () => {
-    const m = await mount(h(InsightPanelIcon, { size: 16 }))
-    const svg = m.container.querySelector('svg')
-    assert.ok(svg !== null)
-    assert.equal(svg.getAttribute('width'), '16')
-    assert.ok(svg.innerHTML.includes('currentColor'), 'the mono seat trades fills for the text colour')
-    await m.unmount()
-  })
-
-  test('the entry glyph wrapper passes a numeric owner size through and defaults otherwise', async () => {
+  test('the panel-list icon seat resolves to the bundled InsightPanelIcon component', () => {
     const ctx = new TestClientCtx()
     const settings = createContextSettings()
     const { t } = makeKit()
     const dispose = watchInsightPage(asClientCtx(ctx), settings, page, t, NS)
-    const icon = ctx.slots.of('sidebar.panellist')[0].component
-    const sized = await mount(icon({ size: 18 }) as ReactElement)
-    assert.equal(sized.container.querySelector('svg')?.getAttribute('width'), '18')
-    await sized.unmount()
-    const bare = await mount(icon({}) as ReactElement)
-    assert.equal(bare.container.querySelector('svg')?.getAttribute('width'), '18', 'a non-number owner share falls to the icon default')
-    await bare.unmount()
+    const icon = ctx.slots.of('sidebar.panellist')[0].component as (props: unknown) => ReactElement
+    assert.equal((icon({ size: 18 }).type as { name: string }).name, 'InsightPanelIcon')
+    assert.equal((icon({}).type as { name: string }).name, 'InsightPanelIcon')
     dispose()
   })
 

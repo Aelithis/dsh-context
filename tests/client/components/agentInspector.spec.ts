@@ -158,7 +158,7 @@ describe('AgentInspector — the fleet-detail sections', () => {
     truncated: false,
   }
 
-  test('descriptor and prompt render off the landed detail; the node model joins the config', async () => {
+  test('descriptor and prompt render off the landed detail; the config line dedupes the model; the reply carries its clock', async () => {
     const m = await mount(h(AgentInspector, propsOf({
       node: nodeOf('w1', { model: 'deepseek-flash', reasoningEffort: 'max' }),
       detail: { detail: DETAIL },
@@ -170,28 +170,23 @@ describe('AgentInspector — the fleet-detail sections', () => {
     // jsdom reports no clamping: the expand toggle stays hidden.
     assert.equal(queryAll(el, '.lc-inspector-btn').length, 1, 'only the open button')
     await m.unmount()
-  })
 
-  test('the config line dedupes the descriptor model against the node model and skips absent fields', async () => {
-    const m = await mount(h(AgentInspector, propsOf({
+    const deduped = await mount(h(AgentInspector, propsOf({
       node: nodeOf('w1', { model: 'deepseek-v4' }),
       detail: { detail: { descriptor: { mode: 'continuable', label: 'w', agentModel: 'deepseek-v4' }, messages: [], truncated: false } },
     })))
-    const el = query(m.container, '.lc-inspector')
-    assert.ok(text(el).includes(DICT_EN['fleet.config']))
-    // One model mention only — the descriptor's identical model dedupes, no provider listed.
-    assert.equal(text(el).match(/deepseek-v4/g)?.length, 1)
-    await m.unmount()
-  })
+    const dedupedEl = query(deduped.container, '.lc-inspector')
+    assert.ok(text(dedupedEl).includes(DICT_EN['fleet.config']))
+    assert.equal(text(dedupedEl).match(/deepseek-v4/g)?.length, 1)
+    await deduped.unmount()
 
-  test('the latest reply renders with its clock', async () => {
-    const m = await mount(h(AgentInspector, propsOf({
+    const reply = await mount(h(AgentInspector, propsOf({
       detail: { detail: { lastReply: { time: 1_700_000_000_000, text: '报告完毕' }, messages: [], truncated: false } },
     })))
-    const el = query(m.container, '.lc-inspector')
-    assert.ok(text(el).includes(DICT_EN['fleet.members.reply']))
-    assert.ok(text(el).includes('报告完毕'))
-    await m.unmount()
+    const replyEl = query(reply.container, '.lc-inspector')
+    assert.ok(text(replyEl).includes(DICT_EN['fleet.members.reply']))
+    assert.ok(text(replyEl).includes('报告完毕'))
+    await reply.unmount()
   })
 
   test('a clamped prompt expands and collapses', async () => {

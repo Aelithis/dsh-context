@@ -110,6 +110,12 @@ describe('CommsPanel — automatic hub', () => {
     assert.ok(text(m.container).includes('legacy'))
     const allCard = query<HTMLElement>(m.container, '.lc-comms-channel-all')
     assert.equal(allCard.getAttribute('aria-pressed'), 'true')
+    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[0]!.key)
+    await click(query(m.container, '.lc-comms-order'))
+    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[COMMS.length - 1]!.key, 'the order toggle flips the timeline')
+    assert.ok(text(m.container).includes(kit.t('fleet.comms.orderOldest')))
+    await click(query(m.container, '.lc-comms-order'))
+    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[0]!.key)
     await m.unmount()
   })
 
@@ -125,6 +131,14 @@ describe('CommsPanel — automatic hub', () => {
     assert.equal(card.getAttribute('aria-pressed'), 'false')
     await click(query<HTMLElement>(m.container, '.lc-comms-channel-all'))
     assert.equal(events(m.container).length, 10)
+
+    const key = channelKeyOf(COMMS[0]!)
+    await click(channelOf(m.container, key))
+    assert.equal(events(m.container).length, 4)
+    const next = COMMS.filter(row => channelKeyOf(row) !== key)
+    await m.update(h(CommsPanel, propsOf({ comms: next })))
+    assert.equal(query<HTMLElement>(m.container, '.lc-comms-channel-all').getAttribute('aria-pressed'), 'true')
+    assert.equal(events(m.container).length, next.length)
     await m.unmount()
   })
 
@@ -139,16 +153,13 @@ describe('CommsPanel — automatic hub', () => {
     await click(chips[2]!)
     assert.equal(events(m.container).length, 1)
     assert.equal(events(m.container)[0]!.dataset.kind, 'settled')
+    assert.ok(text(query(m.container, '.lc-comms-notes')).includes(kit.t('fleet.comms.filtered', { n: 1, total: 10 })), 'a filter that hides rows reports both the shown count and the total')
     await click(chips[1]!)
     assert.equal(events(m.container).length, 9)
     assert.ok(events(m.container).every(event => event.dataset.kind !== 'settled'))
     await click(chips[0]!)
     assert.equal(events(m.container).length, 10)
-    await m.unmount()
-  })
 
-  test('search matches text, reports, and party names; no match says so', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
     const search = query<HTMLInputElement>(m.container, '.lc-fleet-search')
     await typeText(search, 'host-cleaner')
     assert.equal(events(m.container).length, 5)
@@ -161,18 +172,7 @@ describe('CommsPanel — automatic hub', () => {
     await m.unmount()
   })
 
-  test('the order toggle flips the timeline', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[0]!.key)
-    await click(query(m.container, '.lc-comms-order'))
-    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[COMMS.length - 1]!.key)
-    assert.ok(text(m.container).includes(kit.t('fleet.comms.orderOldest')))
-    await click(query(m.container, '.lc-comms-order'))
-    assert.equal(events(m.container)[0]!.dataset.commsKey, COMMS[0]!.key)
-    await m.unmount()
-  })
-
-  test('a pick narrows the hub, names itself, and clears', async () => {
+  test('a pick narrows the hub, names itself and clears; a pick without traffic explains the empty scope', async () => {
     const clears: boolean[] = []
     const m = await mount(h(CommsPanel, propsOf({ pickId: 'w2', onPickClear: () => { clears.push(true) } })))
     assert.equal(events(m.container).length, 4)
@@ -182,13 +182,11 @@ describe('CommsPanel — automatic hub', () => {
     await click(chip)
     assert.deepEqual(clears, [true])
     await m.unmount()
-  })
 
-  test('a pick without traffic explains the empty scope', async () => {
-    const m = await mount(h(CommsPanel, propsOf({ pickId: 'w9' })))
-    assert.equal(events(m.container).length, 0)
-    assert.ok(text(m.container).includes(kit.t('fleet.comms.noMatch')))
-    await m.unmount()
+    const empty = await mount(h(CommsPanel, propsOf({ pickId: 'w9' })))
+    assert.equal(events(empty.container).length, 0)
+    assert.ok(text(empty.container).includes(kit.t('fleet.comms.noMatch')))
+    await empty.unmount()
   })
 
   test('the more-channels card expands and folds a large fleet', async () => {
@@ -215,22 +213,10 @@ describe('CommsPanel — automatic hub', () => {
     await m.unmount()
   })
 
-  test('a selected channel dropped from the new data falls back to all traffic', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    const key = channelKeyOf(COMMS[0]!)
-    await click(channelOf(m.container, key))
-    assert.equal(events(m.container).length, 4)
-    const next = COMMS.filter(row => channelKeyOf(row) !== key)
-    await m.update(h(CommsPanel, propsOf({ comms: next })))
-    assert.equal(query<HTMLElement>(m.container, '.lc-comms-channel-all').getAttribute('aria-pressed'), 'true')
-    assert.equal(events(m.container).length, next.length)
-    await m.unmount()
-  })
-
 })
 
 describe('CommsPanel — event detail', () => {
-  test('a relay opens its full record, provenance, participants, and actions', async () => {
+  test('a relay opens its full record, provenance, participants, and actions, as an accordion under its own row', async () => {
     const onSelect = vi.fn()
     const onOpen = vi.fn()
     const onEnter = vi.fn()
@@ -261,33 +247,29 @@ describe('CommsPanel — event detail', () => {
     assert.deepEqual(onOpen.mock.calls, [['w1']])
     assert.deepEqual(onEnter.mock.calls, [['w1']])
     await m.unmount()
-  })
 
-  test('the detail is an accordion under the clicked row; opening another moves it', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    const first = eventOf(m.container, COMMS[0]!.key)
-    const second = eventOf(m.container, COMMS[1]!.key)
+    const pinned = await mount(h(CommsPanel, propsOf({ pinnedId: 'w1' })))
+    await click(query(eventOf(pinned.container, COMMS[0]!.key), '.lc-comms-hit'))
+    const pinnedPeer = queryAll<HTMLElement>(pinned.container, '.lc-comms-person').find(person => text(person).includes('host-cleaner'))!
+    assert.ok(text(query(pinnedPeer, '.lc-comms-person-pin-on')).includes(kit.t('fleet.comms.detail.unfilter')), 'a pinned participant renders the clear-filter affordance')
+    await pinned.unmount()
+
+    const accordion = await mount(h(CommsPanel, propsOf()))
+    const first = eventOf(accordion.container, COMMS[0]!.key)
+    const second = eventOf(accordion.container, COMMS[1]!.key)
     await click(query(first, '.lc-comms-hit'))
     assert.equal(queryAll(first, '.lc-comms-detail').length, 1, 'the record belongs to the clicked row')
     assert.equal(queryAll(second, '.lc-comms-detail').length, 0)
     await click(query(second, '.lc-comms-hit'))
     assert.equal(queryAll(first, '.lc-comms-detail').length, 0, 'the previous row collapsed')
     assert.equal(queryAll(second, '.lc-comms-detail').length, 1)
-    assert.equal(queryAll(m.container, '.lc-comms-detail').length, 1, 'only one record stands')
-    await m.unmount()
-  })
-
-  test('closing an event removes its detail', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    const hit = query(eventOf(m.container, COMMS[0]!.key), '.lc-comms-hit')
-    await click(hit)
-    assert.equal(queryAll(m.container, '.lc-comms-detail').length, 1)
-    await click(hit)
-    assert.equal(queryAll(m.container, '.lc-comms-detail').length, 0)
-    await click(hit)
-    await click(query(m.container, '.lc-comms-detail-close'))
-    assert.equal(queryAll(m.container, '.lc-comms-detail').length, 0)
-    await m.unmount()
+    assert.equal(queryAll(accordion.container, '.lc-comms-detail').length, 1, 'only one record stands')
+    await click(query(second, '.lc-comms-hit'))
+    assert.equal(queryAll(accordion.container, '.lc-comms-detail').length, 0, 'clicking the open row closes it')
+    await click(query(second, '.lc-comms-hit'))
+    await click(query(accordion.container, '.lc-comms-detail-close'))
+    assert.equal(queryAll(accordion.container, '.lc-comms-detail').length, 0, 'the close control collapses it too')
+    await accordion.unmount()
   })
 
   test('a clipped row loads its full text and stops flagging the excerpt', async () => {
@@ -307,24 +289,31 @@ describe('CommsPanel — event detail', () => {
     assert.ok(!text(m.container).includes(kit.t('fleet.comms.detail.loading')))
     assert.ok(!text(m.container).includes(kit.t('fleet.comms.detail.excerptOnly')))
     await m.unmount()
+
+    const settled: FleetDetail = {
+      messages: [{
+        seq: 8, time: 6000, kind: 'settled', from: 'w1', text: 'full text',
+        summary: SETTLED_SUMMARY, report: 'FULL REPORT FROM THE CHILD',
+      }],
+      truncated: false,
+    }
+    const fullMount = await mount(h(CommsPanel, propsOf({ details: detailsOf({ fullLanded: new Map([['root', settled]]) }) })))
+    await click(query(eventOf(fullMount.container, 'root:8:6000:settled'), '.lc-comms-hit'))
+    assert.ok(text(query(fullMount.container, '.lc-comms-detail-body')).includes('FULL REPORT FROM THE CHILD'), 'the full settlement read supplies the report the excerpt omitted')
+    await fullMount.unmount()
   })
 
-  test('a null full read also falls back to the excerpt', async () => {
-    const m = await mount(h(CommsPanel, propsOf({ details: detailsOf({ fullLanded: new Map([['root', null]]) }) })))
-    await click(query(eventOf(m.container, 'root:4:2000:relay'), '.lc-comms-hit'))
-    assert.ok(text(m.container).includes(kit.t('fleet.comms.detail.excerptOnly')))
-    await m.unmount()
-  })
-
-  test('a stale full read whose message is gone also falls back to the excerpt', async () => {
+  test('a null full read, or one whose message is gone, falls back to the excerpt', async () => {
     const stale: FleetDetail = {
       messages: [{ seq: 999, time: 1, kind: 'relay', from: 'w2', text: 'not the one' }],
       truncated: false,
     }
-    const m = await mount(h(CommsPanel, propsOf({ details: detailsOf({ fullLanded: new Map([['root', stale]]) }) })))
-    await click(query(eventOf(m.container, 'root:4:2000:relay'), '.lc-comms-hit'))
-    assert.ok(text(m.container).includes(kit.t('fleet.comms.detail.excerptOnly')))
-    await m.unmount()
+    for (const full of [null, stale] as (FleetDetail | null)[]) {
+      const m = await mount(h(CommsPanel, propsOf({ details: detailsOf({ fullLanded: new Map([['root', full]]) }) })))
+      await click(query(eventOf(m.container, 'root:4:2000:relay'), '.lc-comms-hit'))
+      assert.ok(text(m.container).includes(kit.t('fleet.comms.detail.excerptOnly')))
+      await m.unmount()
+    }
   })
 
   test('a settlement with no report, or a future phrasing, still opens to a complete record', async () => {
@@ -357,30 +346,20 @@ describe('CommsPanel — event detail', () => {
     detail = query(m.container, '.lc-comms-detail')
     assert.ok(text(detail).includes(kit.t('fleet.comms.detail.noBody')))
     await m.unmount()
+
+    const shaped = await mount(h(CommsPanel, propsOf()))
+    const event = eventOf(shaped.container, 'root:8:6000:settled')
+    assert.ok(text(event).includes(kit.t('fleet.settledShort.finished')))
+    await click(query(event, '.lc-comms-hit'))
+    const shapedDetail = query(shaped.container, '.lc-comms-detail')
+    for (const part of [
+      kit.t('fleet.settled.finished'), kit.t('fleet.comms.detail.settledNote'), 'All gates green.',
+      kit.t('fleet.comms.detail.structured'), kit.t('fleet.comms.detail.diagnostic'), 'provider warning',
+    ]) assert.ok(text(shapedDetail).includes(part), `the settlement detail carries: ${part}`)
+    await shaped.unmount()
   })
 
-  test('a full settlement read supplies the report that the excerpt omitted', async () => {
-    const full: FleetDetail = {
-      messages: [{
-        seq: 8, time: 6000, kind: 'settled', from: 'w1', text: 'full text',
-        summary: SETTLED_SUMMARY, report: 'FULL REPORT FROM THE CHILD',
-      }],
-      truncated: false,
-    }
-    const m = await mount(h(CommsPanel, propsOf({ details: detailsOf({ fullLanded: new Map([['root', full]]) }) })))
-    await click(query(eventOf(m.container, 'root:8:6000:settled'), '.lc-comms-hit'))
-    assert.ok(text(query(m.container, '.lc-comms-detail-body')).includes('FULL REPORT FROM THE CHILD'))
-    await m.unmount()
-  })
-
-  test('a zero-instant channel renders the dash instead of a fabricated time', async () => {
-    const rows: CommsRow[] = [{ key: 'root:1:0:relay', to: 'root', seq: 1, time: 0, kind: 'relay', from: 'w1', text: 'at zero' }]
-    const m = await mount(h(CommsPanel, propsOf({ comms: rows })))
-    assert.ok(text(channelOf(m.container, channelKeyOf(rows[0]!))).includes('—'))
-    await m.unmount()
-  })
-
-  test('a self-channel drops the redundant role and opens one participant', async () => {
+  test('a self-channel drops the redundant role and opens one participant; a zero-instant channel renders the dash', async () => {
     const rows: CommsRow[] = [{ key: 'root:1:100:relay', to: 'root', seq: 1, time: 100, kind: 'relay', from: 'root', text: 'note to self' }]
     const m = await mount(h(CommsPanel, propsOf({ comms: rows })))
     const card = channelOf(m.container, channelKeyOf(rows[0]!))
@@ -391,6 +370,11 @@ describe('CommsPanel — event detail', () => {
     assert.equal(queryAll(m.container, '.lc-comms-person').length, 1)
     assert.ok(text(query(m.container, '.lc-comms-detail')).includes(kit.t('agents.self')))
     await m.unmount()
+
+    const zeroRows: CommsRow[] = [{ key: 'root:1:0:relay', to: 'root', seq: 1, time: 0, kind: 'relay', from: 'w1', text: 'at zero' }]
+    const zero = await mount(h(CommsPanel, propsOf({ comms: zeroRows })))
+    assert.ok(text(channelOf(zero.container, channelKeyOf(zeroRows[0]!))).includes('—'), 'a zero instant renders the dash, not a fabricated time')
+    await zero.unmount()
   })
 
 
@@ -423,51 +407,23 @@ describe('CommsPanel — event detail', () => {
     await m.unmount()
   })
 
-  test('a settlement shows its outcome, runtime note, report, structured result, and diagnostic', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    const event = eventOf(m.container, 'root:8:6000:settled')
-    assert.ok(text(event).includes(kit.t('fleet.settledShort.finished')))
-    await click(query(event, '.lc-comms-hit'))
-    const detail = query(m.container, '.lc-comms-detail')
-    assert.ok(text(detail).includes(kit.t('fleet.settled.finished')))
-    assert.ok(text(detail).includes(kit.t('fleet.comms.detail.settledNote')))
-    assert.ok(text(detail).includes('All gates green.'))
-    assert.ok(text(detail).includes(kit.t('fleet.comms.detail.structured')))
-    assert.ok(text(detail).includes(kit.t('fleet.comms.detail.diagnostic')))
-    assert.ok(text(detail).includes('provider warning'))
-    await m.unmount()
-  })
-
-  test('a pinned participant renders the clear-filter affordance', async () => {
-    const m = await mount(h(CommsPanel, propsOf({ pinnedId: 'w1' })))
-    await click(query(eventOf(m.container, COMMS[0]!.key), '.lc-comms-hit'))
-    const peer = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('host-cleaner'))!
-    assert.ok(text(query(peer, '.lc-comms-person-pin-on')).includes(kit.t('fleet.comms.detail.unfilter')))
-    await m.unmount()
-  })
 })
 
+
 describe('CommsPanel — loading, empty, and notes', () => {
-  test('no rows with reads in flight shows the skeleton, not a dead end', async () => {
-    const m = await mount(h(CommsPanel, propsOf({ comms: [], details: detailsOf({ pending: new Set(['root']) }) })))
-    assert.equal(queryAll(m.container, '.lc-comms-skeleton').length, 1)
-    assert.equal(queryAll(m.container, '.lc-comms-channel').length, 0)
-    await m.unmount()
-  })
-
-  test('before the first read lands, the skeleton stands rather than claiming no traffic', async () => {
-    const m = await mount(h(CommsPanel, propsOf({ comms: [] })))
-    assert.equal(queryAll(m.container, '.lc-comms-skeleton').length, 1)
-    assert.ok(!text(m.container).includes(kit.t('fleet.comms.empty')))
-    await m.unmount()
-  })
-
-  test('no rows with nothing in flight explains that the fleet has no traffic', async () => {
+  test('no rows shows the skeleton while a read is in flight or before the first lands, and explains an empty fleet once settled', async () => {
     const landed = new Map([['root', { detail: { messages: [], truncated: false }, updatedAt: 1 }]])
-    const m = await mount(h(CommsPanel, propsOf({ comms: [], details: detailsOf({ landed }) })))
-    assert.equal(queryAll(m.container, '.lc-comms-skeleton').length, 0)
-    assert.ok(text(m.container).includes(kit.t('fleet.comms.empty')))
-    await m.unmount()
+    for (const [details, settled] of [
+      [detailsOf({ pending: new Set(['root']) }), false],
+      [detailsOf(), false],
+      [detailsOf({ landed }), true],
+    ] as const) {
+      const m = await mount(h(CommsPanel, propsOf({ comms: [], details })))
+      assert.equal(queryAll(m.container, '.lc-comms-skeleton').length, settled ? 0 : 1)
+      assert.equal(queryAll(m.container, '.lc-comms-channel').length, 0)
+      assert.equal(text(m.container).includes(kit.t('fleet.comms.empty')), settled)
+      await m.unmount()
+    }
   })
 
   test('hidden history and excerpt rows are disclosed beneath the timeline', async () => {
@@ -479,38 +435,24 @@ describe('CommsPanel — loading, empty, and notes', () => {
     assert.ok(notes.includes(kit.t('fleet.comms.hidden', { n: 42 })))
     assert.ok(notes.includes(kit.t('fleet.comms.clipped', { n: 1 })))
     await m.unmount()
-  })
 
-  test('the hidden-history note follows the selected channel, not every landed log', async () => {
-    const landed = new Map([
+    const noClipped = new Map([
       ['root', { detail: { messages: [], messagesTotal: 7, truncated: true }, updatedAt: 1 }],
     ])
-    const peer = COMMS[5]!
-    const m = await mount(h(CommsPanel, propsOf({ details: detailsOf({ landed }) })))
-    await click(channelOf(m.container, channelKeyOf(peer)))
-    assert.equal(queryAll(m.container, '.lc-comms-notes').length, 0, 'the peer channel touches no hidden root log')
-    await m.unmount()
-  })
-
-  test('hidden history alone renders the notes without a clipped warning', async () => {
-    const landed = new Map([
-      ['root', { detail: { messages: [], messagesTotal: 7, truncated: true }, updatedAt: 1 }],
-    ])
-    const m = await mount(h(CommsPanel, propsOf({
+    const m2 = await mount(h(CommsPanel, propsOf({
       comms: COMMS.filter(row => row.clipped !== true),
-      details: detailsOf({ landed }),
+      details: detailsOf({ landed: noClipped }),
     })))
-    const notes = text(query(m.container, '.lc-comms-notes'))
-    assert.ok(notes.includes(kit.t('fleet.comms.hidden', { n: 7 })))
-    assert.ok(!notes.includes(kit.t('fleet.comms.clipped', { n: 1 })))
-    await m.unmount()
+    const notes2 = text(query(m2.container, '.lc-comms-notes'))
+    assert.ok(notes2.includes(kit.t('fleet.comms.hidden', { n: 7 })))
+    assert.ok(!notes2.includes(kit.t('fleet.comms.clipped', { n: 1 })))
+    await m2.unmount()
+
+    const peer = COMMS[5]!
+    const scoped = await mount(h(CommsPanel, propsOf({ details: detailsOf({ landed }) })))
+    await click(channelOf(scoped.container, channelKeyOf(peer)))
+    assert.equal(queryAll(scoped.container, '.lc-comms-notes').length, 0, 'the hidden-history note follows the selected channel, not every landed log')
+    await scoped.unmount()
   })
 
-  test('a filter that hides rows reports both the shown count and the total', async () => {
-    const m = await mount(h(CommsPanel, propsOf()))
-    await click(queryAll<HTMLElement>(m.container, '.lc-fleet-filters .lc-gran-btn')[2]!)
-    const notes = text(query(m.container, '.lc-comms-notes'))
-    assert.ok(notes.includes(kit.t('fleet.comms.filtered', { n: 1, total: 10 })))
-    await m.unmount()
-  })
 })

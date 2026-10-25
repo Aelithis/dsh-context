@@ -88,6 +88,13 @@ describe('TrendChart category focus (the browser open category)', () => {
       [kit.t('tip.step', { t: 1, s: 0, n: 2 }), kit.t('tip.cat', { cat: kit.catLabel('tool'), n: '60' })],
     )
     await m.unmount()
+
+    for (const focusCat of ['nope', null]) {
+      const degraded = await mount(h(TrendChart, propsOf([r1, r2], { focusCat })))
+      assert.equal(queryAll(bars(degraded.container)[0], '.lc-bar-stack > div').length, 6, 'an unknown key or explicit null degrades to the unfocused chart')
+      assert.equal(query(degraded.container, '.lc-axis-top').textContent, '600')
+      await degraded.unmount()
+    }
   })
 
   test('the focused figure is the raw fold value; a category at zero everywhere keeps the unit axis', async () => {
@@ -128,14 +135,6 @@ describe('TrendChart category focus (the browser open category)', () => {
     await m.unmount()
   })
 
-  test('an unknown focus key and an explicit null degrade to the unfocused chart', async () => {
-    for (const focusCat of ['nope', null]) {
-      const m = await mount(h(TrendChart, propsOf([r1, r2], { focusCat })))
-      assert.equal(queryAll(bars(m.container)[0], '.lc-bar-stack > div').length, 6)
-      assert.equal(query(m.container, '.lc-axis-top').textContent, '600')
-      await m.unmount()
-    }
-  })
 })
 
 describe('TrendChart markers', () => {
