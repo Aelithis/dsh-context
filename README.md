@@ -14,14 +14,14 @@
 
 [`dsh-context`](https://www.npmjs.com/package/dsh-context) provides full context lifecycle management features.
 - **Context Insights page** — the cross-session overview as a first-level sidebar panel (beside Plugins and Automation tasks): KPI band with a 7-day token/cost usage chart, activity heatmap, aggregate composition ring, and filterable session cards that jump straight into any session.
-- **Context tab** — an UI context dashboard for DeepSeek Harness's context stats, composition, trend, events, and messages.
+- **Context tab** — a UI context dashboard for DeepSeek Harness's context stats, composition, trend, events, messages, and commands.
 - **Fleet tab** — the agent family's own page: the current agent, its parents, and every subagent as one live card each.
 - **Context panel** — the same dashboard as a right-sidebar tab: pick **Context** on the sidebar's guide page and the panel opens beside the chat, agent network included.
 - **`/context` command** — the slash command shows the context model for current context composition and recent context evolution.
 
 ## Install / Update
 
-### Install on DeekSeek Harness web or desktop
+### Install on DeepSeek Harness web or desktop
 
 Fill `dsh-context` in the **Add plugin** wizard's search box, and click **Install**:
 
@@ -50,10 +50,10 @@ Five surfaces, one story — what your agent is carrying, how it got there, and 
 | Where | What you get |
 | --- | --- |
 | **Context Insights page** | Every session at a glance: usage, cost, cache hit, daily activity, and per-session context profiles — filtered by range, day, group, or search, one click to jump in. |
-| **Context tab** | The full dashboard: stats, composition, per-request trend, events, and file activity — in every session. |
+| **Context tab** | The full dashboard: stats, composition, per-request trend, events, file activity, and command executions — in every session. |
 | **Fleet tab** | The agent network: the current agent, its parents, and every subagent, live. |
 | **`/context` command** | A centered modal with the same composition and context browser, without leaving the chat. |
-| **Preferences card** | Per-user defaults: the Context panel entry, trend granularity & mode, File Activity sort, and the system prompt prefix/suffix joined around every session. |
+| **Preferences card** | Per-user defaults: the panel entry, Insights range, trend and sort defaults, and the system prompt prefix/suffix joined around every session. |
 
 ## 🗂️ The Context Insights page
 
@@ -87,6 +87,7 @@ Open any session and click the **Context / 上下文** tab:
 | **Context Browser** | What any request was *actually* assembled from. |
 | **Context Events** | When and why the window changed. |
 | **File Activity** | What the agent *did* to your files. |
+| **Command Executions** | What the agent ran, how each run ended, and which programs it leaned on. |
 
 The cost estimate follows one documented rule set: [How model pricing is mapped](docs/model-pricing-mapping.md).
 
@@ -168,6 +169,12 @@ One row per touched file — read, written, or searched — aggregated up to whi
 - **Click a row** to expand its full operation log — every op jumps straight to the exact tool result in the Context browser.
 - **Click a file name** to open its preview in the right Sidebar, exactly as the built-in Files sidebar does — the same viewer, the same tab-per-file behavior. On a harness without that column the name opens on your system as before.
 
+### 🖥️ Command Executions — what the agent ran
+
+![Command Executions](https://raw.githubusercontent.com/bowenliang123/dsh-context/main/docs/command-executions.png)
+
+Every shell and code run with its status, wall time, and step stamp, plus a session summary, attention shortcuts, and a program ranking. The ranking stays global while the search and status chips narrow the list; clicking a program drills into it and marks the row — the ranking never collapses under its own filter.
+
 ## 🚢 The Fleet tab
 
 Open any session and click the **Fleet / 编队** tab (right of **Context**) — the agent family on a page of its own, with room for the collaboration surfaces that follow:
@@ -192,7 +199,7 @@ A centered dialog opens with the **Current Composition** card and the **Context 
 
 ## ⚙️ Settings
 
-The **Context** preferences card holds this plugin's per-user settings — the **Context panel entry** (the **Context** conversation tab, the right Sidebar panel, both, or Hide for neither — the reply-row jump goes with it), the **Fleet** tab's own Show/Hide switch (the panel entry never gates it), the **Context Insights** default range (Today / Last 7 days / Last 30 days / All, Last 30 days unless changed; picking a preset on the page writes it back), trend granularity (Step/Turn), trend mode (Total/Delta), the trend duration curve (shown by default), tool and File Activity sort, and the Context Insights Show/Hide switch. It lives on the **Plugins** page: the sidebar **Plugins** entry → the **dsh-context** bundle's page → its **Configuration** section (the card is served by the entry's live Config form).
+The **Context** preferences card holds this plugin's per-user settings — the **Context panel entry** (the **Context** conversation tab, the right Sidebar panel, both, or Hide for neither — the reply-row jump goes with it), the **Fleet** tab's own Show/Hide switch (the panel entry never gates it), the **Context Insights** default range (Today / Last 7 days / Last 30 days / All, Last 30 days unless changed; picking a preset on the page writes it back), trend granularity (Step/Turn), trend mode (Total/Delta), the trend duration curve (shown by default), the trend auto-overview step threshold, the Context Browser diff baseline, tool and File Activity sort, and the Context Insights Show/Hide switch. It lives on the **Plugins** page: the sidebar **Plugins** entry → the **dsh-context** bundle's page → its **Configuration** section (the card is served by the entry's live Config form).
 
 The **System Prompt · Prefix / Suffix** rows hold free text joined at the very start / end of every session's system prompt, for all agents (subagents included) — a per-deployment persona or behavioral rule that rides the harness's own prompt assembly. Edits apply from the next turn; leave a row empty to disable it.
 
