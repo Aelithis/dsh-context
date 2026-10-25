@@ -145,7 +145,15 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     if (scrollTask === null) return
     const card = boardRef.current
     scrollIntoViewIfPossible(card, { block: 'start', behavior: 'smooth' })
-    alignRowInCard(card, rowOf(scrollTask))
+    const row = rowOf(scrollTask)
+    /* v8 ignore start -- the clicked row is mounted before its open effect runs; the guard is structural. */
+    if (row === null) {
+      setScrollTask(null)
+      return
+    }
+    /* v8 ignore stop */
+    const head = (row.closest('.lc-tasks-group') as HTMLElement).querySelector<HTMLElement>('.lc-tasks-group-head')
+    alignRowInCard(card, row, head !== null ? head.getBoundingClientRect().height : 0)
     setScrollTask(null)
   }, [rowOf, scrollTask])
 

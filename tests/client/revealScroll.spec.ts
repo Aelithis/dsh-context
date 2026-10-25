@@ -136,6 +136,9 @@ describe('revealRowInCard', () => {
     const above = mounted(-10, 20)
     alignRowInCard(above.card, above.row)
     assert.equal(above.region.scrollTop, 20)
+    const inset = mounted(250, 280)
+    alignRowInCard(inset.card, inset.row, 30)
+    assert.equal(inset.region.scrollTop, 250, 'the inset leaves room for a sticky group head: 30 + (250 − 0 − 30)')
   })
 
   test('alignRowInCard ignores a region that does not overflow, a null row, and an outside row', () => {

@@ -301,12 +301,15 @@ describe('TaskBoard — the team task DAG', () => {
     Object.defineProperty(body, 'clientHeight', { configurable: true, value: 200 })
     Object.defineProperty(body, 'getBoundingClientRect', { configurable: true, value: () => ({ top: 100 }) as DOMRect })
     Object.defineProperty(row, 'getBoundingClientRect', { configurable: true, value: () => ({ top: 300 }) as DOMRect })
+    const head = row.closest('.lc-tasks-group')?.querySelector<HTMLElement>('.lc-tasks-group-head')
+    assert.ok(head !== null)
+    Object.defineProperty(head, 'getBoundingClientRect', { configurable: true, value: () => ({ height: 30 }) as DOMRect })
     body.scrollTop = 20
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
     try {
       await click(row)
       assert.deepEqual(scroll.mock.calls[0]?.[0], { block: 'start', behavior: 'smooth' }, 'the card scrolls to the front')
-      assert.equal(body.scrollTop, 220, 'the row top lands at the task body top: 20 + (300 − 100)')
+      assert.equal(body.scrollTop, 190, 'the row sits 30px below the sticky group head: 20 + (300 − 100 − 30)')
     } finally {
       scroll.mockRestore()
     }

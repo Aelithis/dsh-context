@@ -27,12 +27,12 @@ function scrollerInCard(card: Element, row: Element): HTMLElement | null {
   return scroller === null || scroller === card ? null : scroller
 }
 
-/** Scroll only the nearest overflowing ancestor INSIDE `card` so the row's TOP sits at the scrollport's top. */
-export function alignRowInCard(card: Element | null, row: Element | null): void {
+/** Scroll only the nearest overflowing ancestor INSIDE `card` so the row's TOP sits `inset` pixels below the scrollport top. */
+export function alignRowInCard(card: Element | null, row: Element | null, inset = 0): void {
   if (card === null || row === null || !card.contains(row)) return
   const scroller = scrollerInCard(card, row)
   if (scroller === null) return
-  scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+  scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - inset
 }
 
 /** Scroll only the nearest overflowing ancestor INSIDE `card`: the page and the card's fixed head must never move. */
