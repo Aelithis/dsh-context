@@ -1,6 +1,6 @@
 import { act, createElement as h, type ReactElement } from 'react'
 import assert from 'node:assert/strict'
-import { describe, test, vi, afterEach } from 'vitest'
+import { describe, test, vi, afterEach, beforeEach } from 'vitest'
 import {
   DetailStore,
   detailOf,
@@ -452,18 +452,22 @@ describe('DetailStore', () => {
     assert.equal(store.getSnapshot().detail, null)
   })
 
-  test('retry re-arms immediately and resets the backoff', async () => {
+  test('retry refires at once and a landed detail absorbs later retries', async () => {
+    vi.useFakeTimers()
     const { fetcher, calls } = scriptedFetcher([new Error('offline'), detail(1)])
     const store = new DetailStore(fetcher, 1000)
     store.request(1)
-    await vi.waitFor(() => { assert.equal(calls.length, 1) }, { timeout: 3000 })
-    await until(() => store.getSnapshot().failed === true, 'the failure never settled')
+    await vi.advanceTimersByTimeAsync(1000)
+    assert.equal(calls.length, 1)
+    assert.equal(store.getSnapshot().failed, true, 'the failure settled')
     store.retry()
-    await until(() => store.getSnapshot().detail?.rev === 1, 'the retry never refetched')
+    await vi.advanceTimersByTimeAsync(0)
+    assert.equal(store.getSnapshot().detail?.rev, 1, 'the retry refetched at once')
     assert.equal(calls.length, 2)
     store.retry()
-    await settle()
+    await vi.advanceTimersByTimeAsync(0)
     assert.equal(calls.length, 2)
+    vi.useRealTimers()
   })
 
   test('consecutive failures back the debounce off exponentially', async () => {
@@ -487,7 +491,9 @@ describe('DetailStore', () => {
 })
 
 describe('detailStoreOf', () => {
-  test('the store map stays bounded while an ACTIVE store is never dropped', { timeout: 30_000 }, async () => {
+  beforeEach(() => { vi.useFakeTimers() })
+
+  test('the store map stays bounded while an ACTIVE store is never dropped', async () => {
     stubDetailFetch(() => ({ body: { ok: true, value: detail(1) } }))
     const held = detailStoreOf('held')
     const off = held.subscribe(() => {})
@@ -522,7 +528,8 @@ describe('detailStoreOf', () => {
     const store = detailStoreOf(id)
     const off = store.subscribe(() => {})
     store.request(1)
-    await until(() => store.hasPayload, `store ${id} never landed its read`)
+    await vi.advanceTimersByTimeAsync(1000)
+    assert.equal(store.hasPayload, true, `store ${id} never landed its read`)
     off()
     return store
   }
@@ -545,7 +552,8 @@ describe('detailStoreOf', () => {
     const held = detailStoreOf(ids[0])
     const off = held.subscribe(() => {})
     held.request(1)
-    await until(() => held.hasPayload, 'the mounted store never landed')
+    await vi.advanceTimersByTimeAsync(1000)
+    assert.equal(held.hasPayload, true, 'the mounted store never landed')
     for (const id of ids.slice(1)) await visitStore(id)
     assert.equal(held.active, true)
     assert.equal(held.hasPayload, true, 'a mounted store keeps its payload')
@@ -562,8 +570,9 @@ describe('detailStoreOf', () => {
       store.request(1)
       return store
     })
+    await vi.advanceTimersByTimeAsync(1000)
     for (const [i, store] of created.entries()) {
-      await until(() => store.hasPayload, 'burst store ' + String(i) + ' never landed')
+      assert.equal(store.hasPayload, true, 'burst store ' + String(i) + ' never landed')
     }
     for (const off of offs) off()
     await visitStore('burst-extra')

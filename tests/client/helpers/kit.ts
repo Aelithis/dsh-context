@@ -1,3 +1,4 @@
+import { afterEach } from 'vitest'
 import { act, type ReactElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { DICT_EN, DICT_ZH } from '../../../src/client/i18n'
@@ -39,6 +40,10 @@ const mounted = new Set<Mounted>()
 export async function cleanupMounts(): Promise<void> {
   for (const m of [...mounted]) await m.unmount()
 }
+
+// A failed assertion must not leave roots in the shared per-worker jsdom; keeping the hook here (not setup.ts)
+// means only specs that import the kit pay its React import.
+afterEach(cleanupMounts)
 
 export async function mount(el: ReactElement): Promise<Mounted> {
   const container = document.createElement('div')
