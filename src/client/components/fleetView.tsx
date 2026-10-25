@@ -64,9 +64,9 @@ export function makeFleetView(
     const [pinnedId, setPinnedId] = useState<string | null>(null)
     // The stats card's roster pick: the resting member highlight the graph renders until a hover takes over.
     const focusMember = useFleetMemberFocus(sessionId)
-    // The boards' cap rides the network card: the task card grows with the graph and bottoms out at its own default
-    // otherwise. Measure the card's rendered height (last child's offset + card padding); when the members column
-    // stretches the card, the subtraction returns the task card's current height, so the cap cannot grow the row it measures.
+    // The boards' cap rides the network card's NATURAL height: the stage's top (the header above it included) plus its
+    // visible height, never the card's stretched height or a scrolled canvas offset. Measuring the stretch would let the
+    // task card's own growth feed its cap; measuring the canvas top would shrink the cap whenever the graph scrolls.
     const colsRef = useRef<HTMLDivElement | null>(null)
     useEffect(() => {
       const row = colsRef.current
@@ -77,9 +77,19 @@ export function makeFleetView(
       const write = (): void => {
         let graphH = 0
         const card = graph?.firstElementChild as HTMLElement | undefined
-        if (card !== undefined && card.lastElementChild !== null) {
-          const pad = window.parseFloat(window.getComputedStyle(card).paddingBottom)
-          graphH = card.lastElementChild.getBoundingClientRect().bottom - card.getBoundingClientRect().top + pad
+        if (card !== undefined) {
+          const cardRect = card.getBoundingClientRect()
+          const canvas = card.querySelector<HTMLElement>('.lc-agents-canvas')
+          const stage = canvas?.closest<HTMLElement>('.lc-agents-stage') ?? null
+          const stageRect = stage?.getBoundingClientRect() ?? null
+          const canvasRect = canvas?.getBoundingClientRect() ?? null
+          const top = stageRect?.top ?? canvasRect?.top
+          const basis = stage !== null ? window.parseFloat(window.getComputedStyle(stage).flexBasis) : Number.NaN
+          const visible = Number.isFinite(basis) ? basis : canvasRect?.height ?? 0
+          if (top !== undefined) {
+            const pad = window.parseFloat(window.getComputedStyle(card).paddingBottom)
+            graphH = top - cardRect.top + visible + pad
+          }
         }
         row.style.setProperty('--lc-graph-h', `${Math.ceil(graphH)}px`)
         row.style.setProperty('--lc-members-h', members !== null ? `${Math.ceil(members.getBoundingClientRect().height)}px` : '0px')

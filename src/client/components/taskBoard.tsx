@@ -1,11 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactElement } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactElement } from 'react'
 import { IconChecklistOutlineRegular, IconUserOutlineRegular, IconUsersOutlineRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AgentForest, AgentNode } from '../agentTree'
 import { BRAND_HUE, familyHue } from '../agentTree'
 import { fmtTime } from '../format'
 import { familyOthersOf, memberIdByName, type FleetTeam, type FleetTeamTask } from '../fleetTeam'
 import type { FleetDetail } from '../../shared/types'
-import { scrollIntoViewIfPossible } from '../revealScroll'
+import { alignRowInCard, scrollIntoViewIfPossible } from '../revealScroll'
 import { ClearableInput } from './clearableInput'
 import { Section } from './section'
 import { memberStyle, runMetaOf } from './memberBoard'
@@ -119,9 +119,14 @@ interface OwnerGroup {
 export function TaskBoard(props: TaskBoardProps): ReactElement {
   const { team, forest, rich, t, fmt } = props
   const [openTasks, setOpenTasks] = useState<ReadonlySet<string>>(new Set())
+  const [scrollTask, setScrollTask] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const boardRef = useRef<HTMLDivElement | null>(null)
+  const rowOf = useCallback((id: string): HTMLElement | null => {
+    /* v8 ignore next 1 -- the row is mounted before either effect runs; the null arm is structural. */
+    return boardRef.current?.querySelector<HTMLElement>(`[data-task="${CSS.escape(id)}"]`) ?? null
+  }, [])
 
   const teamTasks = useMemo(() => team?.tasks ?? [], [team])
   const byId = useMemo(() => new Map(teamTasks.map(task => [task.id, task])), [teamTasks])
@@ -131,10 +136,18 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
   const focused = props.focusTaskId
   useEffect(() => {
     if (focused === null) return
-    /* v8 ignore next 1 -- the board ref seats before effects; a missing row is jsdom's no-layout path. */
-    const row = boardRef.current?.querySelector<HTMLElement>(`[data-task="${focused}"]`) ?? null
-    scrollIntoViewIfPossible(row, { block: 'nearest' })
-  }, [focused])
+    scrollIntoViewIfPossible(rowOf(focused), { block: 'nearest' })
+  }, [focused, rowOf])
+
+  // An opened row takes the front of the task viewport: its expanded sections grow below and should not open off-screen.
+  // Bring the card into view first, then align the row to the top of its scroll body so the card's own header stays put.
+  useEffect(() => {
+    if (scrollTask === null) return
+    const card = boardRef.current
+    scrollIntoViewIfPossible(card, { block: 'start', behavior: 'smooth' })
+    alignRowInCard(card, rowOf(scrollTask))
+    setScrollTask(null)
+  }, [rowOf, scrollTask])
 
   // The focused task's whole prerequisite chain (transitive blockedBy) lights along with it.
   const chain = useMemo(() => {
@@ -245,6 +258,7 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
     })
     // An unfold asks for the owner's full read; the fold-back never re-asking is the ledger's dedupe, not ours.
     if (opening) {
+      setScrollTask(row.key)
       const ownerId = ownerSessionId(row)
       if (ownerId !== undefined) props.onOpenOwner(ownerId)
     }

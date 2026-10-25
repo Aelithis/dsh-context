@@ -1,7 +1,7 @@
 
 import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
-import { describe, test } from 'vitest'
+import { describe, test, vi } from 'vitest'
 import { TaskBoard, type TaskBoardProps } from '../../../src/client/components/taskBoard'
 import { makeRichText } from '../../../src/client/components/richText'
 import type { AgentForest, AgentNode } from '../../../src/client/agentTree'
@@ -291,6 +291,26 @@ describe('TaskBoard — the team task DAG', () => {
     const agentFocus = await mount(h(TaskBoard, propsOf({ focusTaskId: 's1' })))
     assert.ok(query(agentFocus.container, '[data-task="s1"]').className.includes('lc-team-task-focus'))
     await agentFocus.unmount()
+  })
+
+  test('opening a task brings its card and clicked row to the front', async () => {
+    const m = await mount(h(TaskBoard, propsOf()))
+    const row = query<HTMLElement>(m.container, '[data-task="task-1"]')
+    const body = query<HTMLElement>(m.container, '.lc-tasks-body')
+    Object.defineProperty(body, 'scrollHeight', { configurable: true, value: 500 })
+    Object.defineProperty(body, 'clientHeight', { configurable: true, value: 200 })
+    Object.defineProperty(body, 'getBoundingClientRect', { configurable: true, value: () => ({ top: 100 }) as DOMRect })
+    Object.defineProperty(row, 'getBoundingClientRect', { configurable: true, value: () => ({ top: 300 }) as DOMRect })
+    body.scrollTop = 20
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    try {
+      await click(row)
+      assert.deepEqual(scroll.mock.calls[0]?.[0], { block: 'start', behavior: 'smooth' }, 'the card scrolls to the front')
+      assert.equal(body.scrollTop, 220, 'the row top lands at the task body top: 20 + (300 − 100)')
+    } finally {
+      scroll.mockRestore()
+    }
+    await m.unmount()
   })
 
   test('the team description clamps into the row; the unowned badge stands in', async () => {
