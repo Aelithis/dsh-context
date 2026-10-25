@@ -480,8 +480,8 @@ export function makeStatsContext(
     }
     const costRow = (key: string, content: ReactNode): ReactElement => (
       openTeam === undefined
-        ? <span key={key} className="lc-strip-cell lc-ledger-cost-row">{content}</span>
-        : <button key={key} type="button" className="lc-strip-cell lc-ledger-cost-row lc-ledger-cost-row-btn" onClick={openTeam}>{content}</button>
+        ? <span key={key} className="lc-strip-cell lc-ledger-cost-row lc-stat-tipped group/tip">{content}</span>
+        : <button key={key} type="button" className="lc-strip-cell lc-ledger-cost-row lc-ledger-cost-row-btn lc-stat-tipped group/tip" onClick={openTeam}>{content}</button>
     )
     return (
       <div className="lc-card flex-[3] min-w-[min(360px,100%)]">

@@ -76,6 +76,7 @@ button.lc-ledger-cost-row { appearance: none; border: 0; padding: 0; background:
 .lc-ledger-out-body2 { display: grid; gap: 4px; min-width: 0; }
 .lc-ledger-out-body2 > .lc-strip-cell { display: flex; justify-content: space-between; gap: 8px; }
 .lc-ledger-team .lc-stat-tip { left: auto; right: 0; }
+.lc-ledger-team-head:hover .lc-stat-tip { opacity: 1; }
 .lc-ledger-head { display: flex; align-items: baseline; gap: 6px; padding-bottom: 5px; border-bottom: var(--lc-line-strong, 1px solid var(--dsw-alias-border-l2)); }
 .lc-ledger-in-head2 { margin-top: 8px; }
 .lc-ledger-label { color: var(--dsw-alias-label-primary); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
