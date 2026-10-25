@@ -478,6 +478,11 @@ export function makeStatsContext(
       if ((ev.target as HTMLElement).closest('a, button') !== null) return
       openTeam?.()
     }
+    const costRow = (key: string, content: ReactNode): ReactElement => (
+      openTeam === undefined
+        ? <span key={key} className="lc-strip-cell lc-ledger-cost-row">{content}</span>
+        : <button key={key} type="button" className="lc-strip-cell lc-ledger-cost-row lc-ledger-cost-row-btn" onClick={openTeam}>{content}</button>
+    )
     return (
       <div className="lc-card flex-[3] min-w-[min(360px,100%)]">
         <div className="lc-card-title">
@@ -536,7 +541,10 @@ export function makeStatsContext(
               <b className="lc-ledger-total">{fmt(props.commands?.runs ?? 0)}</b>
             </div>
             <div className="lc-ledger-team">
-              <div className="lc-ledger-head lc-ledger-out-head2 lc-ledger-team-head" onClick={openTeam === undefined ? undefined : onTeamClick}>
+              <div
+                className={'lc-ledger-head lc-ledger-out-head2 lc-ledger-team-head lc-ledger-cost-row' + (openTeam === undefined ? '' : ' lc-ledger-cost-row-btn')}
+                onClick={openTeam === undefined ? undefined : onTeamClick}
+              >
                 <span className="lc-strip-cell lc-ledger-team-pair lc-stat-tipped group/tip">
                   <i>
                     {openTeam === undefined
@@ -548,25 +556,25 @@ export function makeStatsContext(
                     {costHref === undefined ? teamPair : <a className="lc-strip-link" href={costHref} target="_blank" rel="noreferrer noopener">{teamPair}</a>}
                   </span>
                 </span>
-                <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip">{costTip}</span>
+                <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip" aria-hidden="true">{costTip}</span>
               </div>
               <div className="lc-ledger-out-body2">
-                <span className="lc-strip-cell lc-stat-tipped group/tip">
+                {costRow('own', <>
                   <i>
                     {t('stats.currentAgent')}
                     <i className="lc-stat-q group-hover/tip:text-(--dsw-alias-label-primary) group-hover/tip:border-(--dsw-alias-label-primary)" aria-hidden="true">?</i>
                   </i>
                   {pair(ownTokens, ownText)}
-                  <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip">{ownTip}</span>
-                </span>
-                <span className="lc-strip-cell lc-stat-tipped group/tip">
+                  <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip" aria-hidden="true">{ownTip}</span>
+                </>)}
+                {costRow('subs', <>
                   <i>
                     {t('stats.teamSubs', { n: sub.count })}
                     <i className="lc-stat-q group-hover/tip:text-(--dsw-alias-label-primary) group-hover/tip:border-(--dsw-alias-label-primary)" aria-hidden="true">?</i>
                   </i>
                   {pair(subTokens, subText)}
-                  <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip">{subTip}</span>
-                </span>
+                  <span className="lc-tip lc-stat-tip group-hover/tip:opacity-100" role="tooltip" aria-hidden="true">{subTip}</span>
+                </>)}
               </div>
             </div>
             {commandTop.length === 0
