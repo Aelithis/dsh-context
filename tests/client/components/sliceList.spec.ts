@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
 import { SliceList } from '../../../src/client/components/sliceList'
 import type { SliceRow } from '../../../src/client/components/sliceList'
-import { hover, mount, query, queryAll, text, unhover } from '../helpers/kit'
+import { hover, mount, query, queryAll, unhover } from '../helpers/kit'
 
 /** A parent that really holds the hover key, so hovering re-renders the rows. */
 function HoverHarness(props: { rows: SliceRow[] }) {
@@ -42,7 +42,6 @@ describe('SliceList', () => {
     assert.ok(!rows[1].className.includes('lc-sl-row-dim'))
     assert.equal(queryAll(m.container, '.lc-sl-sub').length, 1)
     assert.equal(queryAll(m.container, '.lc-sl-pct').length, 2)
-    assert.ok(text(m.container).includes('—'))
     await m.unmount()
   })
 

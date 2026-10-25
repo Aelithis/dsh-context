@@ -84,11 +84,10 @@ describe('rowsOfSnapshot', () => {
     assert.equal(rows[0].archived, false)
     assert.equal(rows[2].archived, false, 'non-string entries archive nothing')
     assert.equal(rowsOfSnapshot(snap)?.length, 3)
-    assert.equal(rowsOfSnapshot(snap, null)?.length, 3)
-    assert.equal(rowsOfSnapshot(snap, 7)?.length, 3)
-    assert.equal(rowsOfSnapshot(snap, {})?.length, 3)
-    assert.equal(rowsOfSnapshot(snap, { archivedSessionIds: 'x' })?.length, 3)
-    assert.equal(rowsOfSnapshot(snap, { get archivedSessionIds() { throw new Error('boom') } })?.length, 3)
+    const hostileWorkspaces = [null, 7, {}, { archivedSessionIds: 'x' }, { get archivedSessionIds() { throw new Error('boom') } }]
+    for (const [i, workspaces] of hostileWorkspaces.entries()) {
+      assert.equal(rowsOfSnapshot(snap, workspaces)?.length, 3, `hostile archive set ${i}`)
+    }
   })
 
   test('projection values are sanitized per row; hostile payloads degrade to nulls', () => {

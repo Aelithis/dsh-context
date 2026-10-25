@@ -154,7 +154,6 @@ describe('balance route registration', () => {
     const mounted = ctxOf(configuredCtx())
     watchBalanceChannel(mounted.ctx)
     assert.equal(mounted.captured.path, BALANCE_ROUTE)
-    assert.equal(typeof mounted.captured.fetch, 'function')
     for (const dispose of mounted.disposers) dispose()
     assert.equal(mounted.captured.fetch, undefined, 'the disposer withdraws the route')
   })

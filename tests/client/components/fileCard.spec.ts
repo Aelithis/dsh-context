@@ -289,28 +289,21 @@ describe('FileCard — header, rows, and filters', () => {
   test('the mount-time default sort comes from the plugin settings', async () => {
     const titles = (container: ParentNode) => queryAll(container, '.lc-fa-row').map(r => r.title)
     const sortBtns = (container: ParentNode) => queryAll(container, '.lc-fa-sort .lc-gran-btn')
-
-    settings.set('defaultFileSort', 'latest')
-    let m = await mount(h(FileCard, { activity: richActivity() }))
-    assert.ok(sortBtns(m.container)[2].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(m.container), ['/var/many.log', '/shots/ui.png', 'solo.md', '/src/a.ts', '/src/'])
-    await m.unmount()
-
-    settings.set('defaultFileSort', 'path')
-    m = await mount(h(FileCard, { activity: richActivity() }))
-    assert.ok(sortBtns(m.container)[3].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(m.container), ['/shots/ui.png', '/src/', '/src/a.ts', '/var/many.log', 'solo.md'])
-    await m.unmount()
-
-    settings.set('defaultFileSort', 'name')
-    m = await mount(h(FileCard, { activity: richActivity() }))
-    assert.ok(sortBtns(m.container)[4].className.includes('lc-gran-on'))
-    assert.deepEqual(titles(m.container), ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png'])
-    await m.unmount()
+    for (const [sort, active, order] of [
+      ['latest', 2, ['/var/many.log', '/shots/ui.png', 'solo.md', '/src/a.ts', '/src/']],
+      ['path', 3, ['/shots/ui.png', '/src/', '/src/a.ts', '/var/many.log', 'solo.md']],
+      ['name', 4, ['/src/a.ts', '/var/many.log', 'solo.md', '/src/', '/shots/ui.png']],
+    ] as const) {
+      settings.set('defaultFileSort', sort)
+      const m = await mount(h(FileCard, { activity: richActivity() }))
+      assert.ok(sortBtns(m.container)[active].className.includes('lc-gran-on'), `${sort} is the default sort`)
+      assert.deepEqual(titles(m.container), order)
+      await m.unmount()
+    }
 
     // The stored preference resets the default; in-card toggling never writes back.
     settings.set('defaultFileSort', 'count')
-    m = await mount(h(FileCard, { activity: richActivity() }))
+    const m = await mount(h(FileCard, { activity: richActivity() }))
     assert.ok(sortBtns(m.container)[0].className.includes('lc-gran-on'))
     assert.deepEqual(titles(m.container), ['/var/many.log', '/src/a.ts', '/shots/ui.png', 'solo.md', '/src/'])
     await click(sortBtns(m.container)[1])

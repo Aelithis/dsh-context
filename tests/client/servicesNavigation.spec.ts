@@ -38,7 +38,7 @@ describe('canOpenPathsOf / openPathVia', () => {
     assert.equal(await canOpenPathsOf(ctxWith({ connection: { isLoopback: true, rpc: { call: () => Promise.reject(new Error('offline')) } } })), false)
   })
 
-  test('openPathVia returns a fire-and-forget caller that forwards the path and swallows failures', async () => {
+  test('openPathVia returns a fire-and-forget caller that forwards the path and swallows failures', () => {
     const open = openPathVia(ctxWith({ connection: { rpc: { call: () => Promise.reject(new Error('no desktop')) } } }))
     assert.ok(open !== undefined)
     open('/repo/a.ts') // must not throw
@@ -57,7 +57,6 @@ describe('canOpenPathsOf / openPathVia', () => {
       },
     }))
     forwarding!('/repo/a.ts')
-    await new Promise(resolve => setTimeout(resolve, 0))
     assert.deepEqual(calls, [{ channel: '/api', endpoint: 'session/openWorkspacePath', payload: { args: { request: { path: '/repo/a.ts' } } } }])
   })
 })

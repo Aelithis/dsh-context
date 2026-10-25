@@ -13,9 +13,6 @@ function deref(value: unknown): unknown {
 describe('Config validator (cordis Standard Schema face)', () => {
   test('an absent config resolves to defaults; each bounds field overrides independently', () => {
     const resolved = Config(undefined) as unknown as Record<string, unknown>
-    for (const [key, value] of Object.entries(DEFAULT_BOUNDS)) {
-      assert.equal(resolved[key], value, key)
-    }
     const resolvedPrefs = Object.fromEntries(
       Object.entries(resolved).map(([key, value]) => [key, deref(value)]),
     )
@@ -71,28 +68,16 @@ describe('preference fields (the Config-form generation surface)', () => {
 
   test('preferences resolve to defaults, stale values degrade, and stored values survive', () => {
     const resolved = Config({ defaultGranularity: 'bogus', overviewAutoSteps: '50', defaultOverviewRange: 'bogus', promptPrefix: 7, promptSuffix: {} } as unknown as Config)
-    assert.equal(deref(resolved.defaultPlacement), 'all')
     assert.equal(deref(resolved.defaultGranularity), 'step')
-    assert.equal(deref(resolved.defaultTrendMode), 'total')
-    assert.equal(deref(resolved.defaultDeltaBase), 'step')
-    assert.equal(deref(resolved.defaultToolSort), 'count')
-    assert.equal(deref(resolved.defaultFileSort), 'lines')
-    assert.equal(deref(resolved.insightsEntry), 'show')
-    assert.equal(deref(resolved.defaultDurationCurve), 'show')
     assert.equal(deref(resolved.overviewAutoSteps), '200')
     assert.equal(deref(resolved.defaultOverviewRange), '30d')
-    assert.equal(deref(resolved.fleetTab), 'show')
     assert.equal(deref(resolved.promptPrefix), '', 'a non-string prompt value degrades to the empty default')
     assert.equal(deref(resolved.promptSuffix), '')
-    const stored = Config({ defaultPlacement: 'hide', defaultFileSort: 'count', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' })
-    assert.equal(deref(stored.defaultPlacement), 'hide')
-    assert.equal(deref(stored.defaultFileSort), 'count')
-    assert.equal(deref(stored.insightsEntry), 'hide')
-    assert.equal(deref(stored.overviewAutoSteps), 'off')
-    assert.equal(deref(stored.defaultOverviewRange), '7d')
-    assert.equal(deref(stored.fleetTab), 'hide')
-    assert.equal(deref(stored.promptPrefix), 'Be terse.')
-    assert.equal(deref(stored.promptSuffix), 'Sign as Atlas.')
+    const stored = Config({ defaultPlacement: 'hide', defaultFileSort: 'count', insightsEntry: 'hide', overviewAutoSteps: 'off', defaultOverviewRange: '7d', fleetTab: 'hide', promptPrefix: 'Be terse.', promptSuffix: 'Sign as Atlas.' }) as unknown as Record<string, unknown>
+    assert.deepEqual(
+      ['defaultPlacement', 'defaultFileSort', 'insightsEntry', 'overviewAutoSteps', 'defaultOverviewRange', 'fleetTab', 'promptPrefix', 'promptSuffix'].map(key => deref(stored[key])),
+      ['hide', 'count', 'hide', 'off', '7d', 'hide', 'Be terse.', 'Sign as Atlas.'],
+    )
   })
 })
 

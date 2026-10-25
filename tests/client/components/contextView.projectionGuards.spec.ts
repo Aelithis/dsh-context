@@ -10,22 +10,20 @@ describe('ContextView — projection guards', () => {
   test('loading screen while useProjection is absent, empty, or the session id is missing; a served projection renders without one', async () => {
     const View = makeView(new TestClientCtx())
 
-    const m1 = await mount(h(View, { sessionId: 'sv-none' }))
-    assert.ok(text(m1.container).includes(DICT_EN.loading))
-    await m1.unmount()
+    for (const props of [
+      { sessionId: 'sv-none' },
+      { sessionId: '', useProjection: () => undefined },
+      { useProjection: () => undefined },
+    ]) {
+      const m = await mount(h(View, props))
+      assert.ok(text(m.container).includes(DICT_EN.loading))
+      await m.unmount()
+    }
 
-    const m2 = await mount(h(View, { sessionId: '', useProjection: () => undefined }))
-    assert.ok(text(m2.container).includes(DICT_EN.loading))
-    await m2.unmount()
-
-    const m3 = await mount(h(View, { useProjection: () => undefined }))
-    assert.ok(text(m3.container).includes(DICT_EN.loading))
-    await m3.unmount()
-
-    const m4 = await mount(h(View, { useProjection: projectionsFor(timeline()) }))
-    assert.ok(text(m4.container).includes(DICT_EN['overview.title']))
-    assert.ok(text(m4.container).includes(DICT_EN.footer))
-    await m4.unmount()
+    const m = await mount(h(View, { useProjection: projectionsFor(timeline()) }))
+    assert.ok(text(m.container).includes(DICT_EN['overview.title']))
+    assert.ok(text(m.container).includes(DICT_EN.footer))
+    await m.unmount()
   })
 
   test('a cold read that settles without data surfaces the retryable failure, not a stall', async () => {

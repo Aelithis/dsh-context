@@ -73,7 +73,6 @@ describe('ContextBrowser tool schemas', () => {
     await click(catRow(m, 'tools'))
     await flush()
     const rows = elemRows(m)
-    assert.equal(rows.length, 9)
     assert.deepEqual(rows.map(r => text(query(r, '.lc-br-preview'))),
       ['mega', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'theta', 'rho', 'omega'])
 
@@ -106,7 +105,6 @@ describe('ContextBrowser tool schemas', () => {
     assert.ok(text(byName('a') as HTMLElement).includes('the a param'))
     assert.equal(queryAll(byName('p') as HTMLElement, '.lc-ts-param-desc').length, 0, 'non-string description hidden')
     assert.equal(queryAll(byName('q') as HTMLElement, '.lc-ts-param-desc').length, 0, 'empty description hidden')
-    assert.ok(text(body).includes('Parameters'))
 
     const toggle = query(body, '.lc-ts-json-toggle')
     assert.ok(text(toggle).includes('View Raw JSON'))
@@ -274,23 +272,19 @@ describe('ContextBrowser tool schemas', () => {
       return m
     }
 
-    let m = await mountWith('count')
-    assert.ok(sortBtns(m.container)[1].className.includes('lc-gran-on'))
-    assert.deepEqual(names(m), ['zzz', 'aaa'])
-    await m.unmount()
-
-    m = await mountWith('size')
-    assert.ok(sortBtns(m.container)[0].className.includes('lc-gran-on'))
-    assert.deepEqual(names(m), ['aaa', 'zzz'])
-    await m.unmount()
-
-    m = await mountWith('name')
-    assert.ok(sortBtns(m.container)[2].className.includes('lc-gran-on'))
-    assert.deepEqual(names(m), ['aaa', 'zzz'])
-    await m.unmount()
+    for (const [sort, idx, order] of [
+      ['count', 1, ['zzz', 'aaa']],
+      ['size', 0, ['aaa', 'zzz']],
+      ['name', 2, ['aaa', 'zzz']],
+    ] as const) {
+      const m = await mountWith(sort)
+      assert.ok(sortBtns(m.container)[idx].className.includes('lc-gran-on'))
+      assert.deepEqual(names(m), order)
+      await m.unmount()
+    }
 
     // In-toolbar toggling never writes the preference back.
-    m = await mountWith('count')
+    const m = await mountWith('count')
     await click(sortBtns(m.container)[0])
     assert.equal(settings.store.getSnapshot().toolSort, 'count')
     await m.unmount()

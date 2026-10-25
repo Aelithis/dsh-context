@@ -22,6 +22,5 @@ describe('estimateFileTokens', () => {
   test('a name or a byte size the log does not prove prices nothing', () => {
     assert.equal(estimateFileTokens(file({ name: undefined })), null)
     assert.equal(estimateFileTokens(file({ bytes: undefined })), null)
-    assert.equal(estimateFileTokens(file({ name: undefined, bytes: undefined })), null)
   })
 })

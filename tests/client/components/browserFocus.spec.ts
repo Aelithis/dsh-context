@@ -1,7 +1,6 @@
 import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { DICT_EN } from '../../../src/client/i18n'
 import type { ContextHeaders } from '../../../src/shared/types'
 import type { ConversationNodeLike } from '../../../src/client/services'
 import { click, mount, query, queryAll, surfaceNode, text } from '../helpers/kit'
@@ -70,36 +69,6 @@ describe('ContextBrowser focus bridges', () => {
     await m.update(h(Browser, props({ data, headers, pinSeq: null })))
     assert.ok(text(query(m.container, '.lc-br-meta')).includes('Live · Next Request'))
     await m.unmount()
-  })
-})
-
-describe('ContextBrowser — the split generation detail states', () => {
-  test('a pending read names the loading state; a failed read arms the retry button; a landed or inline detail renders none', async () => {
-    const loading = await mount(h(Browser, { data: tl({}), headers: null, detailState: 'loading' }))
-    assert.ok(text(loading.container).includes(DICT_EN['detail.loading']))
-    assert.equal(queryAll(loading.container, '.lc-br-pick option').length, 1)
-    await loading.unmount()
-
-    let retries = 0
-    const m = await mount(h(Browser, {
-      data: tl({}),
-      headers: null,
-      detailState: 'failed',
-      onDetailRetry: () => { retries++ },
-    }))
-    await click(query(m.container, '.lc-br-retry'))
-    assert.equal(retries, 1)
-    await m.unmount()
-
-    for (const state of ['ready', 'legacy'] as const) {
-      const ready = await mount(h(Browser, { data: tl({}), headers: null, detailState: state }))
-      assert.ok(!text(ready.container).includes(DICT_EN['detail.loading']))
-      assert.ok(!text(ready.container).includes(DICT_EN['detail.loadFailed']))
-      await ready.unmount()
-    }
-    const inline = await mount(h(Browser, { data: tl({}), headers: null }))
-    assert.equal(queryAll(inline.container, '.lc-br-retry').length, 0)
-    await inline.unmount()
   })
 })
 

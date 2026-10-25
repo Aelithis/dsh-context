@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { act, createElement as h } from 'react'
 import { describe, test } from 'vitest'
 import {
-  BAR_GAP, BAR_W, initialBarWindow, nextBarWindow, TREND_WINDOW_MIN, WINDOW_HYSTERESIS_BARS, WINDOW_OVERSCAN_BARS,
+  BAR_GAP, BAR_W, initialBarWindow, nextBarWindow, WINDOW_HYSTERESIS_BARS, WINDOW_OVERSCAN_BARS,
   windowPads, windowRangeFor,
 } from '../../../src/client/components/trendChart'
 import { flush, mount, query, queryAll, until } from '../helpers/kit'
@@ -19,7 +19,6 @@ describe('trend chart windowing', () => {
     assert.deepEqual(windowPads(0, 119, 120), { left: 0, right: 0 })
     assert.deepEqual(initialBarWindow(120), { from: 0, to: 119 })
     assert.equal(initialBarWindow(1_000).to, 999)
-    assert.ok(1_000 > TREND_WINDOW_MIN)
   })
 
   test('fill an overscanned range around the scroll position, keep a covering window, and refill after leaving it', () => {

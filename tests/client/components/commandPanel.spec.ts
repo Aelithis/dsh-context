@@ -1,10 +1,12 @@
 import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
-import { describe, test } from 'vitest'
+import { afterEach, describe, test, vi } from 'vitest'
 import type { Command } from '../../../src/client/commands'
 import { mount, query, queryAll, text, click } from '../helpers/kit'
 import type { ConversationNodeLike } from '../../../src/client/services'
 import { Panel, T0, chipCounts, cmd, rowTexts, typeSearch } from './commandPanelHarness'
+
+afterEach(() => { vi.useRealTimers() })
 
 function richCommands(): Command[] {
   return [
@@ -329,6 +331,7 @@ describe('CommandPanel — the result block', () => {
   })
 
   test('the find lens opens in a detail card and marks matches inside its own body', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const m = await mount(h(Panel, {
       commands: [cmd(1, { cmd: 'git status --short', description: 'check the tree', resultSeq: 2 })],
       fetchContent: async () => ({ kind: 'tool', seq: 2, content: [{ type: 'text', text: 'nothing here' }] }),
@@ -344,7 +347,7 @@ describe('CommandPanel — the result block', () => {
         setter?.call(input, value)
         input.dispatchEvent(new Event('input', { bubbles: true }))
       })
-      await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)) })
+      await act(async () => { vi.advanceTimersByTime(200) })
     }
     await find('status')
     assert.equal(query(cards[0], '.lc-find-count')?.textContent, '1/1', 'one match in the command card')
@@ -481,6 +484,7 @@ describe('CommandPanel — empty and channel states', () => {
   })
 
   test('the copy action needs a clipboard, survives a rejection, and keeps a newer flash through an older timer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const m = await mount(h(Panel, { commands: [cmd(1, { resultSeq: 2 }), cmd(2, { cmd: 'git diff', resultSeq: 3 })] }))
     await click(query(m.container, '.lc-cmd-row'))
     const copyBtn = query(m.container, '.lc-cmd-detail .lc-rich-copy')
@@ -503,7 +507,7 @@ describe('CommandPanel — empty and channel states', () => {
     await act(async () => {})
     assert.deepEqual(writes, ['git diff'], 'the command text reaches the clipboard')
     assert.equal(copyBtn.getAttribute('title'), 'Copied')
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
+    await act(async () => { vi.advanceTimersByTime(1300) })
     assert.equal(copyBtn.getAttribute('title'), 'Copy Raw Text')
     const rows = queryAll(m.container, '.lc-cmd-row')
     await click(rows[0]!) // collapse the seq-2 row
@@ -512,7 +516,7 @@ describe('CommandPanel — empty and channel states', () => {
     await click(secondCopy)
     await act(async () => {})
     assert.equal(secondCopy.getAttribute('title'), 'Copied')
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1300)) })
+    await act(async () => { vi.advanceTimersByTime(1300) })
     assert.equal(secondCopy.getAttribute('title'), 'Copy Raw Text')
     await m.unmount()
   })

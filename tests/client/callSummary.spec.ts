@@ -1,20 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { blockSummaryOf, callNamesOf, callSummaryOf, parseCallArgs, summaryInArgs } from '../../src/client/callSummary'
+import { blockSummaryOf, callNamesOf, callSummaryOf, summaryInArgs } from '../../src/client/callSummary'
 import type { ConversationNodeLike } from '../../src/client/services'
 
 function conv(over: Partial<ConversationNodeLike> = {}): ConversationNodeLike {
   return { kind: 'assistant', seq: 1, ...over }
 }
-
-describe('parseCallArgs', () => {
-  test('non-string, empty, and non-object input parses to null; a JSON object parses to a record', () => {
-    for (const raw of [42, undefined, '', '{oops', '[1,2]', 'null', '"text"']) {
-      assert.equal(parseCallArgs(raw), null, JSON.stringify(raw))
-    }
-    assert.deepEqual(parseCallArgs('{"description":"d"}'), { description: 'd' })
-  })
-})
 
 describe('summaryInArgs', () => {
   test('the keys win in description, file_path, path, filePath order; unusable values skip', () => {

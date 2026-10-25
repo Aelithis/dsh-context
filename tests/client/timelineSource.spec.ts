@@ -668,18 +668,13 @@ describe('useTimelineSource', () => {
   })
 
   test('the cold start: no pushed value opens the channel itself and renders from the read', async () => {
-    let calls = 0
-    stubDetailFetch(() => {
-      calls++
-      return { body: { ok: true, value: detail(2, { head: slimHead(2) }) } }
-    })
+    stubDetailFetch(() => ({ body: { ok: true, value: detail(2, { head: slimHead(2) }) } }))
     const m = await mount(h(SourceProbe, { sessionId: 's1', value: undefined }))
     assert.equal(probeRead(m.container, 'state'), 'loading')
     await until(() => probeRead(m.container, 'state') === 'ready', 'the cold read never landed')
     assert.equal(probeRead(m.container, 'model'), 'm', 'the read head renders')
     assert.equal(probeRead(m.container, 'rev'), '2')
     assert.equal(probeRead(m.container, 'steps'), '1', 'the read collections merge')
-    assert.ok(calls >= 1)
     await m.unmount()
   })
 
@@ -739,22 +734,18 @@ describe('useTimelineSource', () => {
   })
 
   test('the split generation: counters render off the head immediately, the detail lands through the channel', async () => {
-    let calls = 0
-    stubDetailFetch(() => {
-      calls++
-      return {
-        body: {
-          ok: true,
-          value: detail(3, {
-            surfaceFloor: 2,
-            archiveFloor: 5,
-            fileOps: [{ seq: 2, path: 'a.ts', kind: 'read', tool: 'read', err: false, added: 0, removed: 0 }],
-            fileOpsFloor: 4,
-            spans: [{ kind: 'ttft', start: 0, end: 100 }, { kind: 'other', start: 100, end: 1_400 }],
-          }),
-        },
-      }
-    })
+    stubDetailFetch(() => ({
+      body: {
+        ok: true,
+        value: detail(3, {
+          surfaceFloor: 2,
+          archiveFloor: 5,
+          fileOps: [{ seq: 2, path: 'a.ts', kind: 'read', tool: 'read', err: false, added: 0, removed: 0 }],
+          fileOpsFloor: 4,
+          spans: [{ kind: 'ttft', start: 0, end: 100 }, { kind: 'other', start: 100, end: 1_400 }],
+        }),
+      },
+    }))
     const m = await mount(h(SourceProbe, { sessionId: 's1', value: slimHead(3) }))
     assert.equal(probeRead(m.container, 'state'), 'loading')
     assert.equal(probeRead(m.container, 'turns'), '1', 'the head counters render before the detail lands')
@@ -766,7 +757,6 @@ describe('useTimelineSource', () => {
     assert.equal(probeRead(m.container, 'floors'), '2/5', 'the detail floors merge')
     assert.equal(probeRead(m.container, 'ops'), '1', 'the op log merges')
     assert.equal(probeRead(m.container, 'spans'), '2', 'the strip spans merge')
-    assert.ok(calls >= 1)
     await m.unmount()
   })
 

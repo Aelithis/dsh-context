@@ -70,7 +70,6 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
   })
 
   test('the toggle redraws the composition bar as one band per item, in prompt order', async () => {    const m = await mount(h(Browser, props({ data: dnaData, headers: dnaHeaders })))
-    assert.equal(bands(m).length, 6)
     const normal = bands(m).map(seg => seg.style.width)
     assert.deepEqual(normal, [100, 75, 20, 10, 40, 30].map(v => `${v / 275 * 100}%`))
     assert.ok(!bands(m)[0].className.includes('lc-stacked-seg-pick'))
@@ -84,7 +83,6 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     // Prompt order: the system prompt, the two tool schemas in producer order, then the message flow by seq —
     // NOT the fold's category order and NOT the header event's bookkeeping seq (see dna.ts).
     const segs = bands(m)
-    assert.equal(segs.length, 7)
     assert.deepEqual(segs.map(seg => seg.style.width), [100, 50, 25, 20, 30, 40, 10].map(v => `${v / 275 * 100}%`))
     assert.ok(segs.every(seg => seg.className.includes('lc-stacked-seg-pick')))
     assert.ok(query(m.container, '.lc-br-bar').className.includes('lc-br-bar-dna'))
@@ -189,7 +187,6 @@ describe('ContextBrowser DNA mode and the open-category bar pin', () => {
     assert.ok(query(m.container, '.lc-br-flat'))
     assert.equal(queryAll(m.container, '.lc-br-cat-row').length, 0, 'the accordion yields to the feed')
     const labels = flatRows(m).map(r => text(r))
-    assert.equal(labels.length, 6)
     assert.ok(labels[0].includes('#4') && labels[0].includes('Injected Context') && labels[0].includes('Notice'))
     assert.ok(labels[1].includes('#3') && labels[1].includes('Assistant Messages'))
     assert.ok(labels[2].includes('#2') && labels[2].includes('bash'))

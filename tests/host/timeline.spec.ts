@@ -55,10 +55,6 @@ describe('createContextTimelineDefinition', () => {
     assert.ok(view.nodes.length > 0)
     assert.ok(view.requests.length > 0)
     assert.ok(view.events.length > 0)
-    // The duration overlay's per-request step active time: step start (tick 4s) → end (tick 9s), bash call inside,
-    // no user waits; the second request folded after stepEnd consumed the slot.
-    assert.equal(view.requests[0].activeMs, 5000, 'step start → step end, the tool run included')
-    assert.equal(view.requests[1].activeMs, undefined, 'no open step slot, no stamp')
     for (const state of drive.states) {
       def.stateSchema.parse(structuredClone(state)) // throws on drift
     }

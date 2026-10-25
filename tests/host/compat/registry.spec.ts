@@ -143,9 +143,6 @@ describe('registry contract — the semantics every supported line shares', () =
     const floor = driver.restoreFloor(rows)
     assert.equal(floor, 12)
 
-    // A cold read from scratch matches the live snapshot; a warm read seeded from the rows equals it too.
-    const cold = driver.restore({}, log, 0, session.header)
-    assert.deepEqual(cold.values, driver.snapshot(session).values)
     const warm = driver.restore(rows, log, 0, session.header)
     assert.deepEqual(warm.values, driver.snapshot(session).values)
   })

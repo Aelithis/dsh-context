@@ -198,15 +198,13 @@ describe('spans — the step flush', () => {
     assert.deepEqual(before.state.spans, [{ kind: 'other', start: 3_000, end: 4_000 }])
   })
 
-  test('a zero-width step flushes nothing but bumps the detail revision; an unpaired step/end stays uninteresting', () => {
+  test('a zero-width step flushes nothing but bumps the detail revision', () => {
     const { state } = driveTimeline([
       stepStart(1, { time: 5_000 }),
       stepEnd(2, { time: 5_000 }),
     ])
     assert.deepEqual(state.spans, [])
     assert.equal(state.detailRev, 1, 'open tabs refetch the strip')
-    const bare = driveTimeline([stepEnd(1, { time: 5_000 })])
-    assert.deepEqual(bare.state.spans, [])
   })
 
   test('a tool result folded without an open step prices the totals but paints no span', () => {

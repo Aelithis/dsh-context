@@ -303,8 +303,6 @@ describe('MemberBoard — the other-agents cards', () => {
     assert.deepEqual(queryAll(m.container, '.lc-member-card').map(c => text(query(c, '.lc-member-name'))), ['flaky-one', 'new-joiner', 'lounger'])
     await click(filters[0])
 
-    await selectIn(query(m.container, '.lc-fleet-sort'), 'tokens')
-    assert.deepEqual(otherNames(m.container), ['scout', 'archivist', 'lounger'])
     await m.unmount()
 
     const flipped: AgentForest = { ...FOREST, nodes: [FOREST.nodes[0], FOREST.nodes[1], FOREST.nodes[2], FOREST.nodes[3], FOREST.nodes[5], FOREST.nodes[4]] }

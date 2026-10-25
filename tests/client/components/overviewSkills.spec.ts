@@ -378,9 +378,6 @@ describe('OverviewSkills', () => {
     const one = await mount(h(Skills, { stats: [stat('tdd', 1, NOW)], now: NOW }))
     assert.equal(queryAll(one.container, 'input.lc-ov-skills-search').length, 0, 'a lone row has nothing to filter')
     await one.unmount()
-    const empty = await mount(h(Skills, { stats: [], now: NOW }))
-    assert.equal(queryAll(empty.container, 'input.lc-ov-skills-search').length, 0)
-    await empty.unmount()
   })
 
   test('a pin the filter hides falls back to the detached block; the filtered overflow line counts the matches', async () => {

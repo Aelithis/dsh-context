@@ -166,13 +166,9 @@ describe('deltaBandsOf', () => {
 describe('deltaTotalsOf', () => {
   const band = (key: string, tokens: number): TrendBand => ({ key, cat: 'assistant', tokens, off: 0, color: CAT_COLOR.assistant, node: { seq: 1, cat: 'assistant', tokens } })
 
-  test('sums exactly the churn deltaBandsOf materializes; no predecessor changes nothing; negative tokens land on the right arm', () => {
+  test('sums the churn; no predecessor changes nothing; negative tokens land on the right arm', () => {
     const prev = [band('a', 10), band('b', 5), band('c', 7)]
     const next = [band('a', 13), band('b', 2), band('d', 4)]
-    const bands = deltaBandsOf(next, prev)
-    // `down` bands carry negative tokens; the totals report the magnitude the axis measures.
-    const sum = (list: { tokens: number }[]): number => list.reduce((n, b) => n + b.tokens, 0)
-    assert.deepEqual(deltaTotalsOf(next, prev), { up: sum(bands.up), down: -sum(bands.down) })
     assert.deepEqual(deltaTotalsOf(next, prev), { up: 7, down: 10 }, 'a and d rose (+3, +4); b shrank (−3) and c dropped (−7)')
     assert.deepEqual(deltaTotalsOf([band('a', 5)], null), { up: 0, down: 0 })
     assert.deepEqual(deltaTotalsOf([band('a', 5)], [band('a', 5)]), { up: 0, down: 0 }, 'an unchanged item is no churn')

@@ -214,8 +214,7 @@ describe('watchActivityBackfill', () => {
     const dispose = watchActivityBackfill(ctx)
     await trigger(route)
     await until(() => (state.coldSnapshots.length === 1 ? true : undefined), 'the good session folded')
-    // The summary lines land after the loop's final pacing yield — settle first.
-    await settle(400)
+    await until(() => (lines.filter(l => l.level === 'info').length >= 2 ? true : undefined), 'the summary lines landed')
     dispose()
     assert.deepEqual(state.coldReads.sort(), ['bad', 'good', 'hostile', 'legacy-1', 'legacy-2'])
     assert.deepEqual(state.coldSnapshots, ['good'])

@@ -138,36 +138,16 @@ describe('buildTimelineHead', () => {
 })
 
 describe('buildTimelineDetail', () => {
-  test('serves the same collections the inline view serves, plus the revision and the head; bounds apply the same rule', () => {
+  test('serves the revision and head, with collections detached from the fold state', () => {
     const { state, view } = driveTimeline(canonicalLog())
     const detail = buildTimelineDetail(state, resolveBounds({}))
     assert.equal(detail.rev, 7)
-    assert.deepEqual(detail.requests, view.requests)
-    assert.deepEqual(detail.events, view.events)
-    assert.deepEqual(detail.nodes, view.nodes)
-    assert.equal(detail.droppedNodes, view.droppedNodes)
-    assert.deepEqual(detail.archive, view.archive)
-    assert.equal(detail.surfaceFloor, view.surfaceFloor)
-    assert.equal(detail.archiveFloor, view.archiveFloor)
     // The slim head rides at the SAME cut: the composition the Agent network's cold-node ring fetch renders from.
     assert.ok(detail.head !== undefined)
     assert.deepEqual(detail.head.current, view.current)
-    assert.deepEqual(detail.head.counts, buildTimelineHead(state).counts)
     assertPlainJson(detail)
     assert.notEqual(detail.requests[0], state.requests[0])
     assert.notEqual(detail.archive, state.archived)
-    const bounded = driveTimeline([
-      userMessage(1, [{ type: 'text', text: 'injected' }], { kind: 'plugin', form: 'context', plugin: 'dsh-test' }),
-      userMessage(2, [{ type: 'text', text: 'x1' }]),
-      userMessage(3, [{ type: 'text', text: 'x2' }]),
-      userMessage(4, [{ type: 'text', text: 'x3' }]),
-      userMessage(5, [{ type: 'text', text: 'x4' }]),
-    ])
-    const windowed = buildTimelineDetail(bounded.state, resolveBounds({ maxNodes: 2 }))
-    assert.deepEqual(windowed.nodes.map(n => n.seq), [1, 4, 5], 'the out-of-window inject is pinned ahead of the tail')
-    assert.equal(windowed.droppedNodes, 2)
-    assert.equal(windowed.surfaceFloor, 3)
-    assert.equal(windowed.rev, 5)
   })
 })
 

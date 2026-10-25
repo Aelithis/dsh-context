@@ -168,9 +168,11 @@ describe('referencedAttachmentOf', () => {
 
 describe('watchAttachmentChannel gating', () => {
   test('no route without the connection service or its fetch registry, and a rejecting registry stays up without one', () => {
-    assert.equal(ctxOf({}).captured.path, undefined)
-    assert.equal(ctxOf({ connection: {} }).captured.path, undefined)
-    assert.equal(ctxOf({ connection: { fetch: {} } }).captured.path, undefined)
+    for (const spec of [{}, { connection: {} }, { connection: { fetch: {} } }]) {
+      const { ctx, captured } = ctxOf(spec)
+      watchAttachmentChannel(ctx, OPEN_GATE)
+      assert.equal(captured.path, undefined, JSON.stringify(spec))
+    }
     assert.equal(armed().captured.path, ATTACHMENT_ROUTE)
     const ctx = {
       get: (name: string) => name === 'connection'
@@ -285,7 +287,6 @@ describe('image preview names', () => {
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', name: '../../evil.svg' }), 'evil.svg')
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', name: 'C:\\tmp\\x.webp' }), 'x.webp')
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', name: 'clipboard', mediaType: 'image/jpeg' }), 'attachment.jpg')
-    assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', name: 'shot.png', mediaType: 'image/webp' }), 'shot.png', 'a suffix a viewer claims keeps the displayed name; the viewer renders the stored bytes')
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', name: 'scan.tiff', mediaType: 'image/png' }), 'attachment.png')
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', mediaType: 'image/gif' }), 'attachment.gif')
     assert.equal(imagePreviewNameOf({ kind: 'image', attachmentId: 'a', mediaType: 'image/tiff' }), null)

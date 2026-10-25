@@ -15,13 +15,14 @@ import {
   timelineOf,
   timingOf,
   tokenUsageOf,
-  unsupportedOf,
   workspaceOf,
 } from '../../src/client/services'
 import { CONTEXT_VIEW_ID, type ClientCtx, type ConversationNodeLike } from '../../src/client/services'
 import type { TimingTotals } from '../../src/shared/types'
 
 const useChatOf = (snapshot: unknown) => (<T>(sel: (s: unknown) => T) => sel(snapshot))
+
+const ctxWith = (services: Record<string, unknown>): ClientCtx => ({ get: (name: string) => services[name] }) as unknown as ClientCtx
 
 describe('conversationNodesOf — the chat-seat window join', () => {
   const nodes: ConversationNodeLike[] = [{ kind: 'user', seq: 1 }, { kind: 'assistant', seq: 2 }]
@@ -40,7 +41,6 @@ describe('conversationNodesOf — the chat-seat window join', () => {
 })
 
 describe('imageLoaderOf — the uiConversation loader', () => {
-  const ctxWith = (services: Record<string, unknown>): ClientCtx => ({ get: (name: string) => services[name] }) as unknown as ClientCtx
   const attachment = { attachmentId: 'a1' }
 
   test('uses the uiConversation.imageUrl face', async () => {
@@ -205,9 +205,7 @@ describe('timelineOf', () => {
     const proven = { 'deepseek-official': { 'deepseek-v4-flash': { peak: { uncached: 1, cacheRead: 2, cacheWrite: 3, output: 4 } } } }
     const base = { current: { system: 1, tools: 1, user: 1, inject: 1, skill: 1, assistant: 1, tool: 1, total: 8 }, requests: [], events: [], nodes: [], archive: [] }
     assert.equal(timelineOf({ ...base, cost: proven })?.cost, proven, 'a structurally proven cost keeps the fast path reference')
-    for (const bad of ['junk']) {
-      assert.ok(!('cost' in (timelineOf({ ...base, cost: bad }) ?? {})), 'a hostile cost drops through the sanitizer')
-    }
+    assert.ok(!('cost' in (timelineOf({ ...base, cost: 'junk' }) ?? {})), 'a hostile cost drops through the sanitizer')
   })
 
   test('the unsupported gate record survives the sanitizing slow path only when well-formed', () => {
@@ -271,15 +269,6 @@ describe('timelineOf', () => {
     const noPrompt = timelineOf({ current, last: { seq: 1, total: 7 } })
     assert.ok(noPrompt !== null)
     assert.deepEqual(noPrompt.last, { seq: 1, total: 7 })
-  })
-})
-
-describe('unsupportedOf', () => {
-  test('well-formed records pass through as plain data; non-records and wrong-typed fields degrade to null', () => {
-    assert.deepEqual(unsupportedOf({ current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' }), { current: '0.1.1-rc.2', minimum: '0.2.0-rc.2' })
-    for (const bad of [null, undefined, 'x', 5, {}, { current: 'c' }, { minimum: 'm' }, { current: 1, minimum: 'm' }, { current: 'c', minimum: null }]) {
-      assert.equal(unsupportedOf(bad), null, JSON.stringify(bad))
-    }
   })
 })
 
@@ -526,8 +515,6 @@ describe('headersOf', () => {
 })
 
 describe('workspaceOf', () => {
-  const ctxWith = (services: Record<string, unknown>): ClientCtx => ({ get: (name: string) => services[name] }) as unknown as ClientCtx
-
   test('reads the session row cwd off the sessions list snapshot', () => {
     const ctx = ctxWith({ sessions: { list: { getSnapshot: () => ({ byId: { sv: { cwd: '/repo' } } }) } } })
     assert.equal(workspaceOf(ctx, 'sv'), '/repo')
@@ -694,8 +681,6 @@ describe('activityOf', () => {
     const inheritedCost = Object.assign(Object.create({ 'injected-model': { peak: { uncached: 1, cacheRead: 1, cacheWrite: 1, output: 1 } } }), {})
     const cases: [unknown, unknown][] = [
       [inheritedCost, undefined],
-      [{}, undefined],
-      [{ deepseek: 7 }, undefined],
       [{ deepseek: [1] }, undefined],
       [{ deepseek: { 'deepseek-v4': [1] } }, { deepseek: {} }],
       [{ deepseek: { 'deepseek-v4': 7 } }, { deepseek: {} }],

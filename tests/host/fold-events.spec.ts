@@ -436,16 +436,12 @@ describe('session-cost accumulation', () => {
   const PEAK = Date.UTC(2024, 0, 1, 2, 0, 0)
   const at100 = (seq: number, time: number) => assistantMessage(seq, { usage, time })
 
-  test('a request without a model never prices; any named model accumulates verbatim', () => {
+  test('a request without a model never prices; an unknown named model still books verbatim', () => {
     assert.equal(driveTimeline([assistantMessage(1, { usage })]).state.cost, undefined)
-    assert.equal(
-      driveTimeline([header(1, { model: 'deepseek-v3' }), assistantMessage(2, { usage })]).state.cost?.['']?.['deepseek-v3']?.peak?.uncached,
-      100,
-      'the fold records every model verbatim; pricing filters on the client',
-    )
     assert.equal(
       driveTimeline([header(1, { model: 'gemini-2.0-flash' }), assistantMessage(2, { usage })]).state.cost?.['']?.['gemini-2.0-flash']?.peak?.uncached,
       100,
+      'the fold records every model verbatim; pricing filters on the client',
     )
   })
 

@@ -35,6 +35,8 @@ describe('watchInsightPage', () => {
     assert.equal(entries[0].registration.label?.(), 'Context Insights', 'the label thunk resolves the page title')
     const iconEl = entries[0].component({ size: 16 }) as ReactElement
     assert.equal((iconEl.type as { name: string }).name, 'InsightPanelIcon', 'the entry glyph component')
+    const defaults = entries[0].component({}) as ReactElement
+    assert.equal((defaults.type as { name: string }).name, 'InsightPanelIcon', 'the size seat defaults')
     dispose()
   })
 
@@ -75,17 +77,6 @@ describe('watchInsightPage', () => {
     assert.equal(live.slots.of('main').length, 0, 'the disposer unwinds the live mount')
     assert.equal(live.slots.of('sidebar.panellist').length, 0)
     assert.doesNotThrow(disposeLive, 'the disposer is safe to repeat')
-  })
-
-  test('the panel-list icon seat resolves to the bundled InsightPanelIcon component', () => {
-    const ctx = new TestClientCtx()
-    const settings = createContextSettings()
-    const { t } = makeKit()
-    const dispose = watchInsightPage(asClientCtx(ctx), settings, page, t, NS)
-    const icon = ctx.slots.of('sidebar.panellist')[0].component as (props: unknown) => ReactElement
-    assert.equal((icon({ size: 18 }).type as { name: string }).name, 'InsightPanelIcon')
-    assert.equal((icon({}).type as { name: string }).name, 'InsightPanelIcon')
-    dispose()
   })
 
   test('a slots face returning no disposer is tolerated across flips and dispose', () => {

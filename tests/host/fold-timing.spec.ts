@@ -121,22 +121,7 @@ describe('timing — tool call durations', () => {
     const { state } = driveTimeline(events)
     assert.equal(Object.keys(state.timing?.tools ?? {}).length, 16)
     assert.equal(state.timing?.tools.t0, undefined, 'the cheapest tally left the ranking')
-  })
-
-  test('a new name past the cap evicts the current minimum, not itself', () => {
-    const events: TimelineEvent[] = []
-    let seq = 1
-    for (let i = 0; i < 16; i++) {
-      events.push({ type: 'tool/call', seq: seq++, time: 0, data: { callId: 'c' + i, name: 't' + i, arguments: '{}' } })
-      events.push(toolResult(seq++, { callId: 'c' + i, content: text('ok'), time: 5_000 }))
-    }
-    // One more: 6s, a new maximum — the eviction must drop one of the 5s rows.
-    events.push({ type: 'tool/call', seq: seq++, time: 0, data: { callId: 'cx', name: 'tx', arguments: '{}' } })
-    events.push(toolResult(seq++, { callId: 'cx', content: text('ok'), time: 6_000 }))
-    const { state } = driveTimeline(events)
-    const tools = state.timing?.tools ?? {}
-    assert.equal(Object.keys(tools).length, 16)
-    assert.equal(tools.tx?.ms, 6_000, 'the new name survived')
+    assert.equal(state.timing?.tools.t16?.ms, 5_000, 'the newest name, costlier than the evicted minimum, survived')
   })
 })
 

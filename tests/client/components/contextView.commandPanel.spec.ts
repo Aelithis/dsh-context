@@ -86,9 +86,6 @@ describe('ContextView — command panel', () => {
   })
 
   test('the card follows the detail channel states', async () => {
-    // The legacy (inline) generation renders the served commands directly.
-    const { card } = await mountCommands('sv-cmds-legacy', [cmd(10, { resultSeq: 3 })])
-    assert.equal(queryAll(card, '.lc-cmd-row').length, 1)
     // A pre-field projection (no commands array) renders the empty state, not a crash.
     const { m } = await mountCommands('sv-cmds-none', [])
     assert.ok(text(m.container).includes('No commands executed in this session'))

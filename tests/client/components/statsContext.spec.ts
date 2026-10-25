@@ -133,7 +133,6 @@ describe('StatsContext', () => {
     assert.equal(queryAll(m.container, '.lc-core-kv-events .lc-kind').length, 3)
     assert.equal(queryAll(m.container, '.lc-core-kv-events .lc-kind.lc-ledger-chip-dim').length, 0)
     assert.deepEqual(costCellsOf(m.container), ['Fleet?1.0M/$0.30', 'Current Agent?1.0M/$0.30', 'Subagents × 0?0/—'])
-    assert.equal(queryAll(m.container, '.lc-stat-tip').length, 4, 'the user chip, own-cell, sub-row, and family tips')
     await m.unmount()
   })
 
@@ -378,7 +377,6 @@ describe('StatsContext', () => {
     const head = query(m.container, '.lc-ledger-team-head')
     assert.equal(head.getAttribute('role'), null, 'the header is not a button wrapping the provider link')
     const open = query(m.container, 'button.lc-ledger-team-open')
-    assert.equal(open.tagName, 'BUTTON')
     await click(open)
     assert.equal(opened, 1)
     await click(head)

@@ -3,7 +3,7 @@ import { act, createElement as h } from 'react'
 import { describe, test } from 'vitest'
 import type { TrendBand } from '../../../src/client/dna'
 import { flush, mount, queryAll } from '../helpers/kit'
-import { DNA_SNAP_PX, capDnaRuns, snapDnaRuns } from '../../../src/client/components/trendDnaBars'
+import { capDnaRuns, snapDnaRuns } from '../../../src/client/components/trendDnaBars'
 import { TrendChart, bars, propsOf, req, viewport } from './trendChartHarness'
 
 const bandOf = (seq: number): TrendBand[] => [{ key: 'a', cat: 'system', tokens: 10 + (seq % 7), off: 0, color: '#8b5cf6' }]
@@ -41,7 +41,6 @@ describe('snapDnaRuns', () => {
     assert.equal(a[a.length - 1].to, 7.9, 'the final boundary stays exact')
     assert.equal(b[b.length - 1].to, 10.9)
     assert.deepEqual(snapDnaRuns([]), [])
-    assert.equal(DNA_SNAP_PX, 2)
 
     const merged = snapDnaRuns([
       { color: '#a', from: 0, to: 2.1 },

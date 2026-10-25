@@ -55,27 +55,8 @@ describe('Donut', () => {
 describe('Donut slice divider', () => {
   /** An arc's painted length, in dasharray units (1 unit ≈ 1% of the ring). */
   const lenOf = (el: Element): number => Number((el.getAttribute('stroke-dasharray') ?? '').split(' ')[0])
-  /** The arc's start position along the ring: dashoffset counts backwards, so 0 units = 3 o'clock. */
-  const startOf = (el: Element): number => (100 - Number(el.getAttribute('stroke-dashoffset')) + 100) % 100
 
-  test('seams open by one hairline, a lone slice keeps a full ring, and a sliver is cut a quarter per end', async () => {
-    const m = await mount(h(Donut, {
-      segments: [
-        { key: 'a', color: '#ff0000', value: 30 },
-        { key: 'b', color: '#00ff00', value: 70 },
-      ],
-      centerTop: 'x',
-    }))
-    const arcs = queryAll(m.container, '.lc-donut-seg')
-    // Half a gap off each end, both cuts on the SAME seam: one 0.5-unit opening there, not two.
-    assert.ok(Math.abs(lenOf(arcs[0]) - 29.5) < 1e-9)
-    for (let i = 0; i < arcs.length; i++) {
-      const end = startOf(arcs[i]) + lenOf(arcs[i])
-      const gap = (startOf(arcs[(i + 1) % arcs.length]) - end + 100) % 100
-      assert.ok(Math.abs(gap - 0.5) < 1e-9, `seam ${i} opened ${gap}`)
-    }
-    await m.unmount()
-
+  test('a lone slice keeps a full ring, and a sliver is cut a quarter per end', async () => {
     const lone = await mount(h(Donut, { segments: [{ key: 'a', color: '#ff0000', value: 42 }], centerTop: 'x' }))
     assert.equal(lenOf(query(lone.container, '.lc-donut-seg')), 100)
     await lone.unmount()

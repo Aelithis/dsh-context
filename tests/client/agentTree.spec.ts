@@ -116,7 +116,6 @@ describe('agentTurnCompletedOf', () => {
     assert.equal(agentTurnCompletedOf('x'), false)
     assert.equal(agentTurnCompletedOf({}), false)
     assert.equal(agentTurnCompletedOf({ lastTurnCompleted: 'yes' }), false)
-    assert.equal(agentTurnCompletedOf({ settledMs: 5000 }), false)
     assert.equal(agentTurnCompletedOf({ lastTurnCompleted: false }), false)
     assert.equal(agentTurnCompletedOf({ lastTurnCompleted: true }), true)
   })

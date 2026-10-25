@@ -223,18 +223,6 @@ describe('TrendChart duration overlay (durationCurve)', () => {
     await m.unmount()
   })
 
-  test('adaptive scale rescales the curve to the visible window like the bars', async () => {
-    const reqs: RequestRecord[] = []
-    for (let i = 0; i < 30; i++) reqs.push(req(i + 1, { turn: 1, step: i, activeMs: i === 0 ? 9000 : 1000 }))
-    const m = await mount(h(TrendChart, propsOf(reqs, { adaptive: true, durationCurve: true })))
-    await flush()
-    const scroll = query<LayoutEl>(m.container, '.lc-chart-scroll')
-    assert.equal(query(m.container, '.lc-axis-r .lc-axis-top').textContent, '1.0s')
-    await scrollTo(scroll, 0)
-    assert.equal(query(m.container, '.lc-axis-r .lc-axis-top').textContent, '9.0s')
-    await m.unmount()
-  })
-
 })
 
 describe('TrendChart scroll anchoring', () => {

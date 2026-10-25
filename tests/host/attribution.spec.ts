@@ -174,8 +174,7 @@ describe('createToolAttribution', () => {
     const app = new Context()
     let calls = 0
     app.provide('tools', { register() { calls++; return () => {} } })
-    const first = createToolAttribution(app)
-    void first
+    createToolAttribution(app)
     // The second hook incarnation (a reload) peels the first wrapper back to the original: a registration
     // records into the NEW hook only, and the original register still runs once.
     const second = createToolAttribution(app)

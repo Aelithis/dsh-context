@@ -165,8 +165,7 @@ describe('opsOfCall — one op per settled call', () => {
     assert.deepEqual(opsOfCall({ seq: 1, tool: 'read', argsRaw: 'not json' }), [])
     assert.deepEqual(opsOfCall({ seq: 1, tool: 'read', argsRaw: JSON.stringify({ no_path: true }) }), [])
     assert.deepEqual(opsOfCall({ seq: 1, tool: 'read', argsRaw: JSON.stringify(['not-a-record']) }), [])
-    assert.deepEqual(opsOfCall({ seq: 1, tool: 'read' }), [], 'no args at all')
-    assert.deepEqual(opsOfCall({ seq: 1, tool: 'str_replace_editor' }), [], 'the editor without args writes nothing listable')
+    assert.deepEqual(opsOfCall({ seq: 1, tool: 'str_replace_editor' }), [], 'no args at all: the editor writes nothing listable')
   })
 
   test('the stamps ride along: err/time/gone/parent/program', () => {

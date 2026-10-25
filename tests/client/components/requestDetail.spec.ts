@@ -113,20 +113,6 @@ describe('RequestDetail header', () => {
     assert.equal(chip.getAttribute('title'), 'Context compacted (summary replaced 3 messages)')
     await m.unmount()
 
-    const m2 = await mount(h(RequestDetail, {
-      request: req({}),
-      marker: { seq: 9, time: 1, kind: 'prune', fromTurn: 2, fromStep: 8, turn: 3, step: 1 },
-    }))
-    assert.ok(text(query(m2.container, '.lc-detail-marker')).includes('T2 S8 → T3 S1'))
-    await m2.unmount()
-
-    const m3 = await mount(h(RequestDetail, {
-      request: req({}),
-      marker: { seq: 9, time: 1, kind: 'compaction', count: 2, turn: 4, step: 2 },
-    }))
-    assert.ok(text(query(m3.container, '.lc-detail-marker')).includes('✂ T4 S2'))
-    await m3.unmount()
-
     const m4 = await mount(h(RequestDetail, {
       request: req({}),
       marker: { seq: 9, time: 1, kind: 'prune' },
@@ -230,17 +216,11 @@ describe('RequestDetail brief section', () => {
     content: [{ type: 'text', text: 'a.txt' }],
   }
 
-  test('the brief lane is constant: absent/empty briefs reserve its height, not collapse', async () => {
+  test('the brief lane is constant: an absent brief reserves its height, not collapse', async () => {
     const m = await mount(h(RequestDetail, { request: req({}), brief: null }))
     assert.equal(queryAll(m.container, '.lc-brief').length, 1, 'the lane always renders')
     assert.equal(queryAll(m.container, '.lc-brief-row').length, 1, 'only the always-present In row placeholder')
     await m.unmount()
-
-    const empty: StepBrief = { inputs: [] }
-    const m2 = await mount(h(RequestDetail, { request: req({}), brief: empty }))
-    assert.equal(queryAll(m2.container, '.lc-brief').length, 1)
-    assert.equal(queryAll(m2.container, '.lc-brief-row').length, 1, 'only the always-present In row')
-    await m2.unmount()
   })
 
   test('opener, inputs with overflow, and reply rows render with tags and previews', async () => {

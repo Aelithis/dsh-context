@@ -79,9 +79,11 @@ function observing(events: unknown): { observeSession(id: string, options: unkno
 
 describe('watchFleetChannel gating', () => {
   test('no route without the connection service or its fetch registry; a rejecting registry keeps it absent without throwing', () => {
-    assert.equal(ctxOf({}).captured.path, undefined)
-    assert.equal(ctxOf({ connection: {} }).captured.path, undefined)
-    assert.equal(ctxOf({ connection: { fetch: {} } }).captured.path, undefined)
+    for (const spec of [{}, { connection: {} }, { connection: { fetch: {} } }]) {
+      const { ctx, captured } = ctxOf(spec)
+      watchFleetChannel(ctx, OPEN_GATE)
+      assert.equal(captured.path, undefined, JSON.stringify(spec))
+    }
     const { captured } = armed()
     assert.equal(captured.path, FLEET_ROUTE)
     const ctx = {

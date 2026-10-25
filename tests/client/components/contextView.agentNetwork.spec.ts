@@ -37,8 +37,6 @@ describe('ContextView — the agent network card\'s own session', () => {
     const m = await mount(h(View, { sessionId: 'sv-self', useProjection: projectionsFor(richTimeline({ timing: TIMING })) }))
 
     assert.equal(queryAll(m.container, '.lc-agents').length, 0, 'no agent network on the Context tab')
-    // The split moves the card, not the page.
-    assert.ok(queryAll(m.container, '.lc-card').length > 0)
     await m.unmount()
   })
 

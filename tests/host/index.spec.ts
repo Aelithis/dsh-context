@@ -161,7 +161,7 @@ describe('dsh-context host plugin', () => {
     assert.equal(liveTools.find(t => t.name === 'bash')?.plugin, '@deepseek-ai/dsh-tool-bash', 'static backbone still applies')
   })
 
-  test('disposing the plugin fiber removes both keys from later snapshots', async () => {
+  test('disposing the plugin fiber removes every projection key from later snapshots', async () => {
     const { ctx, fiber } = await boot()
     const session = ctx.sessions.create()
     appendRealEnvelopes(session)
@@ -171,6 +171,7 @@ describe('dsh-context host plugin', () => {
     const snapshot = ctx.sessionProjections.snapshot(session)
     assert.equal(snapshot.values.contextTimeline, undefined, 'an unloaded plugin reads as capability absence')
     assert.equal(snapshot.values.contextHeaders, undefined)
+    assert.equal(snapshot.values.contextActivity, undefined)
   })
 
   test('the split generation with the detail route live: slim wire head + the endpoint serves the collections', async () => {

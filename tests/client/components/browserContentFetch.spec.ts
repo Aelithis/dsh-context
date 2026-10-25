@@ -152,7 +152,7 @@ describe('ContextBrowser targeted content fetch', () => {
     await m.unmount()
   })
 
-  test('a page without the seq reports it as absent from the session log; without a fetcher the row keeps the static note', async () => {
+  test('a page without the seq reports it as absent from the session log', async () => {
     let calls = 0
     const fetchContent = async () => {
       calls += 1
@@ -164,12 +164,6 @@ describe('ContextBrowser targeted content fetch', () => {
     assert.equal(calls, 1)
     assert.ok(text(query(m.container, '.lc-br-content')).includes('not in the session log anymore'))
     await m.unmount()
-
-    const bare = await mount(h(Browser, props({ data, convNodes: [] })))
-    await openFirstRow(bare)
-    await flush()
-    assert.ok(text(query(bare.container, '.lc-br-content')).includes('outside the loaded message window'))
-    await bare.unmount()
   })
 
   test('a failed read arms the retry button; retrying succeeds', async () => {

@@ -24,15 +24,11 @@ const toolNode = { kind: 'tool', seq: 3, messageId: 'msg-tool' }
 
 describe('ContextJump — seat guards', () => {
   test('a non-string or empty message id renders nothing', async () => {
-    const m1 = await mount(h(Jump, {}))
-    assert.equal(queryAll(m1.container, 'button').length, 0)
-    await m1.unmount()
-    const m2 = await mount(h(Jump, { messageId: '' }))
-    assert.equal(queryAll(m2.container, 'button').length, 0)
-    await m2.unmount()
-    const m3 = await mount(h(Jump, { messageId: 42 }))
-    assert.equal(queryAll(m3.container, 'button').length, 0)
-    await m3.unmount()
+    for (const messageId of [undefined, '', 42]) {
+      const m = await mount(h(Jump, { messageId }))
+      assert.equal(queryAll(m.container, 'button').length, 0)
+      await m.unmount()
+    }
   })
 
   test('renders the labelled icon button for a finalized reply; a click with no served node seat switches tabs and mints no focus', async () => {

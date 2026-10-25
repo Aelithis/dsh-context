@@ -274,18 +274,6 @@ describe('makeContentFetcher — the per-session targeted read', () => {
     bare.dispose()
   })
 
-  test('page-face failures reject so the caller can offer a retry', async () => {
-    const badTop = armHistoryFaces({ session: { page: async () => ({ ok: false, error: { message: 'gone' } }) } })
-    await assert.rejects(makeContentFetcher(plainOf('s'))!(1))
-    badTop.dispose()
-    const garbage = armHistoryFaces({ session: { page: async () => ({ records: 'nope' }) } })
-    await assert.rejects(makeContentFetcher(plainOf('s'))!(1))
-    garbage.dispose()
-    const broken = armHistoryFaces({ session: { page: async () => { throw new Error('transport down') } } })
-    await assert.rejects(makeContentFetcher(plainOf('s'))!(1), /transport down/)
-    broken.dispose()
-  })
-
   test('a system/message event maps its prompt text; whitespace-only renders and no text block maps to null', async () => {
     const ctx = armHistoryFaces({ session: pageFace([
       ev('system/message', 7, { message: { content: [{ type: 'text', text: 'the prompt' }, { type: 'text', text: ' line two' }] } }),

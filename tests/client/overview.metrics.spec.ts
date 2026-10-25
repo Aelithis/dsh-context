@@ -62,6 +62,11 @@ describe('usageTotalsOf', () => {
 })
 
 describe('timingSumOf', () => {
+  const SUM = {
+    wallMs: 150, ttftMs: 15, genMs: 90, calls: 3, toolsMs: 40, toolCalls: 4,
+    tools: { read: { calls: 3, ms: 25 }, write: { calls: 1, ms: 10 } },
+  }
+
   test('no timing anywhere reads null; otherwise the required fields sum and per-tool tallies merge untouched', () => {
     assert.equal(timingSumOf([]), null)
     assert.equal(timingSumOf([rowOf()]), null)
@@ -72,23 +77,15 @@ describe('timingSumOf', () => {
       rowOf({ timeline: { timing: a } as unknown as ContextTimeline }),
       rowOf({ timeline: { timing: b } as unknown as ContextTimeline }),
     ])
-    assert.deepEqual(sum, {
-      wallMs: 150, ttftMs: 15, genMs: 90, calls: 3, toolsMs: 40, toolCalls: 4,
-      tools: { read: { calls: 3, ms: 25 }, write: { calls: 1, ms: 10 } },
-    })
+    assert.deepEqual(sum, SUM)
     assert.deepEqual(a.tools.read, { calls: 2, ms: 20 })
-    assert.equal('reasoningMs' in (sum as object), false)
-    assert.equal('speedMs' in (sum as object), false)
   })
 
   test('folds every family member — a null self and the dispatched subagents alike', () => {
     const self = { wallMs: 100, ttftMs: 10, genMs: 60, calls: 2, toolsMs: 30, toolCalls: 3, tools: { read: { calls: 2, ms: 20 } } }
     const kid = { wallMs: 50, ttftMs: 5, genMs: 30, calls: 1, toolsMs: 10, toolCalls: 1, tools: { read: { calls: 1, ms: 5 }, write: { calls: 1, ms: 10 } } }
     const sum = timingSumOf([rowOf({ family: [null, { timing: self }, { timing: kid }] as unknown as ContextTimeline[] })])
-    assert.deepEqual(sum, {
-      wallMs: 150, ttftMs: 15, genMs: 90, calls: 3, toolsMs: 40, toolCalls: 4,
-      tools: { read: { calls: 3, ms: 25 }, write: { calls: 1, ms: 10 } },
-    })
+    assert.deepEqual(sum, SUM)
   })
 
   test('the additive-optional fields sum their carriers only', () => {

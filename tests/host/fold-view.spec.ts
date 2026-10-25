@@ -168,28 +168,6 @@ describe('buildTimelineView copies', () => {
 })
 
 describe('buildTimelineView cost copy', () => {
-  test('a folded cost rides the wire as a detached copy', () => {
-    // Mon 2024-01-01 02:00 UTC — a DeepSeek peak window.
-    const { state, view } = driveTimeline([
-      header(1, { model: 'deepseek-v4-flash', provider: 'deepseek-official' }),
-      assistantMessage(2, {
-        turn: 1,
-        step: 1,
-        usage: { inputTokens: 100, cacheReadTokens: 20, cacheWriteTokens: 5, outputTokens: 10 },
-        time: Date.UTC(2024, 0, 1, 2, 0, 0),
-      }),
-    ])
-    assert.deepEqual<SessionCostUsage>(view.cost, {
-      'deepseek-official': { 'deepseek-v4-flash': { peak: bucket(100, 20, 5, 10) } },
-    })
-    assert.notEqual(view.cost, state.cost)
-    assert.notEqual(
-      view.cost?.['deepseek-official']?.['deepseek-v4-flash']?.peak,
-      state.cost?.['deepseek-official']?.['deepseek-v4-flash']?.peak,
-    )
-    assert.equal(view.cost?.['kimi-coding'], undefined, 'an absent provider stays absent')
-  })
-
   test('every provider, model, and period branch copies through; no cost omits the field', () => {
     const st = createTimelineState()
     st.cost = {

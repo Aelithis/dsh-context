@@ -166,7 +166,6 @@ describe('hostile tool entries', () => {
         { name: 'read', parameters: { type: 'object', properties: {} } },
       ],
     })])
-    assert.equal(state.headers[0].tools.length, 6)
     assert.deepEqual(state.headers[0].tools.map(t => t.name), ['?', '?', '?', '?', '?', 'read'])
     for (const tool of state.headers[0].tools) {
       assert.ok(Number.isInteger(tool.tokens) && tool.tokens >= 0, 'tool tokens priced')

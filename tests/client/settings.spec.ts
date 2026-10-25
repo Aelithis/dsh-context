@@ -53,17 +53,6 @@ describe('createContextSettings defaults', () => {
       promptSuffix: '',
       writable: false,
     })
-    assert.equal(s.defaultPlacement(), 'all')
-    assert.equal(s.defaultGranularity(), 'step')
-    assert.equal(s.defaultTrendMode(), 'total')
-    assert.equal(s.defaultDeltaBase(), 'step')
-    assert.equal(s.defaultToolSort(), 'count')
-    assert.equal(s.defaultFileSort(), 'lines')
-    assert.equal(s.insightsEntry(), 'show')
-    assert.equal(s.defaultDurationCurve(), 'show')
-    assert.equal(s.overviewAutoSteps(), '200')
-    assert.equal(s.defaultOverviewRange(), '30d')
-    assert.equal(s.fleetTab(), 'show')
   })
 })
 

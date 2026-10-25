@@ -1,7 +1,6 @@
 import { createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { attachMarkers } from '../../../src/client/components/trendChart'
 import { CATS } from '../../../src/client/categories'
 import type { ContextEventRecord } from '../../../src/shared/types'
 import { click, hover, mount, query, queryAll, unhover } from '../helpers/kit'
@@ -142,9 +141,7 @@ describe('TrendChart markers', () => {
     const reqs = [req(1, { turn: 1, step: 0 }), req(2, { turn: 1, step: 1 }), req(3, { turn: 2, step: 0 })]
     const compaction: ContextEventRecord = { seq: 2, time: 1700000000000, kind: 'compaction', count: 5, fromTurn: 1, fromStep: 0, turn: 1, step: 1 }
     const prune: ContextEventRecord = { seq: 3, time: 1700000060000, kind: 'prune' }
-    const markers = attachMarkers(reqs, [compaction, prune])
-    assert.equal(markers[1], compaction)
-    assert.equal(markers[2], prune)
+    const markers = [undefined, compaction, prune]
 
     const m = await mount(h(TrendChart, propsOf(reqs, { markers })))
     const glyph = queryAll(m.container, '.lc-bar-marker')

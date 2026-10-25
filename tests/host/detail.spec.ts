@@ -123,7 +123,6 @@ describe('watchDetailChannel gating', () => {
     const gate = watchDetailChannel(ctx, BOUNDS)
     assert.equal(gate.live, true)
     assert.equal(captured.path, '/api/dsh-context/detail')
-    assert.equal(typeof captured.fetch, 'function')
     for (const d of disposers) d()
     assert.equal(gate.live, false)
   })

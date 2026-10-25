@@ -104,9 +104,7 @@ describe('skills route registration', () => {
     })
     assert.doesNotThrow(() => watchSkillCatalog(rejecting.ctx))
     assert.equal(rejecting.captured.fetch, undefined)
-    const mounted = armed({ skills: registryOf(ROWS) })
-    assert.equal(mounted.path, SKILLS_ROUTE)
-    assert.equal(typeof mounted.fetch, 'function')
+    assert.equal(armed({ skills: registryOf(ROWS) }).path, SKILLS_ROUTE)
   })
 })
 
