@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, test, vi } from 'vitest'
 import { makeCommandPanel } from '../../../src/client/components/commandPanel'
 import { rowWindowFor } from '../../../src/client/components/useRowWindow'
 import type { Command } from '../../../src/client/commands'
-import { makeKit, mount, query, queryAll, text, until } from '../helpers/kit'
+import { click, fireScroll, makeKit, mount, query, queryAll, settle, text, typeText, until } from '../helpers/kit'
 
 const Panel = makeCommandPanel(makeKit())
 
@@ -72,13 +72,6 @@ function commandsOf(count: number): Command[] {
   }))
 }
 
-async function typeSearch(container: ParentNode, value: string): Promise<void> {
-  const input = query<HTMLInputElement>(container, 'input.lc-fa-search')
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-  setter?.call(input, value)
-  input.dispatchEvent(new Event('input', { bubbles: true }))
-}
-
 describe('CommandPanel row windowing', () => {
   test('renders a measured window with full-height pads and follows the scroll', async () => {
     const m = await mount(h(Panel, { commands: commandsOf(120), workspace: '/repo' }))
@@ -91,8 +84,8 @@ describe('CommandPanel row windowing', () => {
       assert.equal(bottomOnly.style.height, `${(119 - start.to) * PITCH - GAP}px`)
 
       list.scrollTop = 900
-      await new Promise(resolve => setTimeout(resolve, 40))
-      list.dispatchEvent(new Event('scroll'))
+      await settle(40)
+      await fireScroll(list)
       await until(() => queryAll<HTMLElement>(m.container, '.lc-row-pad').length === 2, 'a top pad appears after scrolling')
       const mid = rowWindowFor(900, 320, PITCH, 120)
       assert.equal(queryAll(m.container, '.lc-cmd-item').length, mid.to - mid.from + 1)
@@ -117,7 +110,7 @@ describe('CommandPanel row windowing', () => {
       arrange()
       const m = await mount(h(Panel, { commands: commandsOf(120), workspace: '/repo' }))
       try {
-        await new Promise(resolve => setTimeout(resolve, 40))
+        await settle(40)
         assert.equal(queryAll(m.container, '.lc-cmd-item').length, 120)
         assert.equal(queryAll(m.container, '.lc-row-pad').length, 0)
       } finally {
@@ -133,26 +126,26 @@ describe('CommandPanel row windowing', () => {
     const list = query<HTMLElement>(m.container, '.lc-cmd-list')
     await until(() => queryAll(m.container, '.lc-cmd-item').length < 120, 'windowed')
     list.scrollTop = 900
-    await new Promise(resolve => setTimeout(resolve, 40))
-    list.dispatchEvent(new Event('scroll'))
+    await settle(40)
+    await fireScroll(list)
     await until(() => queryAll<HTMLElement>(m.container, '.lc-row-pad').length === 2, 'scrolled mid-list')
-    query<HTMLElement>(m.container, '.lc-cmd-row').click()
+    await click(query<HTMLElement>(m.container, '.lc-cmd-row'))
     await until(() => queryAll(m.container, '.lc-cmd-item').length === 120, 'the expanded row shows the full list')
-    query<HTMLElement>(m.container, '.lc-cmd-item-on .lc-cmd-row').click()
+    await click(query<HTMLElement>(m.container, '.lc-cmd-item-on .lc-cmd-row'))
     await until(() => queryAll(m.container, '.lc-cmd-item').length < 120, 'closing the row re-windows')
     await m.unmount()
 
     const early = await mount(h(Panel, { commands: commandsOf(4), workspace: '/repo' }))
-    query<HTMLElement>(early.container, '.lc-cmd-row').click()
+    await click(query<HTMLElement>(early.container, '.lc-cmd-row'))
     await until(() => early.container.querySelector('.lc-cmd-detail') !== null, 'the row expands')
     await early.update(h(Panel, { commands: commandsOf(120), workspace: '/repo' }))
-    await new Promise(resolve => setTimeout(resolve, 30))
+    await settle(30)
     assert.equal(queryAll(early.container, '.lc-cmd-item').length, 120, 'no windowing while a row is open')
     assert.equal(queryAll(early.container, '.lc-row-pad').length, 0)
     const openRow = queryAll<HTMLElement>(early.container, '.lc-cmd-row')
       .find(row => query<HTMLElement>(row, '.lc-cmd-cmd').textContent?.endsWith('item-3') === true)
     assert.ok(openRow !== undefined)
-    openRow.click()
+    await click(openRow)
     await until(() => queryAll(early.container, '.lc-cmd-item').length < 120, 'closing the row measures and windows')
     await early.unmount()
   })
@@ -161,10 +154,10 @@ describe('CommandPanel row windowing', () => {
     const commands = commandsOf(120).map((rec, i) => ({ ...rec, cmd: `${i % 2 === 0 ? 'echo alpha' : 'echo beta'}-${i}` }))
     const m = await mount(h(Panel, { commands, workspace: '/repo' }))
     await until(() => queryAll(m.container, '.lc-cmd-item').length < 120, 'windowed')
-    await typeSearch(m.container, 'alpha')
+    await typeText(query<HTMLInputElement>(m.container, 'input.lc-fa-search'), 'alpha')
     await until(() => queryAll(m.container, '.lc-cmd-item').length === 60, 'all sixty matches render')
     assert.equal(queryAll(m.container, '.lc-row-pad').length, 0)
-    await typeSearch(m.container, '')
+    await typeText(query<HTMLInputElement>(m.container, 'input.lc-fa-search'), '')
     await until(() => queryAll(m.container, '.lc-cmd-item').length < 120, 'clearing restores the window')
     await m.unmount()
   })
@@ -181,8 +174,8 @@ describe('CommandPanel row windowing', () => {
     }
     check(rowWindowFor(0, 320, PITCH, 120).from)
     list.scrollTop = PITCH * 21
-    await new Promise(resolve => setTimeout(resolve, 40))
-    list.dispatchEvent(new Event('scroll'))
+    await settle(40)
+    await fireScroll(list)
     await until(() => queryAll<HTMLElement>(m.container, '.lc-row-pad').length === 2, 'scrolled past the overscan')
     check(rowWindowFor(PITCH * 21, 320, PITCH, 120).from)
     await m.unmount()
@@ -193,10 +186,10 @@ describe('CommandPanel row windowing', () => {
     const list = query<HTMLElement>(m.container, '.lc-cmd-list')
     await until(() => queryAll(m.container, '.lc-cmd-item').length < 120, 'windowed')
     list.scrollTop = 3000
-    await new Promise(resolve => setTimeout(resolve, 40))
-    list.dispatchEvent(new Event('scroll'))
+    await settle(40)
+    await fireScroll(list)
     await until(() => queryAll<HTMLElement>(m.container, '.lc-row-pad').length === 2, 'scrolled mid-list')
-    await typeSearch(m.container, 'item-119')
+    await typeText(query<HTMLInputElement>(m.container, 'input.lc-fa-search'), 'item-119')
     await until(() => queryAll(m.container, '.lc-cmd-item').length === 1, 'the one match renders')
     assert.equal(queryAll(m.container, '.lc-row-pad').length, 0)
     await m.unmount()

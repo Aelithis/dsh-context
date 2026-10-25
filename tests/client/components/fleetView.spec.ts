@@ -1,4 +1,4 @@
-import { createElement as h } from 'react'
+import { act, createElement as h } from 'react'
 import assert from 'node:assert/strict'
 import { afterEach, describe, test, vi } from 'vitest'
 import { makeFleetView } from '../../../src/client/components/fleetView'
@@ -114,7 +114,7 @@ describe('FleetView — the agent family on its own page', () => {
     const ctx = new TestClientCtx({ services: { sessions: { list: { getSnapshot: (): unknown => snapshot, subscribe: (): (() => void) => () => {} } } } })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: id, useProjection: projectionsFor(richTimeline({ timing: TIMING })) }))
-    requestFleetMemberFocus(id, 'worker')
+    await act(async () => { requestFleetMemberFocus(id, 'worker') })
     await until(() => query(m.container, '[data-agent="worker"]').classList.contains('lc-agent-hover'), 'the relay never lit the member')
     assert.equal(currentFleetMemberFocus(id), 'worker', 'the resting pick is shared')
     await m.unmount()

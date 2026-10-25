@@ -76,6 +76,20 @@ export async function flush(): Promise<void> {
   await act(async () => {})
 }
 
+/** Let timer-driven work land inside act, so React attributes the update to the test. */
+export async function settle(ms: number): Promise<void> {
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, ms))
+  })
+}
+
+/** Fire a scroll event inside act (jsdom never fires one from `scrollTop`). */
+export async function fireScroll(el: HTMLElement): Promise<void> {
+  await act(async () => {
+    el.dispatchEvent(new Event('scroll'))
+  })
+}
+
 /** Poll until the predicate holds, one short act() scope per tick, so timer/promise updates are
  * act-attributed and committed before the next check. `message` labels the give-up failure. */
 export async function until(fn: () => boolean, message: string): Promise<void> {

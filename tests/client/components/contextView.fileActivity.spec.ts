@@ -5,7 +5,7 @@ import { DICT_EN } from '../../../src/client/i18n'
 import type { UseChatLike } from '../../../src/client/services'
 import type { ContextTimeline } from '../../../src/shared/types'
 import { TestClientCtx } from '../helpers/harness'
-import { click, flush, hover, mount, query, queryAll, text, unhover, until } from '../helpers/kit'
+import { click, flush, hover, mount, query, queryAll, settle, text, unhover, until } from '../helpers/kit'
 import { buttonByText, makeView, projectionsFor, T0, timeline } from './contextViewHarness'
 
 describe('ContextView — file activity card', () => {
@@ -89,9 +89,9 @@ describe('ContextView — file activity card', () => {
     // DNA mode waits for the pointer to rest before updating the preview.
     await click(buttonByText(m.container, DICT_EN['trend.dna']))
     await hover(query(m.container, '.lc-bar[data-seq="2"]'))
-    await new Promise(resolve => setTimeout(resolve, 80))
+    await settle(80)
     assert.ok(text(card).includes('−2'), 'the cross-card preview stays on the latest scope')
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await settle(300)
     assert.ok(!text(card).includes('−2'))
     await m.unmount()
   })

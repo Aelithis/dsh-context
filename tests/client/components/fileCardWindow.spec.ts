@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, test, vi } from 'vitest'
 import { makeFileCard } from '../../../src/client/components/fileCard'
 import type { FileActivity, FileEntry, FileOp } from '../../../src/client/fileActivity'
 import { createContextSettings } from '../../../src/client/settings'
-import { makeKit, mount, query, queryAll, until } from '../helpers/kit'
+import { click, fireScroll, makeKit, mount, query, queryAll, settle, until } from '../helpers/kit'
 
 const kit = makeKit()
 const FileCard = makeFileCard(kit, createContextSettings())
@@ -102,8 +102,8 @@ describe('FileCard row windowing', () => {
     assert.ok(Number.parseFloat(pads[0].style.height) > 0)
     assert.equal(list.clientHeight, 320) // the list keeps its box; the full height lives in the pads
     list.scrollTop = 900
-    await new Promise(resolve => setTimeout(resolve, 40))
-    list.dispatchEvent(new Event('scroll'))
+    await settle(40)
+    await fireScroll(list)
     await until(() => queryAll<HTMLElement>(m.container, '.lc-row-pad').length === 2, 'a top pad appears after scrolling')
     const afterScroll = queryAll(m.container, '.lc-fa-item').length
     assert.ok(afterScroll < 60 && afterScroll >= 8)
@@ -130,9 +130,9 @@ describe('FileCard row windowing', () => {
     const m = await mount(h(FileCard, props))
     await until(() => queryAll(m.container, '.lc-fa-item').length < 60, 'windowed')
     const first = query<HTMLElement>(m.container, '.lc-fa-row')
-    first.click()
+    await click(first)
     await until(() => queryAll(m.container, '.lc-fa-item').length === 60, 'expanded row shows the full list')
-    first.click()
+    await click(first)
     await until(() => queryAll(m.container, '.lc-fa-item').length < 60, 'closing the row re-windows')
     await m.unmount()
   })
