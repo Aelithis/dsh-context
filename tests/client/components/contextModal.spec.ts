@@ -45,7 +45,7 @@ afterEach(() => {
 })
 
 describe('ContextModal', () => {
-  test('renders null without a useContextModal hook or while closed', async () => {
+  test('renders null without a useContextModal hook or while closed, without reading the session', async () => {
     const ctx = new TestClientCtx({ services: { sessions: new TestSessions() } })
     const ContextModal = makeContextModal(asClientCtx(ctx), kit, settings)
 
@@ -53,12 +53,23 @@ describe('ContextModal', () => {
     assert.equal(m1.container.childElementCount, 0)
     await m1.unmount()
 
+    const closedProjection = vi.fn(() => timeline())
     const m2 = await mount(h(ContextModal, {
       sessionId: 'sm-closed',
       useContextModal: () => false,
-      useProjection: () => timeline(),
+      useProjection: closedProjection,
     }))
     assert.equal(m2.container.childElementCount, 0)
+    assert.equal(closedProjection.mock.calls.length, 0, 'a closed modal never mounts the detail reader')
+
+    const openProjection = vi.fn(() => timeline())
+    await m2.update(h(ContextModal, {
+      sessionId: 'sm-closed',
+      useContextModal: OPEN,
+      useProjection: openProjection,
+    }))
+    assert.ok(openProjection.mock.calls.length > 0, 'opening mounts the detail reader')
+    assert.ok(m2.container.querySelector('.lc-modal-backdrop') !== null)
     await m2.unmount()
   })
 

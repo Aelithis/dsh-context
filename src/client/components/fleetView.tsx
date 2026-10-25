@@ -26,6 +26,7 @@ import { FleetSummary } from './fleetSummary'
 import { MemberBoard } from './memberBoard'
 import { TaskBoard } from './taskBoard'
 import { makeUpgradeGate } from './upgradeGate'
+import { useConversationSurface } from './useConversationSurface'
 
 export function makeFleetView(
   ctx: ClientCtx,
@@ -43,6 +44,7 @@ export function makeFleetView(
     const sessionId = typeof props.sessionId === 'string' ? props.sessionId : undefined
     const { source, data, pressure, breakdown, usage } = useContextSession(props)
     const rootRef = useRef<HTMLDivElement | null>(null)
+    useConversationSurface(rootRef)
     // Re-claim the top per session in a layout effect: the harness carries the chat's bottom-anchored scrollTop across
     // tab switches, and no saved position would survive the page's late layout passes.
     useLayoutEffect(() => {

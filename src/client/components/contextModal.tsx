@@ -13,6 +13,7 @@ import { contextBreakdownOf, contextPressureOf, conversationNodesOf, headersOf, 
 import { makeContentFetcher, makeHeaderFetcher, useHistoryFace } from '../historyPage'
 import { useTimelineSource } from '../timelineSource'
 import type { ViewKit } from '../viewkit'
+import { useConversationSurface } from './useConversationSurface'
 import { makeContextBrowser } from './browser'
 import { makeCurrentComposition } from './currentComposition'
 import { makeDetailNote } from './detailNote'
@@ -45,20 +46,26 @@ export function makeContextModal(
     return typeof locale.getLocale === 'function' ? locale.getLocale().active : 'en'
   }
 
-  function ContextModalBody(props: ContextModalProps): ReactElement | null {
-    const sessionId = typeof props.sessionId === 'string' ? props.sessionId : ''
+  /** Reads the open flag without mounting the reader: a closed modal must not subscribe to or fetch session data. */
+  function ContextModalGate(props: ContextModalProps): ReactElement | null {
     const open = typeof props.useContextModal === 'function' ? props.useContextModal(s => s) : false
+    return open ? h(ContextModalBody, props) : null
+  }
+
+  /** Mounted only while open. */
+  function ContextModalBody(props: ContextModalProps): ReactElement {
+    const sessionId = typeof props.sessionId === 'string' ? props.sessionId : ''
     // Shares the tab's per-session detail store, so an open tab's detail serves the modal with no refetch.
     const source = useTimelineSource(props)
     const data = source.data
     const pressure = projectionOf(props, 'contextPressure', contextPressureOf)
     const breakdown = projectionOf(props, 'contextBreakdown', contextBreakdownOf)
     const headers = projectionOf(props, 'contextHeaders', headersOf)
-    // Read unconditionally, before the closed early return, so hook order stays stable across open/close.
     const convNodes = conversationNodesOf(props)
     const [hoverCat, setHoverCat] = useState<string | null>(null)
     const [dock, setDock] = useState({ left: 0, right: 0 })
     const backdropRef = useRef<HTMLDivElement | null>(null)
+    useConversationSurface(backdropRef, 'modal')
     const loadImage = useMemo(
       () => imageLoaderOf(ctx, sessionId !== '' ? sessionId : undefined),
       [ctx, sessionId],
@@ -95,12 +102,11 @@ export function makeContextModal(
       if (scope !== undefined) scope.bail(scope, 'slash/input-consume-token', { guard })
     }, [ctx, sessionId])
 
-    useEscapeClose(open, close)
+    useEscapeClose(true, close)
 
     // The sidebar tracks are measured once before first paint, then followed while open: drags, collapse toggles, and
     // narrow-viewport re-solves all rewrite the frame's inline template.
     useLayoutEffect(() => {
-      if (!open) return undefined
       const dock = measureDock(backdropRef.current)
       setDock({ left: dock.left, right: dock.right })
       if (dock.frame === null) return undefined
@@ -110,9 +116,7 @@ export function makeContextModal(
       })
       observer.observe(dock.frame, { attributes: true, attributeFilter: ['style'] })
       return () => { observer.disconnect() }
-    }, [open])
-
-    if (!open) return null
+    }, [])
 
     const head = data !== null ? headlineOf(data, pressure, breakdown) : null
     const subtitle = data !== null ? providerModelLabelOf(data.provider, data.model, data.reasoningEffort) : ''
@@ -161,6 +165,6 @@ export function makeContextModal(
   }
 
   return function ContextModal(props: ContextModalProps): ReactElement | null {
-    return h(ErrorBoundary, null, h(ContextModalBody, props))
+    return h(ErrorBoundary, null, h(ContextModalGate, props))
   }
 }
