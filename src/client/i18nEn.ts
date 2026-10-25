@@ -75,8 +75,6 @@ export const DICT_EN = {
   'stats.costOut': 'Output',
   'stats.costUnavailable': 'Model prices are unavailable (retrying automatically) — the cost cannot be estimated yet.',
   'timing.title': 'Timing Stats',
-  'timing.scope': 'session lifetime',
-  'timing.scopeTeam': 'team lifetime',
   'timing.total': 'Active Time',
   'timing.ttft': 'TTFT',
   'timing.gen': 'LLM Gen',

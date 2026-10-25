@@ -72,8 +72,6 @@ export const DICT_ZH = {
   'stats.costOut': '输出',
   'stats.costUnavailable': '模型价格暂不可用（自动重试中），费用暂无法估算。',
   'timing.title': '耗时统计',
-  'timing.scope': '会话累计',
-  'timing.scopeTeam': '团队累计',
   'timing.total': '活跃时长',
   'timing.ttft': '模型等待',
   'timing.gen': '模型生成',
