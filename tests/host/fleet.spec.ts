@@ -330,9 +330,161 @@ describe('fleetDetailOfEvents — inter-agent messages', () => {
     ])
     assert.deepEqual(detail.messages, [
       { seq: 3, time: 30, kind: 'relay', from: 'lead-1', text: 'how far along?' },
-      { seq: 2, time: 20, kind: 'settled', from: 'w-2', text: 'child finished' },
+      { seq: 2, time: 20, kind: 'settled', from: 'w-2', text: 'child finished', summary: 'child finished' },
       { seq: 1, time: 10, kind: 'mailbox', from: 'w-1', fromName: 'worker', text: 'done' },
     ])
+  })
+
+  test('a Team relay framing line attests the sender name the source id alone cannot', () => {
+    const detail = fleetDetailOfEvents([
+      { type: 'user/message', seq: 1, time: 10, data: { source: { kind: 'agent-message', form: 'relay', senderSessionId: 'w-1' }, content: [{ type: 'text', text: 'Team message from host-cleaner:task-2 is done' }] } },
+    ])
+    assert.deepEqual(detail.messages, [
+      { seq: 1, time: 10, kind: 'relay', from: 'w-1', fromName: 'host-cleaner', text: 'task-2 is done' },
+    ])
+  })
+
+  test('a settled notice splits its summary, closing report, structured result, and diagnostic', () => {
+    const summary = 'Background subagent w-2 finished and will do no further work unless you send it more.'
+    const detail = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{
+            type: 'text',
+            text: `${summary}Its closing message:All gates green {but not the end}.\nStructured result: {"ok":true,"note":"a } brace"}provider diagnostic tail`,
+          }],
+        },
+      },
+    ])
+    assert.deepEqual(detail.messages, [{
+      seq: 1,
+      time: 10,
+      kind: 'settled',
+      from: 'w-2',
+      text: `${summary}Its closing message:All gates green {but not the end}.\nStructured result: {"ok":true,"note":"a } brace"}provider diagnostic tail`,
+      summary,
+      report: 'All gates green {but not the end}.',
+      structured: '{"ok":true,"note":"a } brace"}',
+      diagnostic: 'provider diagnostic tail',
+    }])
+  })
+
+  test('the structured result keeps nested braces and escaped characters, and its tail is diagnostic', () => {
+    const summary = 'Background subagent w-2 finished and will do no further work unless you send it more.'
+    const structured = JSON.stringify({ note: 'a "quoted" \\ path', nested: { x: 1 } })
+    const detail = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: `${summary}Its closing message:done.Structured result: ${structured}tail` }],
+        },
+      },
+    ])
+    assert.equal(detail.messages[0]?.structured, structured)
+    assert.equal(detail.messages[0]?.diagnostic, 'tail')
+  })
+
+  test('a non-JSON or unterminated structured tail stays whole without inventing a diagnostic', () => {
+    const summary = 'Background subagent w-2 finished and will do no further work unless you send it more.'
+    for (const [tail, expected] of [
+      ['not-json', 'not-json'],
+      ['[1,2]', '[1,2]'],
+      ['{"a":1', '{"a":1'],
+    ] as const) {
+      const detail = fleetDetailOfEvents([
+        {
+          type: 'user/message',
+          seq: 1,
+          time: 10,
+          data: {
+            source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+            content: [{ type: 'text', text: `${summary}Structured result: ${tail}` }],
+          },
+        },
+      ])
+      assert.equal(detail.messages[0]?.structured, expected)
+      assert.equal(detail.messages[0]?.diagnostic, undefined)
+    }
+  })
+
+  test('the no-closing markers leave no report; a long closing report clips and flags the row', () => {
+    const summary = 'Background subagent w-2 finished and will do no further work unless you send it more.'
+    const noClosing = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: `${summary}It left no closing message.` }],
+        },
+      },
+    ])
+    assert.equal(noClosing.messages[0]?.report, undefined)
+    const omitted = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: `${summary}It sent you a message just before finishing, so its closing message is omitted.` }],
+        },
+      },
+    ])
+    assert.equal(omitted.messages[0]?.report, undefined)
+    const clipped = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: `${summary}Its closing message:${'r'.repeat(500)}` }],
+        },
+      },
+    ])
+    assert.equal(clipped.messages[0]?.report?.length, 401)
+    assert.equal(clipped.messages[0]?.clipped, true)
+    assert.equal(clipped.truncated, true)
+    const longSummary = 'Background subagent ' + 's'.repeat(500)
+    const summaryCut = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary: longSummary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: longSummary }],
+        },
+      },
+    ])
+    assert.equal(summaryCut.messages[0]?.summary?.length, 401)
+    assert.equal(summaryCut.messages[0]?.clipped, true)
+  })
+
+  test('leading whitespace before the attested summary does not shift the report split', () => {
+    const summary = 'Background subagent w-2 finished and will do no further work unless you send it more.'
+    const detail = fleetDetailOfEvents([
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 10,
+        data: {
+          source: { kind: 'subagent-settled', form: 'notice', summary, senderSessionId: 'w-2' },
+          content: [{ type: 'text', text: `\n  ${summary}Its closing message:clean report.` }],
+        },
+      },
+    ])
+    assert.equal(detail.messages[0]?.summary, summary)
+    assert.equal(detail.messages[0]?.report, 'clean report.')
   })
 
   test('a settled notice without a summary falls back to its content; empty text drops the row', () => {
@@ -348,8 +500,8 @@ describe('fleetDetailOfEvents — inter-agent messages', () => {
     ])
   })
 
-  test('long texts clip, and the list caps at the newest 40', () => {
-    const events = Array.from({ length: 45 }, (_, i) => ({
+  test('long texts clip, the list caps at the newest 80, and a total counts what was hidden', () => {
+    const events = Array.from({ length: 85 }, (_, i) => ({
       type: 'user/message',
       seq: i + 1,
       time: i + 1,
@@ -357,10 +509,27 @@ describe('fleetDetailOfEvents — inter-agent messages', () => {
     }))
     events.push({ type: 'user/message', seq: 99, time: 99, data: { source: { kind: 'agent-message', senderSessionId: 'x' }, content: [{ type: 'text', text: 'y'.repeat(500) }] } })
     const detail = fleetDetailOfEvents(events)
-    assert.equal(detail.messages.length, 40)
+    assert.equal(detail.messages.length, 80)
     assert.equal(detail.messages[0].seq, 99)
     assert.equal(detail.messages[0].text.length, 401)
+    assert.equal(detail.messages[0].clipped, true)
+    assert.equal(detail.messagesTotal, 86)
     assert.equal(detail.truncated, true)
+  })
+
+  test('a full read lifts the message text and list caps without losing the totals', () => {
+    const events = Array.from({ length: 85 }, (_, i) => ({
+      type: 'user/message',
+      seq: i + 1,
+      time: i + 1,
+      data: { source: { kind: 'agent-message', senderSessionId: 'x' }, content: [{ type: 'text', text: 'z'.repeat(500) }] },
+    }))
+    const full = fleetDetailOfEvents(events, true)
+    assert.equal(full.messages.length, 85)
+    assert.equal(full.messages[0].text.length, 500)
+    assert.equal(full.messages[0].clipped, undefined)
+    assert.equal(full.messagesTotal, undefined)
+    assert.equal(full.truncated, false)
   })
 
   test('non-finite seq/time zero out rather than reject the row', () => {

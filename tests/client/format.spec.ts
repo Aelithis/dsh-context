@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { cacheHitPercent, fmt, fmtBytes, fmtDuration, fmtShare, fmtTime } from '../../src/client/format'
+import { cacheHitPercent, fmt, fmtBytes, fmtDateTime, fmtDuration, fmtShare, fmtTime } from '../../src/client/format'
 
 describe('fmt', () => {
   test('missing/NaN input shows the dash', () => {
@@ -65,6 +65,13 @@ describe('fmtTime', () => {
 
   test('valid timestamps format as 24-hour HH:MM:SS', () => {
     assert.match(fmtTime(1000), /^\d{2}:\d{2}:\d{2}$/)
+  })
+})
+
+describe('fmtDateTime', () => {
+  test('invalid dates show the dash; valid instants carry the full date and time', () => {
+    assert.equal(fmtDateTime(NaN), '—')
+    assert.match(fmtDateTime(1000), /^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}:\d{2}$/)
   })
 })
 

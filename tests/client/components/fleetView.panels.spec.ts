@@ -29,17 +29,18 @@ const TEAM_PROJECTION = {
   ],
 }
 
-/** A stable-snapshot sessions face (useSyncExternalStore loops on a fresh object per read). */
-function familySessions() {
+/** A stable-snapshot sessions face (useSyncExternalStore loops on a fresh object per read). A caller may lift the
+ * change stamps past an earlier test's page-scope detail ledger. */
+function familySessions(base = 10) {
   const snapshot = {
     byId: {
-      root: { displayTitle: 'Main Agent', running: true, updatedAt: 10, projectionValues: { agentTeam: TEAM_PROJECTION } },
+      root: { displayTitle: 'Main Agent', running: true, updatedAt: base, projectionValues: { agentTeam: TEAM_PROJECTION } },
       w1: {
-        parentId: 'root', origin: 'subagent', running: true, updatedAt: 8,
+        parentId: 'root', origin: 'subagent', running: true, updatedAt: base - 2,
         projectionValues: { subagent: { mode: 'continuable', label: 'worker-bee' }, subagentTiming: { settledMs: 42000 } },
       },
       w2: {
-        parentId: 'root', origin: 'subagent', running: false, updatedAt: 6,
+        parentId: 'root', origin: 'subagent', running: false, updatedAt: base - 4,
         projectionValues: { subagent: { mode: 'one-shot', label: 'side-quest' }, subagentTiming: { settledMs: 9000, lastTurnCompleted: true } },
       },
     },
@@ -144,7 +145,7 @@ describe('FleetView — the panels over one family', () => {
     assert.ok(text(board).includes(DICT_EN['fleet.board.others']))
     assert.equal(queryAll(board, '.lc-member-card').length, 4)
     assert.ok(text(query(m.container, '.lc-tasks')).includes('schema parsing'))
-    assert.ok(text(query(m.container, '.lc-comms')).includes('Scan 3 sessions'))
+    await until(() => text(query(m.container, '.lc-comms')).includes('Auto-read'), 'the comms hub never rendered')
     assert.equal(queryAll(m.container, '.lc-inspector').length, 0)
     await m.unmount()
     ctx.dispose()
@@ -239,32 +240,83 @@ describe('FleetView — the panels over one family', () => {
     ctx.dispose()
   })
 
-  test('the comms scan merges the family logs into one timeline', async () => {
+  test('the comms hub merges the family logs automatically and its detail steers the boards', async () => {
     stubFleetRoute()
     const ctx = new TestClientCtx({ services: { sessions: familySessions() } })
     const View = makeView(ctx)
     const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
 
-    await click(query(m.container, '.lc-comms-scan'))
-    await until(() => queryAll(m.container, '.lc-comms-row').length === 6, 'the relays never surfaced')
-    const rows = queryAll(m.container, '.lc-comms-row')
-    assert.ok(text(rows[0]).includes('Main Agent'))
-    assert.ok(text(rows[0]).includes('worker-bee'))
-    assert.ok(text(rows[0]).includes('how far along?'))
-    assert.ok(text(rows[1]).includes('ghost-nine'))
-    assert.ok(text(rows[2]).includes('stranger'))
+    await until(() => queryAll(m.container, '.lc-comms-event').length === 6, 'the relays never surfaced')
+    const rows = queryAll<HTMLElement>(m.container, '.lc-comms-event')
+    assert.ok(text(rows[0]!).includes('Lead'))
+    assert.ok(text(rows[0]!).includes('worker-bee'))
+    assert.ok(text(rows[0]!).includes('how far along?'))
+    assert.ok(text(rows[1]!).includes('ghost-nine'))
+    assert.ok(text(rows[2]!).includes('stranger'))
 
-    await click(queryAll(rows[0], '.lc-comms-peer')[0])
-    assert.ok(query(m.container, '[data-agent="root"]').className.includes('lc-agent-pinned'))
+    await click(query(rows[0]!, '.lc-comms-hit'))
+    const leadEvent = query(m.container, '.lc-comms-detail')
+    const peer = queryAll<HTMLElement>(leadEvent, '.lc-comms-person').find(person => text(person).includes('worker-bee'))!
+    await click(queryAll<HTMLElement>(peer, '.lc-inspector-btn')[0]!)
+    assert.ok(query(m.container, '[data-agent="w1"]').className.includes('lc-agent-pinned'))
     assert.ok(query(m.container, '.lc-member-pinned') !== null)
 
-    await click(queryAll(rows[1], '.lc-comms-peer')[0])
-    await until(() => queryAll(m.container, '.lc-agent-pinned, .lc-member-pinned').length === 0, 'the ghost pin never released')
+    await click(query(rows[0]!, '.lc-comms-hit'))
+    const pinned = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('worker-bee'))!
+    await click(query(pinned, '.lc-comms-person-pin-on'))
+    await until(() => queryAll(m.container, '.lc-agent-pinned, .lc-member-pinned').length === 0, 'the pin never released')
+
+    await click(query(rows[1]!, '.lc-comms-hit'))
+    const ghost = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('ghost-nine'))!
+    await click(queryAll<HTMLElement>(ghost, '.lc-inspector-btn')[0]!)
+    await until(() => queryAll(m.container, '.lc-agent-pinned').length === 0, 'the ghost pin never released')
+    await click(query(m.container, '.lc-comms .lc-tasks-filter'))
+    await until(() => queryAll(m.container, '.lc-comms-event').length === 6, 'the ghost scope never cleared')
 
     await click(query(m.container, '[data-agent="w2"]'))
     assert.ok(text(query(m.container, '.lc-comms')).includes(DICT_EN['fleet.comms.noMatch']), 'side-quest rode no relays')
     await click(query(m.container, '.lc-comms .lc-tasks-filter'))
-    await until(() => queryAll(m.container, '.lc-comms-row').length === 6, 'the rows never returned')
+    await until(() => queryAll(m.container, '.lc-comms-event').length === 6, 'the rows never returned')
+    await m.unmount()
+    ctx.dispose()
+  })
+
+  test('the comms identities prefer roster names and duties over prompt labels', async () => {
+    vi.stubGlobal('fetch', (_url: unknown, init: { body: string }) => {
+      const { sessionId } = JSON.parse(init.body) as { sessionId: string }
+      const value = sessionId === 'w1'
+        ? {
+          messages: [
+            { seq: 9, time: 2000, kind: 'relay', from: 'root', text: 'hello bee' },
+            { seq: 8, time: 1000, kind: 'relay', from: 'w9', text: 'hello from the ghost' },
+          ],
+          truncated: false,
+        }
+        : {
+          messages: [],
+          truncated: false,
+          roster: [
+            { name: 'worker-bee', description: 'schema duty' },
+            { name: 'ghost-nine', description: 'ghost duty' },
+          ],
+        }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, value }) } as Response)
+    })
+    const ctx = new TestClientCtx({ services: { sessions: familySessions(1000) } })
+    const View = makeView(ctx)
+    const m = await mount(h(View, { sessionId: 'root', useProjection: projectionsFor(richTimeline()) }))
+    await until(() => queryAll(m.container, '.lc-comms-event').length === 2, 'the roster traffic never surfaced')
+    const rows = queryAll<HTMLElement>(m.container, '.lc-comms-event')
+
+    await click(query(rows[0]!, '.lc-comms-hit'))
+    const bee = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('worker-bee'))!
+    assert.ok(text(bee).includes('schema duty'))
+    const lead = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('Lead'))!
+    assert.ok(text(lead).includes('Main Agent'), 'the lead falls back to the session title')
+
+    await click(query(rows[1]!, '.lc-comms-hit'))
+    const ghost = queryAll<HTMLElement>(m.container, '.lc-comms-person').find(person => text(person).includes('ghost-nine'))!
+    assert.ok(text(ghost).includes('ghost duty'), 'a roster member without a session row keeps its duty')
     await m.unmount()
     ctx.dispose()
   })
@@ -290,8 +342,7 @@ describe('FleetView — the panels over one family', () => {
     const m = await mount(h(View, { sessionId: 'cold-root', useProjection: projectionsFor(richTimeline()) }))
 
     assert.ok(text(query(m.container, '.lc-members')).includes('cold-worker'))
-    await click(query(m.container, '.lc-comms-scan'))
-    await until(() => text(query(m.container, '.lc-comms')).includes(DICT_EN['fleet.comms.empty']), 'the scan never settled')
+    await until(() => text(query(m.container, '.lc-comms')).includes(DICT_EN['fleet.comms.empty']), 'the failed reads never settled')
     await m.unmount()
     ctx.dispose()
   })

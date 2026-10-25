@@ -128,7 +128,7 @@ describe('AgentInspector — team membership', () => {
     const el = query(m.container, '.lc-inspector')
     assert.ok(text(el).includes(DICT_EN['fleet.membership']))
     assert.ok(text(el).includes('worker-bee'))
-    assert.ok(text(el).includes('teammate'))
+    assert.ok(text(el).includes(DICT_EN['fleet.role.teammate']))
     assert.ok(text(el).includes('维度2：代码质量'))
     const tasks = queryAll(el, '.lc-inspector-task')
     assert.equal(tasks.length, 4)
@@ -229,11 +229,11 @@ describe('AgentInspector — the fleet-detail sections', () => {
 
 describe('AgentInspector — comms', () => {
   const COMMS: CommsRow[] = [
-    { key: 'w1:9', to: 'w1', time: 100, kind: 'relay', from: 'root', text: 'how far along?' },
-    { key: 'root:4', to: 'root', time: 90, kind: 'settled', from: 'w1', text: 'w1 finished' },
-    { key: 'w1:3', to: 'w1', time: 80, kind: 'mailbox', fromName: 'lead', text: 'old school' },
+    { key: 'w1:9', to: 'w1', seq: 9, time: 100, kind: 'relay', from: 'root', text: 'how far along?' },
+    { key: 'root:4', to: 'root', seq: 4, time: 90, kind: 'settled', from: 'w1', text: 'w1 finished' },
+    { key: 'w1:3', to: 'w1', seq: 3, time: 80, kind: 'mailbox', fromName: 'lead', text: 'old school' },
     // Neither an id nor a name: the arrow alone introduces the recipient.
-    { key: 'w1:2', to: 'w1', time: 70, kind: 'relay', text: 'anonymous relay' },
+    { key: 'w1:2', to: 'w1', seq: 2, time: 70, kind: 'relay', text: 'anonymous relay' },
   ]
 
   test('rows render with peer links; clicking a peer pins it', async () => {
@@ -261,7 +261,7 @@ describe('AgentInspector — comms', () => {
 
   test('settled notices render the localized variant with the raw text on the tooltip', async () => {
     const settled: CommsRow[] = [
-      { key: 'root:4', to: 'root', time: 90, kind: 'settled', from: 'w1', text: 'Background subagent w1 finished and will do no further work unless you send it more.' },
+      { key: 'root:4', to: 'root', seq: 4, time: 90, kind: 'settled', from: 'w1', text: 'Background subagent w1 finished and will do no further work unless you send it more.' },
     ]
     const m = await mount(h(AgentInspector, propsOf({ comms: settled, labelOf: id => ({ root: 'Main Agent', w1: 'worker-bee' })[id] ?? id })))
     const el = query(m.container, '.lc-inspector')
@@ -274,7 +274,7 @@ describe('AgentInspector — comms', () => {
 
   test('more than six rows clamp to six', async () => {
     const many: CommsRow[] = Array.from({ length: 8 }, (_, i) => ({
-      key: `w1:${i}`, to: 'w1', time: i, kind: 'relay' as const, from: 'root', text: `m${i}`,
+      key: `w1:${i}`, to: 'w1', seq: i, time: i, kind: 'relay' as const, from: 'root', text: `m${i}`,
     }))
     const m = await mount(h(AgentInspector, propsOf({ comms: many })))
     assert.equal(queryAll(m.container, '.lc-inspector-comm').length, 6)

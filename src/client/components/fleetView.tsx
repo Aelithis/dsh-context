@@ -7,6 +7,7 @@ import type { AgentHeads } from '../agentHeads'
 import { agentSelfOf } from '../agentTree'
 import { displayCurrencyOf } from '../cost'
 import { mergeComms } from '../fleetDetail'
+import { attestedNamesOf, commsAgentsOf } from '../fleetAgents'
 import { useFleetDetails, useFleetModel } from '../fleetModel'
 import { teamMemberOf, teamOf } from '../fleetTeam'
 import { useModelPrices } from '../modelPrices'
@@ -54,7 +55,7 @@ export function makeFleetView(
     }, [sessionId])
     const self = data !== null ? agentSelfOf(data, pressure, breakdown, usage) : undefined
     // The model arms only once the tab's timeline landed: while the loading/failure screen stands, no subscription or read fires.
-    const { forest, team: rowTeam } = useFleetModel(ctx, heads, sessionId, self, data !== null)
+    const { forest, team: rowTeam, titles } = useFleetModel(ctx, heads, sessionId, self, data !== null)
     // The freshest team value is the tab's OWN projection when the viewed session leads; a teammate falls back to the lead row's copy.
     const teamDirect = projectionOf(props, 'agentTeam', teamOf)
     const team = teamDirect ?? rowTeam
@@ -123,13 +124,13 @@ export function makeFleetView(
       return map
     }, [details.landed])
     const comms = useMemo(() => mergeComms(landedDetails), [landedDetails])
+    const attestedNames = useMemo(() => attestedNamesOf(comms), [comms])
 
-    const labelOf = (id: string): string => {
-      const node = byId.get(id)
-      if (node !== undefined) return node.label
-      const member = team?.members.find(m => m.id === id)
-      return member?.name ?? id
-    }
+    const leadDetail = leadId !== undefined ? landedDetails.get(leadId) ?? null : null
+    const agents = useMemo(
+      () => commsAgentsOf(forest?.nodes ?? [], team, leadDetail?.roster, attestedNames, t),
+      [attestedNames, forest, leadDetail, team, t],
+    )
 
     /** A member card's open: the right Sidebar's subagent chat (the header catalog's own aside verb), addressed by the
      * node's direct parent; a column that cannot take the resource, or a node without its parent edge, keeps the
@@ -181,7 +182,6 @@ export function makeFleetView(
 
     // The baseline gate must not hide behind whichever tab the reader opened: the dismissal ledger is keyed by session.
     const gate = unsupportedOf(data.unsupported)
-    const leadDetail = leadId !== undefined ? landedDetails.get(leadId) ?? null : null
     /** A task-board row pick toggles the pin; a release also lets go of a task-board narrowing still pointing at that
      * agent (the same pair select() manages for graph and member picks). */
     const pinToggle = (id: string | null): void => {
@@ -269,15 +269,23 @@ export function makeFleetView(
         {forest !== null && !forest.solo
           ? (
             <CommsPanel
-              nodes={forest.nodes}
               details={details}
               comms={comms}
-              labelOf={labelOf}
-              onPin={setPinnedId}
+              agents={agents}
+              titles={titles}
+              attested={attestedNames}
+              anchorId={sessionId}
               pickId={pickId}
-              onPickClear={() => { setOwnerFilter(null) }}
+              pinnedId={pinnedId}
+              onSelect={select}
+              onPickClear={() => {
+                setOwnerFilter(null)
+                setPinnedId(null)
+              }}
+              onOpen={open}
+              onEnter={enter}
+              rich={rich}
               t={t}
-              fmt={kit.fmt}
             />
           )
           : null}

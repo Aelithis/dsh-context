@@ -17,6 +17,7 @@ import {
   lineageOf,
   pressureColorOf,
   providerModelLabelOf,
+  sessionTitlesOf,
   sessionsFaceOf,
   subagentCostFoldOf,
   type AgentForest,
@@ -963,5 +964,34 @@ describe('fmtDurationCompact', () => {
     assert.equal(fmtDurationCompact(42000), '42s')
     assert.equal(fmtDurationCompact(185000), '3m05s')
     assert.equal(fmtDurationCompact(4020000), '1h07m')
+  })
+})
+
+describe('sessionTitlesOf', () => {
+  test('clean titles win; a system-reminder title falls back to the descriptor label', () => {
+    assert.deepEqual([...sessionTitlesOf(null)], [])
+    assert.deepEqual([...sessionTitlesOf({})], [])
+    assert.deepEqual([...sessionTitlesOf({ byId: 'nope' })], [])
+    const titles = sessionTitlesOf({
+      byId: {
+        a: { displayTitle: 'A display', title: 'A raw' },
+        b: { title: 'B raw' },
+        c: { displayTitle: 'C display' },
+        d: {},
+        e: null,
+        f: { displayTitle: '<system-reminder> x', title: '<system-reminder> y', projectionValues: { subagent: { label: 'Clean label' } } },
+        g: { displayTitle: '<system-reminder> x' },
+        h: { displayTitle: '  ', title: 'H raw' },
+        i: { projectionValues: { subagent: { label: 42 } } },
+        j: { projectionValues: { subagent: { label: '' } } },
+      },
+    })
+    assert.deepEqual([...titles.entries()], [
+      ['a', 'A display'],
+      ['b', 'B raw'],
+      ['c', 'C display'],
+      ['f', 'Clean label'],
+      ['h', 'H raw'],
+    ])
   })
 })

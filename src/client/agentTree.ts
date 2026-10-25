@@ -265,7 +265,7 @@ export function agentForestOf(
     root = parent
   }
   const rootRow = rows.get(root)
-  /** v8 ignore next 2 -- root is currentId (inserted above) or a parent verified with rows.has, so its row always exists. */
+  /* v8 ignore next 2 -- root is currentId (inserted above) or a parent verified with rows.has, so its row always exists. */
   if (rootRow === undefined) return null
 
   const childrenOf = familyChildrenOf(rows)
@@ -333,6 +333,28 @@ export function agentForestOf(
   visit(root, rootRow, undefined, 0, new Set(), -1)
 
   return { nodes, edges, solo: nodes.length === 1 }
+}
+
+/** Display titles for every row in a sessions snapshot, so a party outside the viewed family still has a readable name.
+ * A teammate session's generated title can be its injected `<system-reminder>` briefing; its subagent descriptor label is
+ * the clean fallback. */
+export function sessionTitlesOf(snapshot: unknown): Map<string, string> {
+  const byId = asRecord(asRecord(snapshot)?.byId)
+  const titles = new Map<string, string>()
+  if (byId === null) return titles
+  for (const [id, value] of Object.entries(byId)) {
+    const rec = asRecord(value)
+    const row = agentRowOf(value)
+    const clean = (text: string | undefined): string | undefined => {
+      if (text === undefined || text.trim() === '') return undefined
+      return text.includes('<system-reminder>') ? undefined : text
+    }
+    const subagent = asRecord(asRecord(rec?.projectionValues)?.subagent)
+    const label = typeof subagent?.label === 'string' && subagent.label !== '' ? subagent.label : undefined
+    const name = clean(row?.displayTitle) ?? clean(row?.title) ?? label
+    if (name !== undefined) titles.set(id, name)
+  }
+  return titles
 }
 
 export interface SubagentCostFold {
@@ -508,6 +530,9 @@ export function layoutForest(forest: AgentForest, stageWidth = 0): AgentLayout {
 export function familyHue(index: number): string {
   return `hsl(${Math.round(index * 137.508) % 360} 58% 52%)`
 }
+
+/** The lead/current agent's hue: the shell's brand color, shared by the graph, boards, and comms avatars. */
+export const BRAND_HUE = 'var(--dsw-alias-brand-primary, var(--color-blue-500))'
 
 function linksOf(forest: AgentForest, points: AgentPoint[]): AgentLink[] {
   const pointOf = new Map(points.map(p => [p.id, p]))

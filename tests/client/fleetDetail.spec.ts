@@ -27,7 +27,12 @@ describe('fleetDetailOf — the sanitizing parse', () => {
         { kind: 'relay', text: 'hi', seq: 3, time: 30, from: 'a', fromName: 9 },
         { kind: 'settled', text: 'done', seq: 1, fromName: 'w' },
         { kind: 'mailbox', text: 'old', seq: 2 },
+        {
+          kind: 'settled', text: 'summary report', seq: 4, time: 40, from: 'w', clipped: true,
+          summary: 'summary', report: 'report', structured: '{"ok":true}', diagnostic: 'diag',
+        },
       ],
+      messagesTotal: 9,
       truncated: true,
     })
     assert.ok(detail !== null)
@@ -37,7 +42,9 @@ describe('fleetDetailOf — the sanitizing parse', () => {
       { kind: 'relay', text: 'hi', seq: 3, time: 30, from: 'a' },
       { kind: 'settled', text: 'done', seq: 1, time: 0, fromName: 'w' },
       { kind: 'mailbox', text: 'old', seq: 2, time: 0 },
+      { kind: 'settled', text: 'summary report', seq: 4, time: 40, from: 'w', clipped: true, summary: 'summary', report: 'report', structured: '{"ok":true}', diagnostic: 'diag' },
     ])
+    assert.equal(detail.messagesTotal, 9)
     assert.equal(detail.truncated, true)
   })
 
@@ -153,7 +160,7 @@ describe('FleetDetailCache', () => {
     assert.equal(reads.length, 81, 'the evicted oldest member refetches')
   })
 
-  test('a settled failure caches as null, and invalidate forces a fresh read', async () => {
+  test('a settled failure caches as null at its stamp; a newer stamp retries', async () => {
     let reads = 0
     vi.stubGlobal('fetch', () => {
       reads += 1
@@ -163,8 +170,7 @@ describe('FleetDetailCache', () => {
     assert.equal(await cache.fetch('s1', 1), null)
     await cache.fetch('s1', 1)
     assert.equal(reads, 1, 'the failure stays cached at the same stamp')
-    cache.invalidate('s1')
-    await cache.fetch('s1', 1)
+    await cache.fetch('s1', 2)
     assert.equal(reads, 2)
   })
 
@@ -191,9 +197,8 @@ describe('FleetDetailCache', () => {
     await cache.fetch('s1', 3)
     await cache.fetch('s1', 3, true)
     assert.equal(routes.length, 2)
-    cache.invalidate('s1')
-    await Promise.all([cache.fetch('s1', 3), cache.fetch('s1', 3, true)])
-    assert.equal(routes.length, 4)
+    await Promise.all([cache.fetch('s1', 6), cache.fetch('s1', 6, true)])
+    assert.equal(routes.length, 4, 'a newer stamp refreshes each ledger on its own')
   })
 })
 
@@ -225,9 +230,40 @@ describe('mergeComms', () => {
       ['b', 200, 'mailbox'],
       ['a', 100, 'relay'],
     ])
-    assert.equal(rows[0].key, 'a:3')
+    assert.equal(rows[0].key, 'a:3:300:settled')
     assert.equal(rows[2].from, 'b')
     assert.equal(rows[1].fromName, 'lead')
+  })
+
+  test('the settled fields and clipped flag ride the merged row', () => {
+    const rows = mergeComms(new Map<string, FleetDetail>([
+      ['a', { messages: [{
+        seq: 3,
+        time: 300,
+        kind: 'settled',
+        from: 'b',
+        text: 'summary report',
+        clipped: true,
+        summary: 'summary',
+        report: 'report',
+        structured: '{"ok":true}',
+        diagnostic: 'diag',
+      }], truncated: true }],
+    ]))
+    assert.deepEqual(rows, [{
+      key: 'a:3:300:settled',
+      to: 'a',
+      seq: 3,
+      time: 300,
+      kind: 'settled',
+      from: 'b',
+      text: 'summary report',
+      clipped: true,
+      summary: 'summary',
+      report: 'report',
+      structured: '{"ok":true}',
+      diagnostic: 'diag',
+    }])
   })
 
   test('equal instants tie-break on the key', () => {
@@ -238,6 +274,6 @@ describe('mergeComms', () => {
         { seq: 2, time: 50, kind: 'relay', text: 'z' },
       ], truncated: false }],
     ])
-    assert.deepEqual(mergeComms(details).map(r => r.key), ['a:1', 'a:2', 'b:1'])
+    assert.deepEqual(mergeComms(details).map(r => r.key), ['a:1:50:relay', 'a:2:50:relay', 'b:1:50:relay'])
   })
 })
