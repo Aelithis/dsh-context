@@ -61,7 +61,6 @@ describe('channelsOf', () => {
     assert.equal(main.back, 2)
     assert.deepEqual(main.kinds, { relay: 2, mailbox: 1, settled: 1 })
     assert.equal(main.lastTime, 400)
-    assert.equal(main.firstTime, 100)
     assert.deepEqual(main.rows.map(item => item.time), [400, 300, 200, 100])
     const side = channels[1]!
     assert.equal(side.a, NAME_PARTY_PREFIX + 'legacy')
@@ -89,23 +88,6 @@ describe('channelsOf', () => {
     assert.equal(channels[0]!.b, 'a')
     assert.equal(channels[0]!.out, 1)
     assert.equal(channels[0]!.back, 0)
-  })
-
-  test('the sparkline normalizes each channel against its own peak', () => {
-    const channels = channelsOf([
-      row({ key: 'a:1:0:relay', seq: 1, to: 'b', time: 0, text: 'x', from: 'a' }),
-      row({ key: 'a:2:50:relay', seq: 2, to: 'b', time: 50, text: 'y', from: 'a' }),
-      row({ key: 'a:3:100:relay', seq: 3, to: 'b', time: 100, text: 'z', from: 'a' }),
-      row({ key: 'a:4:100:relay', seq: 4, to: 'b', time: 100, text: 'w', from: 'a' }),
-    ])
-    const spark = channels[0]!.spark
-    assert.equal(spark.length, 12)
-    assert.equal(spark[0], 0.5)
-    assert.equal(spark[6], 0.5)
-    assert.equal(spark[11], 1)
-    assert.equal(channelsOf([
-      row({ key: 'a:1:100:relay', seq: 1, to: 'b', time: 100, text: 'x', from: 'a' }),
-    ])[0]!.spark[11], 1)
   })
 
   test('an empty row list makes no channels', () => {

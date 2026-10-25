@@ -12,7 +12,7 @@ export interface CommsChannelCardProps {
   t: ViewKit['t']
 }
 
-/** One unordered pair's activity: who the two parties are, how much each sent, and when the traffic burst. */
+/** One unordered pair: who the two parties are, how much each sent, and when they last spoke. */
 export function CommsChannelCard(props: CommsChannelCardProps): ReactElement {
   const { channel, t } = props
   const a = props.agentOf(channel.a)
@@ -45,9 +45,15 @@ export function CommsChannelCard(props: CommsChannelCardProps): ReactElement {
       </span>
       <span className="lc-comms-channel-main">
         <span className="lc-comms-channel-names">
-          <b>{a.name}</b>
-          {same ? null : <i aria-hidden="true">↔</i>}
-          {same ? null : <b>{b.name}</b>}
+          <span className="lc-comms-channel-party"><b>{a.name}</b></span>
+          {same
+            ? null
+            : (
+              <span className="lc-comms-channel-party">
+                <i aria-hidden="true">↔</i>
+                <b>{b.name}</b>
+              </span>
+            )}
         </span>
         <span className="lc-comms-channel-meta">
           {roles !== '' ? <span>{roles}</span> : null}
@@ -57,11 +63,6 @@ export function CommsChannelCard(props: CommsChannelCardProps): ReactElement {
               : t('fleet.comms.channelMeta', { out: channel.out, back: channel.back, time })}
           </span>
         </span>
-      </span>
-      <span className="lc-comms-spark" aria-hidden="true">
-        {channel.spark.map((level, index) => (
-          <i key={index} style={{ height: `${Math.max(8, Math.round(level * 100))}%` }} />
-        ))}
       </span>
     </button>
   )

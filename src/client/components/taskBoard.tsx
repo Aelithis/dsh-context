@@ -5,6 +5,7 @@ import { BRAND_HUE, familyHue } from '../agentTree'
 import { fmtTime } from '../format'
 import { familyOthersOf, memberIdByName, type FleetTeam, type FleetTeamTask } from '../fleetTeam'
 import type { FleetDetail } from '../../shared/types'
+import { scrollIntoViewIfPossible } from '../revealScroll'
 import { ClearableInput } from './clearableInput'
 import { Section } from './section'
 import { memberStyle, runMetaOf } from './memberBoard'
@@ -130,9 +131,9 @@ export function TaskBoard(props: TaskBoardProps): ReactElement {
   const focused = props.focusTaskId
   useEffect(() => {
     if (focused === null) return
-    /* v8 ignore next 2 -- jsdom has no layout; the browser path is the visual one. */
-    const row = boardRef.current?.querySelector(`[data-task="${focused}"]`)
-    if (typeof row?.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' })
+    /* v8 ignore next 1 -- the board ref seats before effects; a missing row is jsdom's no-layout path. */
+    const row = boardRef.current?.querySelector<HTMLElement>(`[data-task="${focused}"]`) ?? null
+    scrollIntoViewIfPossible(row, { block: 'nearest' })
   }, [focused])
 
   // The focused task's whole prerequisite chain (transitive blockedBy) lights along with it.

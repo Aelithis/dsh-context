@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'vitest'
-import { revealInScrollParent, revealRowInCard } from '../../src/client/revealScroll'
+import { revealInScrollParent, revealRowInCard, scrollIntoViewIfPossible } from '../../src/client/revealScroll'
 
 const top = (t: number): DOMRect => ({ top: t }) as DOMRect
 
@@ -127,5 +127,24 @@ describe('revealRowInCard', () => {
       revealRowInCard(card, stranger)
     })
     stranger.remove()
+  })
+})
+
+describe('scrollIntoViewIfPossible', () => {
+  test('a null element or one without the verb is a no-op', () => {
+    const bare = document.createElement('div')
+    Object.defineProperty(bare, 'scrollIntoView', { value: undefined })
+    assert.doesNotThrow(() => {
+      scrollIntoViewIfPossible(null)
+      scrollIntoViewIfPossible(bare)
+    })
+  })
+
+  test('the live verb receives the options', () => {
+    const calls: (ScrollIntoViewOptions | undefined)[] = []
+    const el = document.createElement('div')
+    el.scrollIntoView = (options?: boolean | ScrollIntoViewOptions) => { calls.push(options as ScrollIntoViewOptions | undefined) }
+    scrollIntoViewIfPossible(el, { block: 'nearest', behavior: 'smooth' })
+    assert.deepEqual(calls, [{ block: 'nearest', behavior: 'smooth' }])
   })
 })

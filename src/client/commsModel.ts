@@ -1,5 +1,5 @@
-/** The Fleet comms hub's pure derivation: parties, channels (unordered pairs), their directional counts and activity
- * sparkline, plus the display helpers the card shares. Kept free of React so the grouping rules stay testable. */
+/** The Fleet comms hub's pure derivation: parties, channels (unordered pairs), their directional counts, plus the
+ * display helpers the card shares. Kept free of React so the grouping rules stay testable. */
 
 import { type CommsRow, type SettledVariant } from './fleetDetail'
 
@@ -35,13 +35,9 @@ export interface CommsChannel {
   out: number
   back: number
   lastTime: number
-  firstTime: number
   kinds: Record<CommsRow['kind'], number>
-  /** Normalized activity over the channel's own span, oldest to newest. */
-  spark: readonly number[]
 }
 
-const SPARK_BUCKETS = 12
 const PREVIEW_MAX = 600
 const CHANNEL_SEP = '\u0000'
 
@@ -141,7 +137,6 @@ export function channelsOf(rows: readonly CommsRow[], anchorId?: string): CommsC
       kinds[row.kind] += 1
     }
     const lastTime = Math.max(...group.map(row => row.time))
-    const firstTime = Math.min(...group.map(row => row.time))
     channels.push({
       key,
       a,
@@ -150,25 +145,9 @@ export function channelsOf(rows: readonly CommsRow[], anchorId?: string): CommsC
       out,
       back,
       lastTime,
-      firstTime,
       kinds,
-      spark: sparkOf(group, firstTime, lastTime),
     })
   }
   channels.sort((x, y) => y.lastTime - x.lastTime)
   return channels
-}
-
-function sparkOf(rows: readonly CommsRow[], firstTime: number, lastTime: number): readonly number[] {
-  const buckets = new Array<number>(SPARK_BUCKETS).fill(0)
-  const span = lastTime - firstTime
-  for (const row of rows) {
-    const index = span > 0
-      ? Math.min(SPARK_BUCKETS - 1, Math.floor(((row.time - firstTime) / span) * SPARK_BUCKETS))
-      : SPARK_BUCKETS - 1
-    buckets[index] += 1
-  }
-  let max = 0
-  for (const count of buckets) if (count > max) max = count
-  return buckets.map(count => count / max)
 }

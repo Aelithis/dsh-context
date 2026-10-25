@@ -263,6 +263,20 @@ describe('CommsPanel — event detail', () => {
     await m.unmount()
   })
 
+  test('the detail is an accordion under the clicked row; opening another moves it', async () => {
+    const m = await mount(h(CommsPanel, propsOf()))
+    const first = eventOf(m.container, COMMS[0]!.key)
+    const second = eventOf(m.container, COMMS[1]!.key)
+    await click(query(first, '.lc-comms-hit'))
+    assert.equal(queryAll(first, '.lc-comms-detail').length, 1, 'the record belongs to the clicked row')
+    assert.equal(queryAll(second, '.lc-comms-detail').length, 0)
+    await click(query(second, '.lc-comms-hit'))
+    assert.equal(queryAll(first, '.lc-comms-detail').length, 0, 'the previous row collapsed')
+    assert.equal(queryAll(second, '.lc-comms-detail').length, 1)
+    assert.equal(queryAll(m.container, '.lc-comms-detail').length, 1, 'only one record stands')
+    await m.unmount()
+  })
+
   test('closing an event removes its detail', async () => {
     const m = await mount(h(CommsPanel, propsOf()))
     const hit = query(eventOf(m.container, COMMS[0]!.key), '.lc-comms-hit')

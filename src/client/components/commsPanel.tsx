@@ -2,7 +2,7 @@
  * cards use): no scan step. Rows group into unordered channels — who talks to whom — and an opened event shows the full
  * record, its provenance, and the participant actions that used to be an unannounced pin. */
 
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { IconSendOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   channelsOf,
@@ -121,17 +121,6 @@ export function CommsPanel(props: CommsPanelProps): ReactElement {
   const openRow = openKey !== null ? shownRows.find(row => row.key === openKey) : undefined
   const fullMessage = fullMessageOf(details, openRow)
   const fullPending = openRow !== undefined && details.fullPending.has(openRow.to)
-  const detailRef = useRef<HTMLDivElement | null>(null)
-
-  // The record sheet sits below the bounded timeline; bring it into view when a row opens so the click always lands on
-  // something visible.
-  useEffect(() => {
-    if (openRow === undefined) return
-    const el = detailRef.current
-    /* v8 ignore next 2 -- jsdom has no scrollIntoView; a browser always provides it. */
-    if (el === null || typeof el.scrollIntoView !== 'function') return
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [openKey])
 
   const visibleChannels = useMemo(() => {
     const base = showAll ? channels : channels.slice(0, MAX_VISIBLE_CHANNELS)
@@ -296,28 +285,26 @@ export function CommsPanel(props: CommsPanelProps): ReactElement {
               onToggle={() => { toggle(row) }}
               full={openKey === row.key ? fullMessage : null}
               t={t}
-            />
+            >
+              {openKey === row.key ? (
+                <CommsEventDetail
+                  row={row}
+                  agentOf={agentOf}
+                  full={fullMessage}
+                  fullPending={fullPending}
+                  pinnedId={props.pinnedId}
+                  onSelect={props.onSelect}
+                  onOpen={props.onOpen}
+                  onEnter={props.onEnter}
+                  onClose={() => { setOpenKey(null) }}
+                  rich={props.rich}
+                  t={t}
+                />
+              ) : null}
+            </CommsEvent>
           ))}
         </ul>
       )}
-
-      {openRow !== undefined ? (
-        <div ref={detailRef} className="lc-comms-sheet-wrap">
-          <CommsEventDetail
-            row={openRow}
-            agentOf={agentOf}
-            full={fullMessage}
-            fullPending={fullPending}
-            pinnedId={props.pinnedId}
-            onSelect={props.onSelect}
-            onOpen={props.onOpen}
-            onEnter={props.onEnter}
-            onClose={() => { setOpenKey(null) }}
-            rich={props.rich}
-            t={t}
-          />
-        </div>
-      ) : null}
 
       {shownRows.length < channelRows.length || clippedCount > 0 || hiddenMessages > 0 ? (
         <div className="lc-comms-notes">

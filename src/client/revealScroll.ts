@@ -1,3 +1,9 @@
+/** Scroll an element into view when the browser provides the verb; a detached node or jsdom is a no-op. */
+export function scrollIntoViewIfPossible(el: Element | null, options?: ScrollIntoViewOptions): void {
+  if (el === null || typeof el.scrollIntoView !== 'function') return
+  el.scrollIntoView(options)
+}
+
 export function revealInScrollParent(anchor: Element): boolean {
   try {
     for (let el = anchor.parentElement; el !== null && el !== document.body; el = el.parentElement) {
