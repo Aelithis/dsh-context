@@ -185,6 +185,10 @@ Open any session and click the **Fleet / 编队** tab (right of **Context**) —
 
 The current agent, its parents, and every subagent — one card per agent: its title, live context size and window occupancy, a composition bar, and how long it has run for and how many steps it has taken. Edges fan out from each parent in the lineage's color — hover a card to light its whole chain and read the full breakdown in the detail strip; click to jump into that session's own Context tab. Running agents breathe with a green pulse on their incoming edge and turn over the harness's own rolling spinner beside their title, which settles into the same green dot the header's subagent list uses once the work is done; narrow panes fold the family into tidy rows — never a horizontal scrollbar.
 
+### 📡 Agent Comms — who said what to whom
+
+The comms card reads the family's session logs automatically — no scan step. Team relays, mailbox deliveries, and the runtime's settlement notices merge into channels: each card pairs the lead or current agent with one counterpart, shows how many messages each side sent, and carries a small activity sparkline. The timeline names both parties and their roles, and clicking any message opens the full record below it — the session log it came from, the closing report or structured result, and participant cards that open that agent's chat in the sidebar or the whole view. Filter by message kind or text, flip the order, and the shared agent pick from the graph or member board narrows the whole hub; older history and clipped excerpts are disclosed instead of silently truncated.
+
 The right Sidebar's **Context** panel keeps the same card inline, so the family stays one click away while you read the chat. Don't want the tab at all? Turn **Fleet tab** off in the preferences card — the card then lives on in that panel, and the Context tab's family cell opens it there whenever a Sidebar is served.
 
 ## ⌨️ `/context` command
