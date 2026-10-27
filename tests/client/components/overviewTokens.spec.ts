@@ -43,7 +43,7 @@ describe('OverviewTokens', () => {
       { pct: '1.4%', label: 'Skill Injections', count: '≈3' },
       { pct: '30.5%', label: 'Assistant Messages', count: '≈64' },
       { pct: '15.2%', label: 'Tool Results', count: '≈32' },
-      { pct: '19.0%', label: 'Thinking', count: '≈40' },
+      { pct: '19.0%', label: 'Reasoning', count: '≈40' },
     ]
     expected.forEach((row, i) => assert.deepEqual(rowOf(m.container, i), row))
     await m.unmount()
@@ -62,7 +62,7 @@ describe('OverviewTokens', () => {
     assert.equal(queryAll(sparseMount.container, '.lc-sl-row').length, 3)
     assert.deepEqual(rowOf(sparseMount.container, 0), { pct: '68.2%', label: 'System Prompt', count: '≈300' })
     assert.deepEqual(rowOf(sparseMount.container, 1), { pct: '20.5%', label: 'User Messages', count: '≈90' })
-    assert.deepEqual(rowOf(sparseMount.container, 2), { pct: '11.4%', label: 'Thinking', count: '≈50' })
+    assert.deepEqual(rowOf(sparseMount.container, 2), { pct: '11.4%', label: 'Reasoning', count: '≈50' })
     await sparseMount.unmount()
   })
 

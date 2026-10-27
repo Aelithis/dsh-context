@@ -80,7 +80,7 @@ Open any session and click the **Context / 上下文** tab:
 | Card | The question it answers |
 | --- | --- |
 | **Context Stats** | Turns, steps, human inputs, live tool calls — plus a cost estimated from the models.dev list prices (hover the `?` for per-1M rates; only DeepSeek splits peak/off-peak: its listed rates are the off-peak tier, and peak windows bill at 2×). |
-| **Token Stats** | Where the billed tokens went — the same total as the chat stats line under the composer, split by composition (system, tools, messages, thinking…). Thinking estimates the reasoning content billed across the session: the replayed share is split out of assistant messages, the generated share out of output, the thinking slice closes the ring, and the session's cache-hit rate sits in the corner. |
+| **Token Stats** | Where the billed tokens went — the same total as the chat stats line under the composer, split by composition (system, tools, messages, reasoning…). Reasoning estimates the billed thinking content across the session: the replayed share is split out of assistant messages, the generated share out of output, the reasoning slice closes the ring, and the session's cache-hit rate sits in the corner. |
 | **Timing Stats** | How active time split across model calls, tool runs, and overhead. |
 | **Current Context** | What's in the window *right now*. |
 | **Context Trend** | Every request's size — and its story. |
