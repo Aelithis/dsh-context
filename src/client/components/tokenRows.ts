@@ -9,6 +9,6 @@ export function tokenRowsOf(kit: ViewKit, parts: readonly PartsPart[], total: nu
     color: p.color,
     label: p.key === 'thinking' ? t('tokens.thinking') : catLabel(p.key),
     pct: fmtShare(p.value, total),
-    count: p.key === 'thinking' ? `≈${fmt(p.value)} · ${t('tokens.thinkingNote')}` : '≈' + fmt(p.value),
+    count: '≈' + fmt(p.value),
   }))
 }

@@ -60,11 +60,11 @@ describe('StatsTokens', () => {
     assert.equal(query(m.container, '.lc-donut-center b').textContent, '300')
     // Assistant anchored at 100 splits 60/40; the 100 output keeps 40 thinking and 60 assistant.
     assert.deepEqual(rowOf(m.container, 1), { pct: '33.3%', label: 'Assistant Messages', count: '≈100' })
-    assert.deepEqual(rowOf(m.container, 2), { pct: '33.3%', label: 'Thinking', count: '≈100 · incl. replayed' })
+    assert.deepEqual(rowOf(m.container, 2), { pct: '33.3%', label: 'Thinking', count: '≈100' })
     await m.unmount()
 
     const zh = await mount(h(makeStatsTokens(makeKit('zh'), Donut), { usage, current, breakdown: null, generatedReasoning: 40 }))
-    assert.deepEqual(rowOf(zh.container, 2), { pct: '33.3%', label: '思考', count: '≈100 · 含上下文重放' })
+    assert.deepEqual(rowOf(zh.container, 2), { pct: '33.3%', label: '思考', count: '≈100' })
     await zh.unmount()
   })
 
@@ -107,7 +107,7 @@ describe('StatsTokens', () => {
         assert.equal(row.querySelector('.lc-sl-pct')?.textContent, '—')
       }
       const counts = queryAll(m.container, '.lc-sl-sub').map(n => n.textContent)
-      assert.deepEqual(counts, ['≈0', '≈0', '≈0', '≈0', '≈0', '≈0', '≈0', '≈0 · incl. replayed'])
+      assert.deepEqual(counts, ['≈0', '≈0', '≈0', '≈0', '≈0', '≈0', '≈0', '≈0'])
       assert.ok(query(m.container, '.lc-donut-track'), 'an all-zero ring draws the neutral track')
       await m.unmount()
     }

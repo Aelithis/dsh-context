@@ -93,7 +93,6 @@ export const DICT_EN = {
   'tokens.title': 'Token Stats',
   'tokens.total': 'Total',
   'tokens.thinking': 'Thinking',
-  'tokens.thinkingNote': 'incl. replayed',
   'plugin.title': 'Plugin Info',
   'plugin.hint': 'The best DSH context plugin ⭐',
   'plugin.name': 'Plugin',
