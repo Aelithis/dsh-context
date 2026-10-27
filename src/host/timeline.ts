@@ -18,6 +18,8 @@ const surfaceNodeSchema = z.object({
   cat: z.enum(['user', 'inject', 'skill', 'assistant', 'tool']),
   tokens: z.number().int().nonnegative(),
   reasoning: z.number().int().nonnegative().optional(),
+  answerTokens: z.number().int().nonnegative().optional(),
+  callTokens: z.number().int().nonnegative().optional(),
   imgs: z.number().int().nonnegative().optional(),
   gone: z.number().int().nonnegative().optional(),
   form: z.string().optional(),
@@ -155,6 +157,8 @@ const currentSchema = z.object({
   skill: z.number().int().nonnegative(),
   assistant: z.number().int().nonnegative(),
   assistantReasoning: z.number().int().nonnegative().optional(),
+  assistantAnswerTokens: z.number().int().nonnegative().optional(),
+  assistantCallTokens: z.number().int().nonnegative().optional(),
   tool: z.number().int().nonnegative(),
   total: z.number().int().nonnegative(),
 }).strict()
@@ -233,6 +237,8 @@ export const contextTimelineSchema = z.object({
   current: currentSchema,
   images: z.number().int().nonnegative().optional(),
   generatedReasoning: z.number().int().nonnegative().optional(),
+  generatedAnswerTokens: z.number().int().nonnegative().optional(),
+  generatedCallTokens: z.number().int().nonnegative().optional(),
   toolCalls: z.number().int().nonnegative().optional(),
   humanInputs: z.number().int().nonnegative().optional(),
   // Additive-optional like `humanInputs`: a pre-field row reads without it and clients degrade to zero.
@@ -263,6 +269,8 @@ export const contextTimelineSchema = z.object({
 const timelineStateSchema = z.object({
   surface: z.array(surfaceNodeSchema),
   assistantReasoning: z.number().int().nonnegative(),
+  assistantAnswerTokens: z.number().int().nonnegative(),
+  assistantCallTokens: z.number().int().nonnegative(),
   sums: z.object({
     user: z.number().int().nonnegative(),
     inject: z.number().int().nonnegative(),
@@ -285,6 +293,8 @@ const timelineStateSchema = z.object({
   archived: z.array(surfaceNodeSchema),
   cost: costUsageSchema.optional(),
   generatedReasoning: z.number().int().nonnegative().optional(),
+  generatedAnswerTokens: z.number().int().nonnegative().optional(),
+  generatedCallTokens: z.number().int().nonnegative().optional(),
   archiveFloor: z.number().optional(),
   timing: timingTotalsSchema.optional(),
   humanInputs: z.number().int().nonnegative().optional(),
@@ -329,7 +339,7 @@ export function createContextTimelineDefinition(config: Config, slim: () => bool
     apply: (state: TimelineState, event: SessionEvent) => applyTimeline(state, event as Parameters<typeof applyTimeline>[1], bounds),
     // Bump on any persisted-shape or fold-semantics change, which refolds cached rows; never for a backfillable or serve-time-derived
     // field, since invalidating in-generation rows orphans idle sessions with no refresh channel.
-    stateVersion: 32,
+    stateVersion: 34,
   }
   return definition
 }

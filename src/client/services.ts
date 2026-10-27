@@ -302,6 +302,8 @@ export function timelineOf(value: unknown): ContextTimeline | null {
   const counts = countsOf(data.counts)
   const last = lastOf(data.last)
   const generatedReasoning = optNumOf(data.generatedReasoning)
+  const generatedAnswerTokens = optNumOf(data.generatedAnswerTokens)
+  const generatedCallTokens = optNumOf(data.generatedCallTokens)
   const safe: ContextTimeline = {
     ok: true,
     ...(unsupported !== null ? { unsupported } : {}),
@@ -320,12 +322,16 @@ export function timelineOf(value: unknown): ContextTimeline | null {
       skill: numOf(safeCurrent.skill),
       assistant: numOf(safeCurrent.assistant),
       assistantReasoning: numOf(safeCurrent.assistantReasoning),
+      assistantAnswerTokens: numOf(safeCurrent.assistantAnswerTokens),
+      assistantCallTokens: numOf(safeCurrent.assistantCallTokens),
       tool: numOf(safeCurrent.tool),
       total: numOf(safeCurrent.total),
     },
     ...collectionsOf(data),
     ...(typeof data.images === 'number' ? { images: data.images } : {}),
     ...(generatedReasoning !== undefined ? { generatedReasoning } : {}),
+    ...(generatedAnswerTokens !== undefined ? { generatedAnswerTokens } : {}),
+    ...(generatedCallTokens !== undefined ? { generatedCallTokens } : {}),
     ...(typeof data.toolCalls === 'number' ? { toolCalls: data.toolCalls } : {}),
     ...(typeof data.humanInputs === 'number' ? { humanInputs: data.humanInputs } : {}),
     ...(typeof data.answers === 'number' && Number.isFinite(data.answers) ? { answers: data.answers } : {}),

@@ -71,7 +71,7 @@ describe('numOf', () => {
 })
 
 describe('timelineOf', () => {
-  const current = { system: 1, tools: 2, user: 3, inject: 4, skill: 0, assistant: 5, assistantReasoning: 3, tool: 6, total: 7 }
+  const current = { system: 1, tools: 2, user: 3, inject: 4, skill: 0, assistant: 5, assistantReasoning: 3, assistantAnswerTokens: 2, assistantCallTokens: 1, tool: 6, total: 7 }
 
   test('a well-formed wire value passes through by reference; non-records stay null', () => {
     const wire = {
@@ -93,20 +93,26 @@ describe('timelineOf', () => {
 
   test('current missing/non-object rebuilds a zeroed breakdown; partial fields are numOf-coerced', () => {
     for (const bad of [{}, { current: null }, { current: 7 }]) {
-      assert.deepEqual(timelineOf(bad)?.current, { system: 0, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, assistantReasoning: 0, tool: 0, total: 0 })
+      assert.deepEqual(timelineOf(bad)?.current, { system: 0, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, assistantReasoning: 0, assistantAnswerTokens: 0, assistantCallTokens: 0, tool: 0, total: 0 })
     }
     const out = timelineOf({ current: { system: 12, tools: 'x', user: undefined } })
-    assert.deepEqual(out?.current, { system: 12, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, assistantReasoning: 0, tool: 0, total: 0 })
+    assert.deepEqual(out?.current, { system: 12, tools: 0, user: 0, inject: 0, skill: 0, assistant: 0, assistantReasoning: 0, assistantAnswerTokens: 0, assistantCallTokens: 0, tool: 0, total: 0 })
   })
 
-  test('the reasoning fields survive the sanitizing path; a hostile generated count drops alone', () => {
-    const out = timelineOf({ current: { system: 1, assistant: 5, assistantReasoning: 3 }, generatedReasoning: 4, requests: 'nope' })
+  test('the assistant subset fields survive the sanitizing path; a hostile generated count drops alone', () => {
+    const out = timelineOf({ current: { system: 1, assistant: 5, assistantReasoning: 3, assistantAnswerTokens: 2, assistantCallTokens: 1 }, generatedReasoning: 4, generatedAnswerTokens: 1, generatedCallTokens: 1, requests: 'nope' })
     assert.equal(out?.current.assistantReasoning, 3)
+    assert.equal(out?.current.assistantAnswerTokens, 2)
+    assert.equal(out?.current.assistantCallTokens, 1)
     assert.equal(out?.generatedReasoning, 4)
+    assert.equal(out?.generatedAnswerTokens, 1)
+    assert.equal(out?.generatedCallTokens, 1)
     for (const bad of [-1, '4', Number.NaN, Number.POSITIVE_INFINITY]) {
-      const dropped = timelineOf({ current: 1, generatedReasoning: bad, requests: 'nope' })
+      const dropped = timelineOf({ current: 1, generatedReasoning: bad, generatedAnswerTokens: bad, generatedCallTokens: bad, requests: 'nope' })
       assert.ok(dropped !== null)
       assert.ok(!('generatedReasoning' in dropped), String(bad))
+      assert.ok(!('generatedAnswerTokens' in dropped), String(bad))
+      assert.ok(!('generatedCallTokens' in dropped), String(bad))
     }
   })
 

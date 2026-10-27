@@ -4,7 +4,7 @@
 import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import { dayKeyOf, endOfDayKey, startOfDayKey } from '../shared/days'
 import { BACKFILL_ROUTE } from './apiRoutes'
-import { billedParts } from './categories'
+import { billedParts, RING_ORDER } from './categories'
 import { cacheHitPercent } from './format'
 import { estimateSessionCost, mergeCostUsage } from './cost'
 import type { CostCurrency, ModelBook } from './cost'
@@ -622,7 +622,11 @@ export function tokenPartsOf(
         cacheWriteTokens: totals.cacheWrite,
         outputTokens: totals.output,
       }
-      for (const part of billedParts(member.current, null, usage, member.generatedReasoning)) {
+      for (const part of billedParts(member.current, null, usage, {
+        reasoning: member.generatedReasoning,
+        answers: member.generatedAnswerTokens,
+        calls: member.generatedCallTokens,
+      })) {
         if (!Number.isFinite(part.value) || part.value <= 0) continue
         total += part.value
         const sumsGet: Map<string, TokenPartTotal | undefined> = sums
@@ -634,7 +638,7 @@ export function tokenPartsOf(
     }
   }
   if (!any) return null
-  return { parts: [...sums.values()], total }
+  return { parts: [...sums.values()].sort((a, b) => RING_ORDER.indexOf(a.key) - RING_ORDER.indexOf(b.key)), total }
 }
 
 export interface OverviewKpis {

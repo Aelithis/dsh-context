@@ -15,9 +15,9 @@ const PARTS: TokenPartTotal[] = [
   { key: 'user', color: 'var(--color-green-500)', value: 10 },
   { key: 'inject', color: 'var(--color-purple-500)', value: 3 },
   { key: 'skill', color: 'var(--color-orange-500)', value: 3 },
-  { key: 'assistant', color: 'var(--color-blue-500)', value: 64 },
-  { key: 'tool', color: 'var(--color-teal-500)', value: 32 },
-  { key: 'thinking', color: 'var(--color-violet-500)', value: 40 },
+  { key: 'toolCalls', color: 'var(--color-teal-500)', value: 96 },
+  { key: 'thinking', color: 'var(--color-violet-500)', value: 20 },
+  { key: 'answers', color: 'var(--color-pink-500)', value: 20 },
 ]
 const TOKENS = { parts: PARTS, total: 210 }
 
@@ -41,9 +41,9 @@ describe('OverviewTokens', () => {
       { pct: '4.8%', label: 'User Messages', count: '≈10' },
       { pct: '1.4%', label: 'Injected Context', count: '≈3' },
       { pct: '1.4%', label: 'Skill Injections', count: '≈3' },
-      { pct: '30.5%', label: 'Assistant Messages', count: '≈64' },
-      { pct: '15.2%', label: 'Tool Results', count: '≈32' },
-      { pct: '19.0%', label: 'Reasoning', count: '≈40' },
+      { pct: '45.7%', label: 'Tool Calls', count: '≈96' },
+      { pct: '9.5%', label: 'Reasoning', count: '≈20' },
+      { pct: '9.5%', label: 'Answers', count: '≈20' },
     ]
     expected.forEach((row, i) => assert.deepEqual(rowOf(m.container, i), row))
     await m.unmount()

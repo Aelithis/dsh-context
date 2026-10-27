@@ -67,7 +67,7 @@ Click **Context Insights / 上下文洞察** in the sidebar's panel list — the
 | **7-day usage chart** | When did I spend what — each of the last 7 days' billed tokens and estimated cost as a bar pair, folded per turn off the sessions' own request times (not the session's last-active day). |
 | **Activity heatmap** | When do I actually work — the last 8 weeks of daily billed tokens; click a day to filter the sessions that were active on it. |
 | **Settings entry** | One row under the heatmap — the same guarded jump to this plugin's preferences as the Context tab's Plugin Info card. |
-| **Context Composition** | Where the picked range's billed tokens went, split by the Context tab's composition categories. |
+| **Context Composition** | Where the picked range's billed tokens went, split by the Token card's billed categories (Tool Calls, Reasoning, Answers, …). |
 | **Session cards** | Each session's profile: composition ring, billed tokens, turns, cost, and its workspace-group / project breadcrumb — sorted by recency, tokens, or context size, searchable, grouped by workspace. A card click opens the session. |
 
 
@@ -80,7 +80,7 @@ Open any session and click the **Context / 上下文** tab:
 | Card | The question it answers |
 | --- | --- |
 | **Context Stats** | Turns, steps, human inputs, live tool calls — plus a cost estimated from the models.dev list prices (hover the `?` for per-1M rates; only DeepSeek splits peak/off-peak: its listed rates are the off-peak tier, and peak windows bill at 2×). |
-| **Token Stats** | Where the billed tokens went — the same total as the chat stats line under the composer, split by composition (system, tools, messages, reasoning…). Reasoning estimates the billed thinking content across the session: the replayed share is split out of assistant messages, the generated share out of output, the reasoning slice closes the ring, and the session's cache-hit rate sits in the corner. |
+| **Token Stats** | Where the billed tokens went — the same total as the chat stats line under the composer, split into System Prompt, Tool Schemas, User Messages, Injected Context, Skill Injections, Tool Calls, Reasoning, and Answers. Tool Calls folds the tool-call names and arguments (replayed in the prompt plus generated in the output) together with the results those tools returned; Answers splits the model's reply prose out of the same assistant content and output; Reasoning splits its thinking the same way; the session's cache-hit rate sits in the corner. |
 | **Timing Stats** | How active time split across model calls, tool runs, and overhead. |
 | **Current Context** | What's in the window *right now*. |
 | **Context Trend** | Every request's size — and its story. |
