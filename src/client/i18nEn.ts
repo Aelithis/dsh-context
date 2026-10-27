@@ -93,6 +93,7 @@ export const DICT_EN = {
   'tokens.title': 'Token Stats',
   'tokens.total': 'Total',
   'tokens.thinking': 'Reasoning',
+  'tokens.assistantTip': 'Assistant-authored, non-thinking content:\n• Text and tool calls (name and arguments) replayed in the prompt\n• Text and tool calls generated in the output\nExcludes reasoning, tool results, and other categories.',
   'plugin.title': 'Plugin Info',
   'plugin.hint': 'The best DSH context plugin ⭐',
   'plugin.name': 'Plugin',

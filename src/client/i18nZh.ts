@@ -90,6 +90,7 @@ export const DICT_ZH = {
   'tokens.title': 'Token 统计',
   'tokens.total': '总用量',
   'tokens.thinking': '模型思考',
+  'tokens.assistantTip': '助手消息中的非思考内容：\n• 提示词中重放的文本与工具调用（名称与参数）\n• 输出中生成的文本与工具调用\n不含模型思考、工具结果及其他分类。',
   'plugin.title': '插件信息',
   'plugin.hint': 'The best DSH context plugin ⭐',
   'plugin.name': '插件',

@@ -10,5 +10,6 @@ export function tokenRowsOf(kit: ViewKit, parts: readonly PartsPart[], total: nu
     label: p.key === 'thinking' ? t('tokens.thinking') : catLabel(p.key),
     pct: fmtShare(p.value, total),
     count: '≈' + fmt(p.value),
+    ...(p.key === 'assistant' ? { tip: t('tokens.assistantTip') } : {}),
   }))
 }

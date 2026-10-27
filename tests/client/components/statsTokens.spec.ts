@@ -53,6 +53,22 @@ describe('StatsTokens', () => {
     await sparseMount.unmount()
   })
 
+  test('the assistant row explains its non-thinking scope in the tooltip', async () => {
+    const tip = 'Assistant-authored, non-thinking content:\n• Text and tool calls (name and arguments) replayed in the prompt\n• Text and tool calls generated in the output\nExcludes reasoning, tool results, and other categories.'
+    const m = await mount(h(StatsTokens, { usage: USAGE, current: CURRENT, breakdown: null }))
+    const assistant = queryAll(m.container, '.lc-sl-row').find(r => r.querySelector('.lc-sl-label')?.textContent === 'Assistant Messages')
+    assert.equal(assistant?.getAttribute('title'), tip)
+    assert.equal(assistant?.querySelector('.lc-sl-label')?.getAttribute('title'), tip)
+    await m.unmount()
+
+    const zhTip = '助手消息中的非思考内容：\n• 提示词中重放的文本与工具调用（名称与参数）\n• 输出中生成的文本与工具调用\n不含模型思考、工具结果及其他分类。'
+    const zh = await mount(h(makeStatsTokens(makeKit('zh'), Donut), { usage: USAGE, current: CURRENT, breakdown: null }))
+    const zhAssistant = queryAll(zh.container, '.lc-sl-row').find(r => r.querySelector('.lc-sl-label')?.textContent === '助手消息')
+    assert.equal(zhAssistant?.getAttribute('title'), zhTip)
+    assert.equal(zhAssistant?.querySelector('.lc-sl-label')?.getAttribute('title'), zhTip)
+    await zh.unmount()
+  })
+
   test('the thinking slice splits the assistant bucket and the generated output, in both locales', async () => {
     const current: Snapshot['current'] = { system: 100, tools: 0, user: 0, inject: 0, skill: 0, assistant: 100, assistantReasoning: 60, tool: 0, total: 200 }
     const usage: TokenUsage = { uncachedInputTokens: 200, outputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0 }
