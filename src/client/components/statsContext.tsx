@@ -467,7 +467,9 @@ export function makeStatsContext(
     const ownTokens = billedTokensOf(props.cost)
     const subTokens = billedTokensOf(subUsage)
     const pair = (tokens: number | null, costText: string): ReactElement => (
-      <span className="lc-strip-pair"><b>{fmt(tokens)}</b><i>/</i><b>{costText}</b></span>
+      tokens === null
+        ? <span className="lc-strip-pair">{fmt(tokens)}<i>/</i>{costText}</span>
+        : <span className="lc-strip-pair"><b>{fmt(tokens)}</b><i>/</i><b>{costText}</b></span>
     )
     const costText = cost === null ? '—' : formatCost(cost, currency)
     const ownText = ownCost === null ? '—' : formatCost(ownCost, currency)
@@ -569,7 +571,11 @@ export function makeStatsContext(
                 </>)}
                 {costRow('subs', <>
                   <i>
-                    {t('stats.teamSubs', { n: sub.count })}
+                    {t('stats.teamSubs')}
+                    {' '}
+                    {sub.count > 0
+                      ? <b className="lc-ledger-team-count">{t('stats.teamSubsCount', { n: sub.count })}</b>
+                      : t('stats.teamSubsCount', { n: sub.count })}
                     <i className="lc-stat-q group-hover/tip:text-(--dsw-alias-label-primary) group-hover/tip:border-(--dsw-alias-label-primary)" aria-hidden="true">?</i>
                   </i>
                   {pair(sub.count === 0 ? null : subTokens, subText)}

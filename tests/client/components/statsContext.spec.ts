@@ -133,6 +133,9 @@ describe('StatsContext', () => {
     assert.equal(queryAll(m.container, '.lc-core-kv-events .lc-kind').length, 3)
     assert.equal(queryAll(m.container, '.lc-core-kv-events .lc-kind.lc-ledger-chip-dim').length, 0)
     assert.deepEqual(costCellsOf(m.container), ['Fleet?1.0M/$0.30', 'Current Agent?1.0M/$0.30', 'Subagents × 0?—/—'])
+    const subCell = queryAll(m.container, '.lc-ledger-out-body2 > .lc-strip-cell')[1]
+    assert.equal(queryAll(subCell, '.lc-strip-pair b').length, 0, 'a zero-count subagent row renders its placeholder pair as plain text')
+    assert.equal(queryAll(m.container, '.lc-ledger-team-count').length, 0, 'a zero count stays plain label text')
     await m.unmount()
   })
 
@@ -281,6 +284,9 @@ describe('StatsContext', () => {
     assert.deepEqual(chipsOf(query(m.container, '.lc-ledger-in-body2')), ['python3212', 'git88', 'grep40', 'node20', 'npm10'], 'every program fits the unmeasured row')
     assert.equal(queryAll(m.container, '.lc-ledger-out-body2 .lc-ledger-chip').length, 0, 'no roster chips remain below Team')
     assert.deepEqual(costCellsOf(m.container), ['Fleet?3.0M/$0.45', 'Current Agent?1.0M/$0.30', 'Subagents × 5?2.0M/$0.15'])
+    const subCell = queryAll(m.container, '.lc-ledger-out-body2 > .lc-strip-cell')[1]
+    assert.deepEqual(queryAll(subCell, '.lc-strip-pair b').map(el => el.textContent), ['2.0M', '$0.15'], 'a counted subagent row bolds both figures')
+    assert.equal(query(m.container, '.lc-ledger-team-count').textContent, '× 5', 'a positive count bolds as its own figure')
     const cmdChips = queryAll(m.container, '.lc-ledger-in-body2 .lc-ledger-chip')
     assert.equal(cmdChips[0].getAttribute('title'), DICT_EN['stats.commandJump'])
     await click(cmdChips[2])
