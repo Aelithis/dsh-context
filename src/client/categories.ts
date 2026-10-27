@@ -77,8 +77,8 @@ export function anchoredParts(parts: PartsPart[], target: number | null): PartsP
   return sourced.map(p => ({ ...p, value: Math.round(p.raw * scale) }))
 }
 
-/** The thinking slice reuses the retired output slice's hue. */
-const THINKING_COLOR = 'var(--color-pink-500)'
+/** The timing card's reasoning hue, so both thinking surfaces read as one category. */
+const THINKING_COLOR = 'var(--color-violet-500)'
 
 const countOf = (value: number | undefined): number =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0

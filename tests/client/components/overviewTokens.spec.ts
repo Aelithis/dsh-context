@@ -17,7 +17,7 @@ const PARTS: TokenPartTotal[] = [
   { key: 'skill', color: 'var(--color-orange-500)', value: 3 },
   { key: 'assistant', color: 'var(--color-blue-500)', value: 64 },
   { key: 'tool', color: 'var(--color-teal-500)', value: 32 },
-  { key: 'thinking', color: 'var(--color-pink-500)', value: 40 },
+  { key: 'thinking', color: 'var(--color-violet-500)', value: 40 },
 ]
 const TOKENS = { parts: PARTS, total: 210 }
 
@@ -53,7 +53,7 @@ describe('OverviewTokens', () => {
         { key: 'system', color: 'var(--color-indigo-500)', value: 300 },
         { key: 'tools', color: 'var(--color-amber-500)', value: 0 },
         { key: 'user', color: 'var(--color-green-500)', value: 90 },
-        { key: 'thinking', color: 'var(--color-pink-500)', value: 50 },
+        { key: 'thinking', color: 'var(--color-violet-500)', value: 50 },
       ],
       total: 440,
     }

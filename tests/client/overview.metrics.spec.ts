@@ -161,7 +161,7 @@ describe('tokenPartsOf', () => {
         { key: 'skill', color: 'var(--color-orange-500)', value: 3 },
         { key: 'assistant', color: 'var(--color-blue-500)', value: 44 },
         { key: 'tool', color: 'var(--color-teal-500)', value: 32 },
-        { key: 'thinking', color: 'var(--color-pink-500)', value: 60 },
+        { key: 'thinking', color: 'var(--color-violet-500)', value: 60 },
       ],
     })
   })

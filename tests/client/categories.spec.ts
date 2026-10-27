@@ -83,7 +83,7 @@ describe('billedParts', () => {
       ['skill', 'var(--color-orange-500)', 0],
       ['assistant', 'var(--color-blue-500)', 160],
       ['tool', 'var(--color-teal-500)', 100],
-      ['thinking', 'var(--color-pink-500)', 0],
+      ['thinking', 'var(--color-violet-500)', 0],
     ])
     const scaled = billedParts(current({ system: 100, user: 100, total: 200 }), null, { ...USAGE, uncachedInputTokens: 400, cacheReadTokens: 0, outputTokens: 0 })
     assert.deepEqual(values(scaled), { system: 200, tools: 0, user: 200, inject: 0, skill: 0, assistant: 0, tool: 0, thinking: 0 })
