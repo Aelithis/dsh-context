@@ -35,6 +35,7 @@ export const DICT_EN = {
   'stats.skills': 'Skill Loads',
   'stats.skillsJump': 'Open Skill Injections in the Context Browser',
   'stats.answersJump': 'Filter Answers in the Context Browser',
+  'stats.sessionJump': 'Scroll to the Context Trend',
   'stats.user': 'User',
   'stats.fileRead': 'Read',
   'stats.fileWrite': 'Write',

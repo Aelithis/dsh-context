@@ -32,6 +32,7 @@ export const DICT_ZH = {
   'stats.skills': '技能加载',
   'stats.skillsJump': '在上下文浏览器中展开技能注入',
   'stats.answersJump': '在上下文浏览器中筛选回答',
+  'stats.sessionJump': '滚动到上下文趋势',
   'stats.user': '用户',
   'stats.fileRead': '读取',
   'stats.fileWrite': '写入',

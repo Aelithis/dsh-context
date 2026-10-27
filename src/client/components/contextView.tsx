@@ -58,6 +58,9 @@ const viewScroll = new Map<string, number>()
 const EVENT_KINDS = ['inject', 'compaction', 'prune', 'model', 'mode'] as const
 /** Ordinary sweeps coalesce on this trailing delay; DNA bars are heavier and wait longer for the pointer to rest. */
 const HOVER_DELAY_MS = 140
+/** A tile jump scrolls content under a resting pointer and Chromium re-fires mouseenter for whatever lands there;
+ * hover stays off this long so the landing does not pop a bar tip over the card's own header. */
+const HOVER_LOCK_MS = 320
 const DNA_HOVER_DELAY = 220
 /** Above this many retained steps the DNA bands are built lazily per rendered window. */
 const DNA_LAZY_MIN = 512
@@ -185,6 +188,8 @@ export function makeContextView(
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const hoverPending = useRef<number | null>(null)
     const hoverAt = useRef(0)
+    /** Wall-clock deadline shared with the trend chart, whose local bar hover bypasses `handleHover`. */
+    const hoverLock = useRef(0)
     const clearHoverTimer = useCallback((): void => {
       if (hoverTimer.current !== null) {
         clearTimeout(hoverTimer.current)
@@ -222,6 +227,7 @@ export function makeContextView(
       }, dna ? DNA_HOVER_DELAY : HOVER_DELAY_MS)
     }, [clearHoverTimer, dna])
     const handleHoverTurn = useCallback((turn: number | null): void => {
+      if (turn !== null && performance.now() < hoverLock.current) return
       startTransition(() => { setHoverTurn(turn) })
     }, [])
     const handleHoverKey = useCallback((key: string | null): void => {
@@ -329,9 +335,16 @@ export function makeContextView(
       return () => { observer.disconnect() }
     }, [data, sidebarVisible])
     /* v8 ignore stop */
-    // The stats board's jumps: a browser key lands on its own category row (skills inject, answers, user messages),
-    // a file kind on the File Activity card's matching chip.
+    // The stats board's jumps: the session figures land on the Context Trend card, a browser key on its own
+    // category row (skills inject, answers, user messages), a file kind on the File Activity card's matching chip.
     const onJump = useCallback((jump: StatsJump): void => {
+      if (jump === 'turns' || jump === 'steps') {
+        hoverLock.current = performance.now() + HOVER_LOCK_MS
+        handleHover(null)
+        handleHoverTurn(null)
+        revealCard(rootRef.current, '[data-lc-trend]')
+        return
+      }
       if (jump === 'read' || jump === 'write' || jump === 'search' || jump === 'image') {
         // The below-fold row may still be lazy: setting the focus forces its mount, and the reveal effect waits for it.
         setFilterFocus(jump)
@@ -341,7 +354,7 @@ export function makeContextView(
         ? { cat: 'skill' }
         : jump === 'answers' ? { cat: 'assistant', kind: 'answer' } : { cat: 'user' })
       revealCard(rootRef.current, '.lc-col-browser')
-    }, [])
+    }, [handleHover, handleHoverTurn])
     // A band click lands on its category in the browser at that step; the browser's onOpenCat then focuses the chart.
     const revealCat = useCallback((cat: Category | 'system' | 'tools', seq: number): void => {
       setCatFocus({ cat, step: seq })
@@ -700,6 +713,7 @@ export function makeContextView(
       hoverCat: trendHoverCat,
       focusCat,
       durationCurve,
+      hoverLock,
       onSelect: setSelectedSeq,
       onHover: handleHover,
       onHoverTurn: handleHoverTurn,
