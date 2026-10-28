@@ -216,6 +216,8 @@ export function makeFleetView(
         onOwnerFilter={setOwnerFilter}
         focusTaskId={focusTaskId}
         onFocusTask={setFocusTaskId}
+        pinnedId={pinnedId}
+        hoverId={hoverId}
         onPinMember={pinToggle}
         onHoverMember={setHoverId}
         rich={rich}
