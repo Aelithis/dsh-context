@@ -512,7 +512,6 @@ export function makeStatsContext(
               <b className="lc-ledger-total">{fmt(ioTotal)}</b>
             </div>
             <div className="lc-core">
-              <span className="lc-core-label">{t('stats.session')}</span>
               <span className="lc-core-kvs lc-core-kvs-main">
                 {figure('turns', props.counts.turns, t('stats.turns'))}
                 {figure('steps', props.counts.steps, t('stats.steps'))}

@@ -25,7 +25,6 @@ export const DICT_ZH = {
   'overview.reserveTrigger': '自动压缩触发线',
   'overview.reserveTriggerTip': '已用量到达此线时触发压缩',
   'stats.title': '上下文统计',
-  'stats.session': '当前会话',
   'stats.turns': '轮次',
   'stats.steps': '步数',
   'stats.answers': '模型回复',

@@ -97,7 +97,6 @@ button.lc-ledger-cost-row { appearance: none; border: 0; padding: 0; background:
 .lc-ledger-chip-more { opacity: 0.7; }
 .lc-ledger-gauge { display: block; position: absolute; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
 .lc-core { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding-bottom: 12px; }
-.lc-core-label { grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-primary); white-space: nowrap; }
 .lc-core-kvs { display: contents; }
 .lc-core-kv { min-width: 0; min-height: 54px; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 6px 9px; border-radius: 7px; background: var(--lc-control-track); line-height: 1.2; }
 .lc-core-kv b { font-size: 18px; line-height: 1.15; font-weight: 700; color: var(--dsw-alias-label-primary); font-variant-numeric: tabular-nums; }

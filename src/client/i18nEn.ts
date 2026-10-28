@@ -28,7 +28,6 @@ export const DICT_EN = {
   'overview.reserveTrigger': 'Auto-compaction trigger',
   'overview.reserveTriggerTip': 'Compaction fires when the used tokens reach this line',
   'stats.title': 'Context Stats',
-  'stats.session': 'Current Session',
   'stats.turns': 'Turns',
   'stats.steps': 'Steps',
   'stats.answers': 'Answers',
