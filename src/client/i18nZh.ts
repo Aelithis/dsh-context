@@ -43,6 +43,7 @@ export const DICT_ZH = {
   'stats.filesJump': '在文件活动中筛选此类操作',
   'stats.io': '输入输出',
   'stats.events': '上下文事件',
+  'stats.eventsJump': '滚动到上下文事件',
   'stats.eventsKindJump': '在上下文事件中筛选“{kind}”',
   'stats.toolCalls': '工具调用',
   'stats.toolsMore': '其他 +{n}',

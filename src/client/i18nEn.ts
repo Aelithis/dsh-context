@@ -46,6 +46,7 @@ export const DICT_EN = {
   'stats.filesJump': 'Filter this kind in File Activity',
   'stats.io': 'Input / Output',
   'stats.events': 'Context Events',
+  'stats.eventsJump': 'Scroll to Context Events',
   'stats.eventsKindJump': 'Filter {kind} in Context Events',
   'stats.toolCalls': 'Tool Calls',
   'stats.toolsMore': '+{n} more',
