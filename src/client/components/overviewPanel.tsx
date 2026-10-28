@@ -18,7 +18,6 @@ import type { ContextSettings } from '../settings'
 import type { SkillInfo } from '../../shared/types'
 import { dayKeyOf } from '../../shared/days'
 import type { ViewKit } from '../viewkit'
-import { makeBalanceCapsule } from './balanceCapsule'
 import { ClearableInput } from './clearableInput'
 import { makeDateRange } from './dateRange'
 import { makeErrorBoundary } from './errorBoundary'
@@ -30,7 +29,6 @@ import { makeOverviewUsage } from './overviewUsage'
 import { makeStatsTiming } from './statsTiming'
 import { makeOverviewCard } from './overviewCard'
 import { makeOverviewSkills } from './overviewSkills'
-import { makeUpdatePill } from './updatePill'
 import { IconSettings } from '../primitives'
 
 export interface OverviewPanelProps {
@@ -52,13 +50,11 @@ export function makeOverviewPanel(
   const subscribeSettings = settings.store.subscribe.bind(settings.store)
   const Heatmap = makeHeatmap(kit)
   const OverviewCard = makeOverviewCard(kit)
-  const BalanceCapsule = makeBalanceCapsule(ctx, kit)
   const DateRange = makeDateRange(kit)
   const OverviewTokens = makeOverviewTokens(kit, Donut)
   const StatsTiming = makeStatsTiming(kit, Donut)
   const OverviewUsage = makeOverviewUsage(kit)
   const OverviewSkills = makeOverviewSkills(kit)
-  const UpdatePill = makeUpdatePill(kit)
   const ErrorBoundary = makeErrorBoundary(t)
 
   // Read per render: the slot outlet re-renders on a locale switch.
@@ -185,8 +181,6 @@ export function makeOverviewPanel(
                 <IconSettings size={14} />{t('plugin.settings')}
               </button>
               {/* Renders nothing until a live figure lands, so the heading row never reflows for it. */}
-              <BalanceCapsule />
-              <UpdatePill />
               {/* One wrapper so the head's right cluster pushes once; a bare `.lc-gran` sibling would split the free space. */}
               <div className="lc-ov-headctl">
                 <DateRange

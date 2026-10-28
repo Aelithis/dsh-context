@@ -583,20 +583,3 @@ export interface HeaderEpochContent {
     schema?: unknown
   }>
 }
-
-export interface PlatformBalanceEntry {
-  /** The ISO code the platform reported (`CNY` / `USD`). */
-  currency: string
-  /** `granted` + `toppedUp`, derived rather than read from the platform's `total_balance`, which rounds independently of its parts. */
-  total: number
-  granted: number
-  toppedUp: number
-}
-
-/** The DeepSeek open-platform balance, served by `/api/dsh-context/balance`; `null` on the wire (nothing rendered) when unconfigured or
- * the read fails. */
-export interface PlatformBalance {
-  isAvailable: boolean
-  /** One entry per currency the account holds; at least one. */
-  balances: PlatformBalanceEntry[]
-}

@@ -37,7 +37,7 @@ importers:
         specifier: ^3.18.4
         version: 3.18.4
       '@opencode-ai/models':
-        specifier: ^0.0.87
+        specifier: 0.0.87
         version: 0.0.87
       '@shikijs/langs':
         specifier: ^4.3.1

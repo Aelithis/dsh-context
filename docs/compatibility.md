@@ -121,3 +121,7 @@ Last verified: **2026-10-25** (dsh-context `0.75.1`, dsh `0.2.0-rc.2` / `0.2.1-r
 - **Check — hostile fixtures:** every guard branch carries them (wrong types, missing fields, throwing accessors) — an untested guard is an unverified promise.
 - **Procedure — add a baseline:** one `Baseline` entry in `tests/baselines.ts` (tag, vendored cordis, faces) plus the tag in both workflows' fetch step; run `pnpm test` and re-fit whichever seam a failing probe names.
 - **Limitation — scope:** these checks prove source-level seam compatibility, statistical parity, and install/uninstall per release — not full web-app runtime acceptance on a real profile.
+
+## Private build
+
+See [privacy.md](privacy.md). The private branch removes update/balance network paths and uses a pinned local pricing snapshot; projection and fold contracts remain unchanged. Target host: private DSH 0.2.1-rc.3, pending isolated mount verification.

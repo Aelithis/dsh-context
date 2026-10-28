@@ -19,15 +19,15 @@ describe('meta', () => {
     const meta = await importMeta()
     assert.equal(meta.PLUGIN_NAME, 'dsh-context')
     assert.equal(meta.PLUGIN_VERSION, '0.0.0-dev')
-    assert.equal(meta.PLUGIN_REPO, 'https://github.com/bowenliang123/dsh-context')
-    assert.equal(meta.PLUGIN_REPO_SHORT, 'bowenliang123/dsh-context')
+    assert.equal(meta.PLUGIN_REPO, 'https://github.com/Aelithis/dsh-context')
+    assert.equal(meta.PLUGIN_REPO_SHORT, 'Aelithis/dsh-context')
   })
 
   test('a version define wins over the dev fallback', async () => {
     globals.__DSH_CTX_VERSION__ = '9.9.9'
     const meta = await importMeta()
     assert.equal(meta.PLUGIN_VERSION, '9.9.9')
-    assert.equal(meta.PLUGIN_REPO, 'https://github.com/bowenliang123/dsh-context')
+    assert.equal(meta.PLUGIN_REPO, 'https://github.com/Aelithis/dsh-context')
   })
 
   test('a repo define wins and the short form strips the github prefix', async () => {

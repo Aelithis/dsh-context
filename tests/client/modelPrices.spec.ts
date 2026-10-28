@@ -123,102 +123,38 @@ describe('the price store', () => {
     un()
   })
 
-  test('a garbage payload fails visibly and retries with doubling backoff', async () => {
-    let calls = 0
-    setModelPricesLoader(() => {
-      calls++
-      return Promise.resolve(calls < 3 ? 'garbage' : FIXTURE)
-    })
+  test('a failed load reports failure without background retries', async () => {
+    const load = vi.fn(() => Promise.reject(new Error('down')))
+    setModelPricesLoader(load)
     subscribeModelPrices(() => snaps.push(getModelPricesSnap()))
+    await settle()
+    assert.equal(getModelPricesSnap().failed, true)
+    await vi.advanceTimersByTimeAsync(60 * 60_000)
+    assert.equal(load.mock.calls.length, 1)
+    assert.equal(vi.getTimerCount(), 0)
+  })
+
+  test('an invalid local payload reports no book', async () => {
+    setModelPricesLoader(() => Promise.resolve('garbage'))
+    subscribeModelPrices(() => {})
     await settle()
     assert.deepEqual(getModelPricesSnap(), { book: null, failed: true })
-    subscribeModelPrices(() => {})
-    await vi.advanceTimersByTimeAsync(29_999)
-    assert.equal(calls, 1)
-    await vi.advanceTimersByTimeAsync(1)
-    assert.equal(calls, 2)
-    await vi.advanceTimersByTimeAsync(30_000)
-    assert.equal(calls, 2, 'the second retry waits the doubled 60s')
-    await vi.advanceTimersByTimeAsync(30_000)
-    assert.equal(calls, 3)
-    assert.equal(getModelPricesSnap().failed, false, 'a successful retry clears the failure')
-    assert.ok(getModelPricesSnap().book !== null)
   })
 
-  test('the retry cycle stops once its last subscriber leaves, and a new subscribe kicks it again', async () => {
-    let calls = 0
-    setModelPricesLoader(() => {
-      calls++
-      return Promise.reject(new Error('down'))
-    })
-    const off = subscribeModelPrices(() => {})
-    await settle()
-    assert.equal(calls, 1)
-    off()
-    await vi.advanceTimersByTimeAsync(30_000)
-    assert.equal(calls, 1, 'the idle cycle reaches no loader')
-    await vi.advanceTimersByTimeAsync(20 * 60_000)
-    assert.equal(calls, 1, 'no poll happens without a subscriber')
-    subscribeModelPrices(() => {})
-    await settle()
-    assert.equal(calls, 2, 'a fresh subscribe kicks a fresh read')
-  })
-
-  test('a rejected fetch backs off too and stays capped', async () => {
-    setModelPricesLoader(() => Promise.reject(new Error('down')))
-    subscribeModelPrices(() => snaps.push(getModelPricesSnap()))
-    await settle()
-    assert.equal(getModelPricesSnap().failed, true)
-    await vi.advanceTimersByTimeAsync(30_000)
-    assert.equal(getModelPricesSnap().failed, true)
-    for (let i = 0; i < 6; i++) await vi.advanceTimersByTimeAsync(240_000)
-    assert.ok(getModelPricesSnap().failed, 'still failing, still retrying (capped at ×8)')
-  })
-
-  test('resetModelPrices drops the book and the pending retry', async () => {
-    let calls = 0
-    setModelPricesLoader(() => {
-      calls++
-      return Promise.reject(new Error('down'))
-    })
-    subscribeModelPrices(() => {})
-    await settle()
-    assert.equal(calls, 1)
-    resetModelPrices()
-    await vi.advanceTimersByTimeAsync(10 * 240_000)
-    assert.equal(calls, 1, 'the armed retry went with the reset')
-    assert.deepEqual(getModelPricesSnap(), { book: null, failed: false })
-  })
-
-  test('an unsubscribe detaches the listener; a restore reverts to the SDK loader', async () => {
-    setModelPricesLoader(() => Promise.resolve(FIXTURE))
-    const seen: ModelPricesSnap[] = []
-    const un = subscribeModelPrices(() => seen.push(getModelPricesSnap()))
-    un()
-    await settle()
-    assert.deepEqual(seen, [], 'no emissions after unsubscribing')
-    assert.deepEqual(getModelPricesSnap().book, pricesBookOf(FIXTURE), 'the in-flight fetch still lands silently')
-    setModelPricesLoader(null)
-    assert.deepEqual(getModelPricesSnap().book, pricesBookOf(FIXTURE))
-  })
-
-  test('the default loader reads models.dev through the SDK client', async () => {
-    const responses = [
-      new Response('not json', { status: 200 }),
-      new Response(JSON.stringify(FIXTURE), { status: 200 }),
-    ]
-    const fetchMock = vi.fn((_input: URL | RequestInfo): Promise<Response> => Promise.resolve(responses.shift() ?? new Response('{}', { status: 200 })))
+  test('the default loads the pinned local snapshot without any network or timer', async () => {
+    const fetchMock = vi.fn(() => { throw new Error('unexpected network') })
     vi.stubGlobal('fetch', fetchMock)
     try {
-      resetModelPrices()
       setModelPricesLoader(null)
-      subscribeModelPrices(() => snaps.push(getModelPricesSnap()))
+      const off = subscribeModelPrices(() => snaps.push(getModelPricesSnap()))
       await settle()
-      const requested = String(fetchMock.mock.calls[0]?.[0])
-      assert.equal(requested, 'https://models.dev/api.json')
-      assert.deepEqual(getModelPricesSnap(), { book: null, failed: true }, 'a non-JSON body fails the boundary and retries')
-      await vi.advanceTimersByTimeAsync(30_000)
-      assert.deepEqual(getModelPricesSnap().book, pricesBookOf(FIXTURE), 'the retry lands the sanitized book')
+      const book = getModelPricesSnap().book
+      assert.ok(book !== null)
+      assert.ok(Object.keys(book.prices).length > 0)
+      assert.equal(book.prices['private-unknown-provider']?.['private-unknown-model'], undefined)
+      assert.equal(fetchMock.mock.calls.length, 0)
+      assert.equal(vi.getTimerCount(), 0)
+      off()
     } finally {
       vi.unstubAllGlobals()
     }

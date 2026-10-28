@@ -1,7 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { IconSettings } from '../primitives'
 import { siDeepseek, siGithub, type SimpleIcon } from 'simple-icons'
-import { useNewerVersion } from '../latestVersion'
 import { PLUGIN_NAME, PLUGIN_REPO, PLUGIN_REPO_SHORT, PLUGIN_VERSION } from '../meta'
 import { openPluginSettings, type ClientCtx } from '../services'
 import type { ViewKit } from '../viewkit'
@@ -25,10 +24,7 @@ export function makePluginInfo(kit: ViewKit, ctx: ClientCtx): () => ReactElement
     </a>
   )
   return function PluginInfo(): ReactElement {
-    const update = useNewerVersion()
     const nameText = PLUGIN_NAME + ' (v' + PLUGIN_VERSION + ')'
-    const nameValue: ReactNode[] = [nameText]
-    if (update) nameValue.push(<span key="update" className="lc-pi-update">{'↑ v' + update}</span>)
     // Rows ellipsize and recover on hover, so a 240px floor suffices.
     return (
       <div className="lc-card flex-1 min-w-[min(240px,100%)]">
@@ -39,7 +35,7 @@ export function makePluginInfo(kit: ViewKit, ctx: ClientCtx): () => ReactElement
           </a>
         </div>
         <div className="lc-pi-grid">
-          {row(<SiteMark icon={siDeepseek} />, t('plugin.name'), nameValue, PLUGIN_REPO, update !== null ? nameText + ' ↑ v' + update : nameText)}
+          {row(<SiteMark icon={siDeepseek} />, t('plugin.name'), nameText, PLUGIN_REPO, nameText)}
           {row(<SiteMark icon={siGithub} />, t('plugin.github'), PLUGIN_REPO_SHORT, PLUGIN_REPO, PLUGIN_REPO_SHORT)}
           <button type="button" className="lc-pi-row lc-pi-row-btn group/pi" onClick={() => { openPluginSettings(ctx) }}>
             <div className="lc-pi-label"><IconSettings size={12} className="lc-pi-labelicon" />{t('plugin.settings')}</div>

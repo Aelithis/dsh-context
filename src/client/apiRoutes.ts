@@ -2,8 +2,6 @@
 
 export const DETAIL_ROUTE = 'api/dsh-context/detail'
 
-export const BALANCE_ROUTE = 'api/dsh-context/balance'
-
 export const FLEET_ROUTE = 'api/dsh-context/fleet'
 
 export const SKILLS_ROUTE = 'api/dsh-context/skills'

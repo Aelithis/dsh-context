@@ -13,7 +13,7 @@ interface CtxSpec {
   agentPresets?: unknown
 }
 
-/** A minimal host ctx double with cordis inject semantics (mirrors balance.spec.ts's): the callback runs once its
+/** A minimal host ctx double with cordis inject semantics: the callback runs once its
  * dependency list completes, and `ctx.get` serves the request-time reads. */
 function ctxOf(spec: CtxSpec): { ctx: Context; captured: { path?: string; fetch?: RouteFetch } } {
   const captured: { path?: string; fetch?: RouteFetch } = {}

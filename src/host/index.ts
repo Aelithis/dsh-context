@@ -6,7 +6,6 @@ import type { Context } from '@deepseek-ai/cordis'
 import { createContextActivityDefinition } from './activity'
 import { watchAttachmentChannel } from './attachment'
 import { createToolAttribution } from './attribution'
-import { watchBalanceChannel } from './balance'
 import { watchActivityBackfill } from './backfill'
 import { makeColdReadGate } from './coldRead'
 import { Config, resolveBounds } from './config'
@@ -31,7 +30,6 @@ export function apply(ctx: Context, config: Config): void {
   // One host-wide cold-read gate: every on-demand log read shares one FIFO admission. Routes MUST arm before the baseline gate's early
   // return below — they work on either side of it.
   const coldReads = makeColdReadGate()
-  watchBalanceChannel(ctx)
   watchSkillCatalog(ctx)
   watchFleetChannel(ctx, coldReads)
   watchAttachmentChannel(ctx, coldReads)
@@ -60,7 +58,7 @@ export function apply(ctx: Context, config: Config): void {
 
 export type { Category, ContextEventRecord, RequestRecord, Snapshot, ContextTimeline, SurfaceNode } from '../shared/types'
 export type { ActivityDay, ContextActivity, ContextHeaders, HeaderRecord, HeaderTool, ContextTimelineDetail, TimelineCounts, TimelineLast } from '../shared/types'
-export type { PlatformBalance, PlatformBalanceEntry, SkillInfo } from '../shared/types'
+export type { SkillInfo } from '../shared/types'
 export type { ActivityState } from './activity'
 export type { TimelineState } from './foldState'
 export type { HeadersState } from './headers'

@@ -1,4 +1,4 @@
-import { Models } from '@opencode-ai/models'
+import localPrices from './modelPrices.json'
 import { useSyncExternalStore } from 'react'
 import { asRecord } from './services'
 import { priceIndexOf } from './cost'
@@ -8,7 +8,7 @@ function rateOf(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
 }
 
-/** Extract the registry's per-model USD rates and build the resolution index; a non-record payload returns null (a failed fetch). */
+/** Extract per-model USD rates and build the resolution index; an invalid payload returns null. */
 export function pricesBookOf(value: unknown): ModelBook | null {
   const data = asRecord(value)
   if (data === null || Array.isArray(data)) return null
@@ -51,27 +51,15 @@ export interface ModelPricesSnap {
 
 type Loader = () => Promise<unknown>
 
-const defaultLoader: Loader = () => Models.make().providers()
-
-const RETRY_BASE_MS = 30_000
+const defaultLoader: Loader = () => Promise.resolve(localPrices.providers)
 
 let loader: Loader = defaultLoader
 let snap: ModelPricesSnap = { book: null, failed: false }
 let inFlight = false
-let failures = 0
-let timer: ReturnType<typeof setTimeout> | null = null
 const listeners = new Set<() => void>()
 
 function fail(): void {
-  // Runs once per fetch cycle: both fire() callers are blocked while a timer is armed, so re-arming cannot leak.
   snap = { ...snap, failed: true }
-  failures++
-  timer = setTimeout(() => {
-    timer = null
-    // Nobody reads the book anymore: end the cycle instead of polling for the page's whole life.
-    if (listeners.size === 0) return
-    void fire()
-  }, RETRY_BASE_MS * 2 ** Math.min(failures - 1, 3))
 }
 
 async function fire(): Promise<void> {
@@ -80,7 +68,6 @@ async function fire(): Promise<void> {
     const book = pricesBookOf(await loader())
     if (book !== null) {
       snap = { book, failed: false }
-      failures = 0
     } else {
       fail()
     }
@@ -92,7 +79,7 @@ async function fire(): Promise<void> {
 }
 
 function kick(): void {
-  if (snap.book !== null || inFlight || timer !== null) return
+  if (snap.book !== null || inFlight) return
   void fire()
 }
 
@@ -111,13 +98,8 @@ export function useModelPrices(): ModelPricesSnap {
 }
 
 export function resetModelPrices(): void {
-  if (timer !== null) {
-    clearTimeout(timer)
-    timer = null
-  }
   snap = { book: null, failed: false }
   inFlight = false
-  failures = 0
   listeners.clear()
 }
 

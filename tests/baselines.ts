@@ -114,21 +114,6 @@ export interface Baseline {
     transportFile: string
     transportPresent: boolean
   }
-  /** The balance seam: the settings row read off the redacted Config-form `describe()` projection (stock ids fallback); the retired
-   * `get(ns)` read is probed absent. */
-  balance: {
-    settingsFile: string
-    settingsGetNeedle: string
-    settingsGetPresent: boolean
-    settingsDescribeNeedle: string | undefined
-    settingsRedactNeedle: string
-    /** The provider directory: the route key's own settings id, whatever the entry is called. */
-    providerDirectory: { file: string; needle: string }
-    /** The DeepSeek stock entry ids — the fold's fallback when the provider directory answers nothing; the
-     * set grows with the line. */
-    stockIds: { file: string; ids: readonly string[] }
-    providerFiles: readonly { file: string; needles: readonly string[] }[]
-  }
   /** The prompt injection seam: the ordered-section face + order anchors, and the loader's volatile-only commit so
    * edits apply next step. */
   prompt: {
@@ -147,7 +132,7 @@ export interface Baseline {
   }
 }
 
-function baseline(id: BaselineId, tag: string, session: string, line: { cordis?: string; stockIds?: readonly string[]; extraFoldEvents?: readonly string[] } = {}): Baseline {
+function baseline(id: BaselineId, tag: string, session: string, line: { cordis?: string; extraFoldEvents?: readonly string[] } = {}): Baseline {
   return {
     id,
     tag,
@@ -252,35 +237,6 @@ function baseline(id: BaselineId, tag: string, session: string, line: { cordis?:
       transportFile: 'packages/client/ui-settings/src/client/config-form.ts',
       transportPresent: true,
     },
-    balance: {
-      settingsFile: 'packages/settings/settings/src/index.ts',
-      settingsGetNeedle: 'get<const Namespace extends string>(ns:',
-      settingsGetPresent: false,
-      settingsDescribeNeedle: 'describe(options?: SettingsDescribeOptions)',
-      settingsRedactNeedle: 'redactSecrets?: boolean',
-      providerDirectory: {
-        file: 'packages/llm/llm/src/index.ts',
-        needle: 'listConfigurableProviders(): LlmConfigurableProvider',
-      },
-      stockIds: {
-        file: 'packages/bundle/base/cordis.patch.yml',
-        ids: line.stockIds ?? ['llm-deepseek', 'web-search-deepseek'],
-      },
-      providerFiles: [
-        {
-          file: 'packages/llm/llm-deepseek-api-key/src/index.ts',
-          needles: ["const PROVIDER = 'deepseek-official'"],
-        },
-        {
-          file: 'packages/llm/llm-deepseek-api-key/src/config.ts',
-          needles: ["apiKeyEnv: z.string().role('credential-ref').default('DEEPSEEK_API_KEY').volatile()"],
-        },
-        {
-          file: 'packages/llm/llm-deepseek/src/config.ts',
-          needles: ['baseURL: z.string().volatile()'],
-        },
-      ],
-    },
     stepGuard: {
       loopFile: 'packages/core/agent-loop/src/agent.ts',
       loopNeedles: ["'agent/pre-step'", "append('user/message'"],
@@ -305,12 +261,11 @@ export const BASELINES: readonly Baseline[] = [
   // The oldest supported line, V4: the floor because its npm dependency closure is complete (docs/compatibility.md
   // §1); every seam below is spelled at this tag, and cordis stays 4.0.4.
   baseline('v0.2.0-rc.2', 'dsh-v0.2.0-rc.2', '0.2.0-rc.2'),
-  // Two facts differ from 0.2.0: cordis 4.0.5, and the `web-deepseek-api` stock entry the balance fold falls back to.
+  // This line uses cordis 4.0.5.
   // The durable job events (`job/registered` / `job/settled`) exist only on this line — the command log degrades to
   // envelope-derived timing without them.
   baseline('v0.2.1-rc.2', 'dsh-v0.2.1-rc.2', '0.2.1-rc.2', {
     cordis: '4.0.5',
-    stockIds: ['llm-deepseek', 'web-search-deepseek', 'web-deepseek-api'],
     extraFoldEvents: ['job/registered', 'job/settled'],
   }),
 ]

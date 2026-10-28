@@ -1,16 +1,16 @@
 {
   "name": "dsh-context",
-  "version": "0.77.0",
+  "version": "0.77.1-privacy.1",
   "description": "A DeepSeek Harness plugin for context insight and management, with context dashboard and context command, for understanding how the context is made of, and how it evolves.",
   "icon": "icon.svg",
   "author": "bowenliang123",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bowenliang123/dsh-context.git"
+    "url": "git+https://github.com/Aelithis/dsh-context.git"
   },
-  "homepage": "https://github.com/bowenliang123/dsh-context",
+  "homepage": "https://github.com/Aelithis/dsh-context",
   "bugs": {
-    "url": "https://github.com/bowenliang123/dsh-context/issues"
+    "url": "https://github.com/Aelithis/dsh-context/issues"
   },
   "type": "module",
   "engines": {
@@ -39,7 +39,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "pnpm prices:generate && tsdown",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "check": "bash scripts/check.sh",
@@ -51,7 +51,7 @@
     "coverage": "vitest run --coverage",
     "release": "bash scripts/publish.sh",
     "social-preview": "node scripts/social-preview/generate.ts",
-    "prepare": "husky && tsdown"
+    "prices:generate": "node scripts/generate-prices.mjs"
   },
   "dsh": {
     "bundle": {
@@ -116,7 +116,7 @@
     "@deepseek-ai/dsh-util-code-language": "0.2.0-rc.2",
     "@deepseek-ai/dsh-util-workspace-path": "0.2.0-rc.2",
     "@deepseek-ai/schemastery": "^3.18.4",
-    "@opencode-ai/models": "^0.0.87",
+    "@opencode-ai/models": "0.0.87",
     "@shikijs/langs": "^4.3.1",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/node": "4.3.3",

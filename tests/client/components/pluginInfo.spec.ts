@@ -17,7 +17,6 @@ async function loadPluginInfo(version?: string, ctx = new TestClientCtx()): Prom
   vi.resetModules()
   if (version === undefined) delete (globalThis as Record<string, unknown>).__DSH_CTX_VERSION__
   else (globalThis as Record<string, unknown>).__DSH_CTX_VERSION__ = version
-  await import('../../../src/client/latestVersion')
   const mod = await import('../../../src/client/components/pluginInfo')
   return mod.makePluginInfo(kit, asClientCtx(ctx))
 }
@@ -42,17 +41,17 @@ describe('PluginInfo', () => {
     for (const row of rows) assert.equal(queryAll(row, '.lc-pi-label .lc-pi-labelicon').length, 1)
     assert.equal(query(rows[0], '.lc-pi-label').textContent, 'Plugin')
     assert.equal(query(rows[0], '.lc-pi-value').textContent, 'dsh-context (v0.0.0-dev)')
-    assert.equal(rows[0].getAttribute('href'), 'https://github.com/bowenliang123/dsh-context')
+    assert.equal(rows[0].getAttribute('href'), 'https://github.com/Aelithis/dsh-context')
     assert.equal(rows[0].getAttribute('target'), '_blank')
     assert.equal(query(rows[1], '.lc-pi-label').textContent, 'GitHub')
-    assert.equal(query(rows[1], '.lc-pi-value').textContent, 'bowenliang123/dsh-context')
-    assert.equal(rows[1].getAttribute('href'), 'https://github.com/bowenliang123/dsh-context')
+    assert.equal(query(rows[1], '.lc-pi-value').textContent, 'Aelithis/dsh-context')
+    assert.equal(rows[1].getAttribute('href'), 'https://github.com/Aelithis/dsh-context')
     assert.equal(rows[2].getAttribute('href'), null)
     assert.equal(query(rows[2], '.lc-pi-label').textContent, 'Plugin Settings')
     assert.equal(query(rows[2], '.lc-pi-value').textContent, 'Open plugin settings')
     const hint = query(m.container, '.lc-pi-hint')
     assert.ok(text(hint).includes('The best DSH context plugin'))
-    assert.equal(hint.getAttribute('href'), 'https://github.com/bowenliang123/dsh-context')
+    assert.equal(hint.getAttribute('href'), 'https://github.com/Aelithis/dsh-context')
     assert.equal(hint.getAttribute('target'), '_blank')
     assert.equal(hint.getAttribute('rel'), 'noreferrer')
     assert.equal(queryAll(m.container, '.lc-pi-update').length, 0)
@@ -61,15 +60,14 @@ describe('PluginInfo', () => {
     await m.unmount()
   })
 
-  test('release build with a newer registry version appends the update chip', async () => {
+  test('release build stays offline and renders its fixed version', async () => {
     const fetchMock = stubFetchOk({ version: '1.1.0' })
     const PluginInfo = await loadPluginInfo('1.0.0')
     const m = await mount(h(PluginInfo, {}))
     await flush()
-    assert.equal(fetchMock.mock.calls.length, 1)
-    assert.equal(fetchMock.mock.calls[0][0], 'https://registry.npmjs.org/dsh-context/latest')
+    assert.equal(fetchMock.mock.calls.length, 0)
     assert.ok(text(m.container).includes('dsh-context (v1.0.0)'))
-    assert.equal(query(m.container, '.lc-pi-update').textContent, '↑ v1.1.0')
+    assert.equal(queryAll(m.container, '.lc-pi-update').length, 0)
     await m.unmount()
   })
 

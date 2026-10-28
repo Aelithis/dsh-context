@@ -99,47 +99,6 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       )
     })
 
-    test('balance: the settings face and the DeepSeek provider row the facts fold reads', () => {
-      // The facts fold reads the platform's settings row off the Config-form `describe()` projection, redacted,
-      // falling back to dsh's stock entry ids; the retired `get(ns)` read is asserted absent.
-      const balance = baseline.balance
-      assert.equal(
-        staging.dshHasString(baseline.tag, balance.settingsGetNeedle, balance.settingsFile),
-        balance.settingsGetPresent,
-        'the settings service get face',
-      )
-      if (balance.settingsDescribeNeedle !== undefined) {
-        assert.equal(
-          staging.dshHasString(baseline.tag, balance.settingsDescribeNeedle, balance.settingsFile),
-          true,
-          'the settings service describe face',
-        )
-      }
-      assert.equal(
-        staging.dshHasString(baseline.tag, balance.settingsRedactNeedle, balance.settingsFile),
-        true,
-        'the settings service redaction option',
-      )
-      assert.equal(
-        staging.dshHasString(baseline.tag, balance.providerDirectory.needle, balance.providerDirectory.file),
-        true,
-        'the llm provider directory face',
-      )
-      for (const id of balance.stockIds.ids) {
-        // The needle ends at the line end, so a longer id never answers for a shorter one.
-        assert.equal(
-          staging.dshHasString(baseline.tag, `id: ${id}$`, balance.stockIds.file),
-          true,
-          `the DeepSeek stock entry id: ${id}`,
-        )
-      }
-      for (const provider of balance.providerFiles) {
-        for (const needle of provider.needles) {
-          assert.equal(staging.dshHasString(baseline.tag, needle, provider.file), true, `provider seam: ${needle}`)
-        }
-      }
-    })
-
     test('host: the sliced cold fold faces exist (else the backfill falls back to whole-log blocks)', () => {
       // Sessions over the slice threshold fold through these four faces; a missing one silently returns that
       // session to the single-shot coldSnapshot path, so a removal must name itself here.
