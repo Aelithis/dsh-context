@@ -5,6 +5,7 @@ import { afterEach, describe, test, vi, beforeEach } from 'vitest'
 import { makeStatsContext, makeSubagentCost } from '../../../src/client/components/statsContext'
 import type { SubagentStats } from '../../../src/client/components/statsContext'
 import { DICT_EN } from '../../../src/client/i18n'
+import { nameColorOf } from '../../../src/client/nameColor'
 import { makeAgentHeads } from '../../../src/client/agentHeads'
 import { resetModelPrices, setModelPricesLoader } from '../../../src/client/modelPrices'
 import type { ContextTimeline, SessionCostUsage } from '../../../src/shared/types'
@@ -30,10 +31,14 @@ const COST: SessionCostUsage = {
 const NO_FILES = { reads: 0, writes: 0, searches: 0, images: 0 }
 const NO_COUNTS = { turns: 0, steps: 0, injects: 0, compactions: 0, prunes: 0 }
 
-/** One lane's VISIBLE chips as 'label+figure' strings; the off-flow gauge (the fit's hidden measuring copy) never
- *  shows, so it is not part of what a reader sees. */
-function chipsOf(row: HTMLElement): string[] {
+/** A lane's visible chips: the off-flow gauge (the fit's hidden measuring copy) never shows. */
+function visibleChipsOf(row: HTMLElement): HTMLElement[] {
   return queryAll(row, '.lc-ledger-chip').filter(el => el.closest('.lc-ledger-gauge') === null)
+}
+
+/** One lane's visible chips as 'label+figure' strings. */
+function chipsOf(row: HTMLElement): string[] {
+  return visibleChipsOf(row)
     .map(el => (el.querySelector('.lc-ledger-chip-label')?.textContent ?? '') + (el.querySelector('b')?.textContent ?? ''))
 }
 
@@ -268,12 +273,13 @@ describe('StatsContext', () => {
     }
     const picks: string[] = []
     const toolPicks: string[] = []
+    const programs = [['python3', 212], ['git', 88], ['grep', 40], ['node', 20], ['npm', 10]] as const
     const Stats = makeStatsContext(kit, () => ({ usage: SUB, count: 5 }))
     const m = await mount(h(Stats, {
       counts: NO_COUNTS,
       files: NO_FILES,
       tools: [['read', 8]],
-      commands: { runs: 626, top: [['python3', 212], ['git', 88], ['grep', 40], ['node', 20], ['npm', 10]] },
+      commands: { runs: 626, top: programs },
       cost: COST,
       locale: 'en',
       onToolPick: (tool) => { toolPicks.push(tool) },
@@ -281,14 +287,19 @@ describe('StatsContext', () => {
     }))
     await flush()
     assert.deepEqual(queryAll(m.container, '.lc-ledger-total').map(el => el.textContent), ['0', '8', '626', '3.0M/$0.45'])
-    assert.deepEqual(chipsOf(query(m.container, '.lc-ledger-in-body2')), ['python3212', 'git88', 'grep40', 'node20', 'npm10'], 'every program fits the unmeasured row')
+    assert.deepEqual(chipsOf(query(m.container, '.lc-ledger-in-body2')), programs.map(([name, n]) => name + String(n)), 'every program fits the unmeasured row')
     assert.equal(queryAll(m.container, '.lc-ledger-out-body2 .lc-ledger-chip').length, 0, 'no roster chips remain below Team')
     assert.deepEqual(costCellsOf(m.container), ['Fleet?3.0M/$0.45', 'Current Agent?1.0M/$0.30', 'Subagents × 5?2.0M/$0.15'])
     const subCell = queryAll(m.container, '.lc-ledger-out-body2 > .lc-strip-cell')[1]
     assert.deepEqual(queryAll(subCell, '.lc-strip-pair b').map(el => el.textContent), ['2.0M', '$0.15'], 'a counted subagent row bolds both figures')
     assert.equal(query(m.container, '.lc-ledger-team-count').textContent, '× 5', 'a positive count bolds as its own figure')
-    const cmdChips = queryAll(m.container, '.lc-ledger-in-body2 .lc-ledger-chip')
+    const cmdChips = visibleChipsOf(query(m.container, '.lc-ledger-in-body2'))
     assert.equal(cmdChips[0].getAttribute('title'), DICT_EN['stats.commandJump'])
+    assert.deepEqual(
+      cmdChips.map(el => [el.querySelector('.lc-ledger-chip-label')?.textContent, el.querySelector('i')?.style.background]),
+      programs.map(([name]) => [name, nameColorOf(name)]),
+      'programs keep the shared name-hash color',
+    )
     await click(cmdChips[2])
     cmdChips[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
     assert.deepEqual(picks, ['grep', 'git'])

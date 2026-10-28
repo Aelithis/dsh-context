@@ -8,6 +8,7 @@ import { useSessionsSnapshot } from '../agentHeads'
 import type { AgentHeads } from '../agentHeads'
 import type { Translate } from '../i18n'
 import { useModelPrices } from '../modelPrices'
+import { nameColorOf } from '../nameColor'
 import { type ClientCtx } from '../services'
 import { isDeepSeekProvider } from '../../shared/providers'
 import type { ViewKit } from '../viewkit'
@@ -312,7 +313,7 @@ function CommandChips(props: CommandChipsProps): ReactElement {
         className={'lc-ledger-chip' + (wire !== undefined ? ' lc-ledger-chip-btn' : '')}
         {...(wire ?? { title: name })}
       >
-        <i style={{ background: TOOL_SHADE(1) }} />
+        <i style={{ background: nameColorOf(name) }} />
         <span className="lc-ledger-chip-label">{name}</span>
         <b>{fmt(n)}</b>
       </span>
