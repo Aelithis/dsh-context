@@ -20,7 +20,7 @@ A DeepSeek Harness plugin for context insight, actions, and management.
 - Make the minimal change that fully solves the problem, with the most efficient implementation.
 - User experience, features, and especially the data accuracy and integrity are the top priority. Never sacrifice them for code refactors, performance, or any other reason. Dive deep and run real tests to verify the correctness of every change.
 - Reuse the classes, utilities, styles, style tokens, events, presets, and lifecycles that DeepSeek Harness already provides.
-- Keep code and tests small, loosely coupled, and modular; avoid duplication.
+- Keep code and tests small, loosely coupled, and modular; avoid duplication. Reuse existing test suites, cases and assertions where possible. Drop and shrink any code or test that is outdated and no longer needed.
 - After updating tests, firstly run `pnpm exec vitest run tests/<area>/<name>.spec.ts -t "<test case name>"` (regex, use `"a|b"`) to iterate on the touched test cases.
 - Ensure every source code file or test code file has less than 1000 lines.
 - Comments: default to none. Never add one unless it records a non-obvious decision, constraint, or invariant the code cannot express — if you cannot name that reason, do not write it.
