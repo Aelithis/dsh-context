@@ -247,7 +247,7 @@ describe('ContextView — the sidebar host', () => {
     const tab = await mount(h(View, { useProjection: projections }))
     assert.equal(queryAll(tab.container, '.lc-stats').length, 1, 'the tab keeps the context stats')
     assert.equal(queryAll(tab.container, '.lc-pi-grid').length, 1, 'the tab keeps the plugin info')
-    assert.equal(queryAll(tab.container, '.lc-recom').length, 1, 'the tab keeps the recom card')
+    assert.equal(queryAll(tab.container, '.lc-recom').length, 0, 'the private tab omits remote recommendations')
     await tab.unmount()
 
     const panel = await mount(h(View, { host: 'sidebar', useProjection: projections }))

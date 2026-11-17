@@ -38,14 +38,11 @@ function bookOf(): ModelBook {
   return book
 }
 
-function catalogOf(book: ModelBook | null, current: string | undefined = '0.82.2'): CatalogService {
+function catalogOf(book: ModelBook | null): CatalogService {
   return {
     ensure: () => {},
     book: () => book,
     pricesVersion: () => 0,
-    version: async () => ({ value: null, ready: false, failed: false, checkedAt: 0 }),
-    prices: async () => ({ value: null, ready: book !== null, failed: false, checkedAt: 0 }),
-    currentVersion: () => current,
     dispose: () => {},
   }
 }

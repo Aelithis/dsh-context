@@ -526,18 +526,6 @@ export interface HeaderEpochContent {
   }>
 }
 
-export interface PlatformBalanceEntry {
-  currency: string
-  total: number
-  granted: number
-  toppedUp: number
-}
-
-export interface PlatformBalance {
-  isAvailable: boolean
-  balances: PlatformBalanceEntry[]
-}
-
 export interface BackfillCoverage {
   complete: boolean
   remaining: number

@@ -89,24 +89,6 @@ export interface Baseline {
     transportFile: string
     transportPresent: boolean
   }
-  balance: {
-    settingsFile: string
-    settingsGetNeedle: string
-    settingsGetPresent: boolean
-    settingsDescribeNeedle: string
-    settingsRedactNeedle: string
-    providerDirectory: { file: string; needle: string }
-    stockIds: { file: string; ids: readonly string[] }
-    providerFiles: readonly { file: string; needles: readonly string[] }[]
-    account: {
-      serviceFile: string
-      serviceNeedle: string
-      providerFile: string
-      providerNeedle: string
-      bundleFile: string
-      bundleNeedle: string
-    }
-  }
   prompt: {
     serviceFile: string
     sectionNeedle: string
@@ -131,13 +113,11 @@ const DEFAULT_PLATFORM_MODULES = [
 
 function baseline(id: BaselineId, tag: string, session: string, line: {
   cordis?: string
-  stockIds?: readonly string[]
   extraFoldEvents?: readonly string[]
   platformModules?: readonly string[]
   stateOfNeedle?: string
   fallbackStateOfNeedle?: string
   awaitableRegister?: boolean
-  account?: Partial<Omit<Baseline['balance']['account'], 'serviceFile' | 'bundleFile'>>
 } = {}): Baseline {
   return {
     id,
@@ -240,43 +220,6 @@ function baseline(id: BaselineId, tag: string, session: string, line: {
       transportFile: 'packages/client/ui-settings/src/client/config-form.ts',
       transportPresent: true,
     },
-    balance: {
-      settingsFile: 'packages/settings/settings/src/index.ts',
-      settingsGetNeedle: 'get<const Namespace extends string>(ns:',
-      settingsGetPresent: false,
-      settingsDescribeNeedle: 'describe(options?: SettingsDescribeOptions)',
-      settingsRedactNeedle: 'redactSecrets?: boolean',
-      providerDirectory: {
-        file: 'packages/llm/llm/src/index.ts',
-        needle: 'listConfigurableProviders(): LlmConfigurableProvider',
-      },
-      stockIds: {
-        file: 'packages/bundle/base/cordis.patch.yml',
-        ids: line.stockIds ?? ['llm-deepseek', 'web-search-deepseek'],
-      },
-      providerFiles: [
-        {
-          file: 'packages/llm/llm-deepseek-api-key/src/index.ts',
-          needles: ["const PROVIDER = 'deepseek-official'"],
-        },
-        {
-          file: 'packages/llm/llm-deepseek-api-key/src/config.ts',
-          needles: ["apiKeyEnv: z.string().role('credential-ref').default('DEEPSEEK_API_KEY').volatile()"],
-        },
-        {
-          file: 'packages/llm/llm-deepseek/src/config.ts',
-          needles: ['baseURL: z.string().volatile()'],
-        },
-      ],
-      account: {
-        serviceFile: 'packages/credentials/deepseek-account/src/index.ts',
-        serviceNeedle: line.account?.serviceNeedle ?? 'abstract getBalance(client: AccountClientMetadata)',
-        providerFile: line.account?.providerFile ?? 'packages/credentials/deepseek-account-platform/src/index.ts',
-        providerNeedle: line.account?.providerNeedle ?? 'getBalance(client: AccountClientMetadata)',
-        bundleFile: 'packages/bundle/base/cordis.patch.yml',
-        bundleNeedle: line.account?.bundleNeedle ?? "'@deepseek-ai/dsh-deepseek-account-platform'",
-      },
-    },
     stepGuard: {
       loopFile: 'packages/core/agent-loop/src/agent.ts',
       loopNeedles: ["'agent/pre-step'", "append('user/message'"],
@@ -299,7 +242,6 @@ function baseline(id: BaselineId, tag: string, session: string, line: {
 
 const line022Seams = {
   cordis: '4.1.0',
-  stockIds: ['llm-deepseek', 'web-search-deepseek', 'web-deepseek-api'],
   platformModules: [...DEFAULT_PLATFORM_MODULES, 'zod', '@tanstack/react-virtual'],
   extraFoldEvents: ['job/registered', 'job/settled'],
   stateOfNeedle: 'stateOf(session: Session): S',
@@ -311,17 +253,11 @@ export const BASELINES: readonly Baseline[] = [
   baseline('v0.2.0-rc.2', 'dsh-v0.2.0-rc.2', '0.2.0-rc.2'),
   baseline('v0.2.1-rc.2', 'dsh-v0.2.1-rc.2', '0.2.1-rc.2', {
     cordis: '4.0.5',
-    stockIds: ['llm-deepseek', 'web-search-deepseek', 'web-deepseek-api'],
     platformModules: [...DEFAULT_PLATFORM_MODULES, 'zod', '@tanstack/react-virtual'],
     extraFoldEvents: ['job/registered', 'job/settled'],
   }),
   baseline('v0.2.2-rc.1', 'dsh-v0.2.2-rc.1', '0.2.2-rc.1', { ...line022Seams }),
   baseline('v0.2.2-rc.3', 'dsh-v0.2.2-rc.3', '0.2.2-rc.3', {
     ...line022Seams,
-    account: {
-      serviceNeedle: 'interface Context { deepseekAccount: DeepSeekAccount }',
-      providerFile: 'packages/credentials/deepseek-account/src/index.ts',
-      bundleNeedle: "'@deepseek-ai/dsh-deepseek-account'",
-    },
   }),
 ]

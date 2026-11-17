@@ -13,14 +13,13 @@ import { type DurableIdentity, type OverviewCache } from '../../src/host/overvie
 import { type HostSession } from '../../src/host/overviewCorpus'
 import { inProcessPool } from './helpers/foldWorker'
 import { arm, captureLogs, connectionOf, fakeState, trigger, until, type RouteBox } from './helpers/backfill'
-import { BALANCE_ROUTE as HOST_BALANCE_ROUTE } from '../../src/host/balance'
 import { DETAIL_ROUTE as HOST_DETAIL_ROUTE } from '../../src/host/detail'
 import { ATTACHMENT_ROUTE as HOST_ATTACHMENT_ROUTE } from '../../src/host/attachment'
 import { COMMANDS_ROUTE as HOST_COMMANDS_ROUTE } from '../../src/host/commandPages'
 import { FLEET_ROUTE as HOST_FLEET_ROUTE } from '../../src/host/fleet'
 import { SKILLS_ROUTE as HOST_SKILLS_ROUTE } from '../../src/host/skills'
 import { OVERVIEW_ROUTE as HOST_OVERVIEW_ROUTE } from '../../src/host/overview'
-import { ATTACHMENT_ROUTE, BACKFILL_ROUTE, BALANCE_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, OVERVIEW_ROUTE, SKILLS_ROUTE } from '../../src/client/apiRoutes'
+import { ATTACHMENT_ROUTE, BACKFILL_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, OVERVIEW_ROUTE, SKILLS_ROUTE } from '../../src/client/apiRoutes'
 import { serviceIdentityOf } from '../../src/host/serviceIdentity'
 import z from '@deepseek-ai/schemastery'
 import { Config, DEFAULT_BOUNDS, resolveBounds, volatileField } from '../../src/host/config'
@@ -535,7 +534,6 @@ describe('apiRoutePairing', () => {
     for (const [host, client] of [
       [HOST_DETAIL_ROUTE, DETAIL_ROUTE],
       [HOST_COMMANDS_ROUTE, COMMANDS_ROUTE],
-      [HOST_BALANCE_ROUTE, BALANCE_ROUTE],
       [HOST_FLEET_ROUTE, FLEET_ROUTE],
       [HOST_SKILLS_ROUTE, SKILLS_ROUTE],
       [HOST_BACKFILL_ROUTE, BACKFILL_ROUTE],

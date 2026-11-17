@@ -1,11 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { createContextActivityDefinition } from './activity'
 import { createCatalogService } from './catalog'
-import { watchVersionChannel } from './versionRoute'
 import { createCostSource } from './cost'
 import { watchAttachmentChannel } from './attachment'
 import { createToolAttribution } from './attribution'
-import { watchBalanceChannel } from './balance'
 import { watchActivityBackfill } from './backfill'
 import { makeColdReadGate } from './coldRead'
 import { watchCommandPageChannel } from './commandPages'
@@ -23,7 +21,6 @@ import { watchOverviewRoute } from './overview'
 import { watchPromptInjection } from './promptInjection'
 import { watchStepIdentity } from './stepIdentity'
 import { watchSkillCatalog } from './skills'
-import { watchRecomChannel } from './recoms'
 import { watchSnapshotRoute } from './snapshotRoute'
 import { watchTimelineRowSweep } from './sweep'
 import { createContextTimelineDefinition } from './timeline'
@@ -43,9 +40,6 @@ export function apply(ctx: Context, config: Config): void {
   const pricing = createCostSource(catalog)
   const harnessVersion = detectHarnessVersion(ctx)
   ctx.effect(() => () => { catalog.dispose() }, 'dsh-context: catalog cache')
-  watchVersionChannel(ctx, catalog)
-  watchBalanceChannel(ctx, harnessVersion ?? '0.0.0')
-  watchRecomChannel(ctx)
   watchSkillCatalog(ctx)
   watchFleetChannel(ctx, coldReads)
   watchAttachmentChannel(ctx, coldReads)
@@ -81,7 +75,7 @@ export { startFoldWorkerChannel }
 
 export type { Category, ContextEventRecord, RequestRecord, Snapshot, ContextTimeline, SurfaceNode } from '../shared/types'
 export type { ActivityDay, ContextActivity, ContextHeaders, HeaderRecord, HeaderTool, ContextTimelineDetail, TimelineCounts, TimelineLast } from '../shared/types'
-export type { PlatformBalance, PlatformBalanceEntry, SkillInfo } from '../shared/types'
+export type { SkillInfo } from '../shared/types'
 export type { ActivityState } from './activity'
 export type { TimelineState } from './foldState'
 export type { HeadersState } from './headers'

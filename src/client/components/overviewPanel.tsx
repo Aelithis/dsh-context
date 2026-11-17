@@ -16,7 +16,6 @@ import type { ContextSettings } from '../settings'
 import type { SkillInfo } from '../../shared/types'
 import { dayKeyOf } from '../../shared/days'
 import type { ViewKit } from '../viewkit'
-import { makeBalanceCapsule } from './balanceCapsule'
 import { ClearableInput } from './clearableInput'
 import { makeDateRange } from './dateRange'
 import { makeErrorBoundary } from './errorBoundary'
@@ -30,7 +29,6 @@ import { makeOverviewCard, type OverviewCardRow } from './overviewCard'
 import { makeOverviewSkills } from './overviewSkills'
 import { makeOverviewTally } from './overviewTally'
 import type { TallyCardKind } from './overviewTally'
-import { makeUpdatePill } from './updatePill'
 import { useLazyMount } from './useLazyMount'
 import { IconGauge, IconSettings } from '../primitives'
 
@@ -64,14 +62,12 @@ export function makeOverviewPanel(
   const subscribeSettings = settings.store.subscribe.bind(settings.store)
   const Heatmap = makeHeatmap(kit)
   const OverviewCard = makeOverviewCard(kit)
-  const BalanceCapsule = makeBalanceCapsule(ctx, kit)
   const DateRange = makeDateRange(kit)
   const OverviewTokens = makeOverviewTokens(kit, Donut)
   const StatsTiming = makeStatsTiming(kit, Donut)
   const OverviewUsage = makeOverviewUsage(kit)
   const OverviewSkills = makeOverviewSkills(kit)
   const OverviewTally = makeOverviewTally(kit)
-  const UpdatePill = makeUpdatePill(kit, ctx)
   const ErrorBoundary = makeErrorBoundary(t)
 
   function activeLocale(): string {
@@ -234,8 +230,6 @@ export function makeOverviewPanel(
               <button type="button" className="lc-ov-settings" title={t('plugin.settingsOpen')} onClick={() => { openPluginSettings(ctx) }}>
                 <IconSettings size={14} />{t('plugin.settings')}
               </button>
-              <BalanceCapsule />
-              <UpdatePill />
               {backfill !== null && fold !== 'idle' && (
                 <span className="lc-ov-folding" title={t('ov.fold.tip')}>
                   {fold === 'stalled'

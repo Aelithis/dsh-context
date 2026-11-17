@@ -85,42 +85,6 @@ describe.skipIf(reasons.length > 0)('compat matrix — real dsh sources per base
       )
     })
 
-    test('balance: the settings face, the DeepSeek provider row, and the signed-in account wallet service', async () => {
-      const balance = baseline.balance
-      const [getFace, describeFace, redact, directory, stockHits, providerHits, service, accountProvider, bundle] = await Promise.all([
-        staging.dshHasString(baseline.tag, balance.settingsGetNeedle, balance.settingsFile),
-        staging.dshHasString(baseline.tag, balance.settingsDescribeNeedle, balance.settingsFile),
-        staging.dshHasString(baseline.tag, balance.settingsRedactNeedle, balance.settingsFile),
-        staging.dshHasString(baseline.tag, balance.providerDirectory.needle, balance.providerDirectory.file),
-        Promise.all(balance.stockIds.ids.map(id =>
-          staging.dshHasString(baseline.tag, `id: ${id}$`, balance.stockIds.file),
-        )),
-        Promise.all(balance.providerFiles.map(provider =>
-          Promise.all(provider.needles.map(needle =>
-            staging.dshHasString(baseline.tag, needle, provider.file),
-          )),
-        )),
-        staging.dshHasString(baseline.tag, balance.account.serviceNeedle, balance.account.serviceFile),
-        staging.dshHasString(baseline.tag, balance.account.providerNeedle, balance.account.providerFile),
-        staging.dshHasString(baseline.tag, balance.account.bundleNeedle, balance.account.bundleFile),
-      ])
-      assert.equal(getFace, balance.settingsGetPresent, 'the settings service get face')
-      assert.equal(describeFace, true, 'the settings service describe face')
-      assert.equal(redact, true, 'the settings service redaction option')
-      assert.equal(directory, true, 'the llm provider directory face')
-      assert.equal(service, true, 'the deepseekAccount getBalance face')
-      assert.equal(accountProvider, true, 'the account getBalance implementation')
-      assert.equal(bundle, true, 'the base bundle mounts the account service')
-      for (const [index, id] of balance.stockIds.ids.entries()) {
-        assert.equal(stockHits[index], true, `the DeepSeek stock entry id: ${id}`)
-      }
-      for (const [pIndex, provider] of balance.providerFiles.entries()) {
-        for (const [nIndex, needle] of provider.needles.entries()) {
-          assert.equal(providerHits[pIndex][nIndex], true, `provider seam: ${needle}`)
-        }
-      }
-    })
-
     test('host: the sliced cold fold faces exist (else the backfill falls back to whole-log blocks)', async () => {
       const fold = baseline.backfillFold
       const needles = [

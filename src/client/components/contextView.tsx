@@ -38,7 +38,6 @@ import { makeCommandPager } from '../commandPages'
 import { useCommandLog } from './useCommandLog'
 import { tallyEntriesOf } from '../tallySort'
 import { makePluginInfo } from './pluginInfo'
-import { makeRecomCard } from './recomCard'
 import { makeUpgradeGate } from './upgradeGate'
 import { makeRequestDetail } from './requestDetail'
 import { makeStatsContext, makeSubagentCost } from './statsContext'
@@ -118,7 +117,6 @@ export function makeContextView(
   const StatsTiming = makeStatsTiming(kit, Donut)
   const StatsTokens = makeStatsTokens(kit, Donut)
   const PluginInfo = makePluginInfo(kit, ctx)
-  const RecomCard = makeRecomCard(kit, ctx)
   const UpgradeGate = makeUpgradeGate(kit)
   const DetailNote = makeDetailNote(kit)
   const ContextBrowser = makeContextBrowser(kit, StackedBar, settings)
@@ -832,7 +830,6 @@ export function makeContextView(
               onEventsClick={onEventsClick} />
             <div className="lc-col">
               <PluginInfo />
-              <RecomCard key={typeof sessionId === 'string' ? sessionId : undefined} />
             </div>
           </div>
         )}

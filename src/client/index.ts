@@ -18,7 +18,6 @@ import { makeFleetView } from './components/fleetView'
 import { watchFleetTab } from './fleetTab'
 import { makeAgentHeads } from './agentHeads'
 import { watchHistoryFaces } from './historyPage'
-import { resetVersionSource } from './versionSource'
 import { registerCostRefresh, resetCostRefresh } from './costRefresh'
 import { watchPlacement } from './placement'
 import { watchSidebarContextTab } from './sidebar'
@@ -44,7 +43,6 @@ import './styles/fleet.css'
 import './styles/pulse.css'
 import './styles/overview.css'
 import './styles/dateRange.css'
-import './styles/recom.css'
 
 const NS = 'dsh-context'
 
@@ -79,7 +77,6 @@ function apply(ctx: ClientCtx): void {
     resetSessionWarm()
     resetTimelineDetailStores()
     clearAttachmentPaths()
-    resetVersionSource()
     resetCostRefresh()
     disposeRetention()
   }, 'dsh-context: warm-up timers')

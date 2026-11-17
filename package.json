@@ -1,16 +1,16 @@
 {
   "name": "dsh-context",
-  "version": "0.85.1",
+  "version": "0.85.1-privacy.1",
   "description": "A DeepSeek Harness plugin for context insight and management, with context dashboard and context command, for understanding how the context is made of, and how it evolves.",
   "icon": "icon.svg",
   "author": "bowenliang123",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bowenliang123/dsh-context.git"
+    "url": "git+https://github.com/Aelithis/dsh-context.git"
   },
-  "homepage": "https://github.com/bowenliang123/dsh-context",
+  "homepage": "https://github.com/Aelithis/dsh-context",
   "bugs": {
-    "url": "https://github.com/bowenliang123/dsh-context/issues"
+    "url": "https://github.com/Aelithis/dsh-context/issues"
   },
   "type": "module",
   "engines": {
@@ -50,8 +50,7 @@
     "test": "vitest run --coverage",
     "coverage": "vitest run --coverage",
     "release": "node scripts/run-bash.mjs scripts/publish.sh",
-    "social-preview": "node scripts/social-preview/generate.ts",
-    "prepare": "husky && tsdown"
+    "social-preview": "node scripts/social-preview/generate.ts"
   },
   "dsh": {
     "bundle": {

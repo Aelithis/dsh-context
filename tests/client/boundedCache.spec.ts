@@ -646,15 +646,15 @@ describe('meta', () => {
     const meta = await importMeta()
     assert.equal(meta.PLUGIN_NAME, 'dsh-context')
     assert.equal(meta.PLUGIN_VERSION, '0.0.0-dev')
-    assert.equal(meta.PLUGIN_REPO, 'https://github.com/bowenliang123/dsh-context')
-    assert.equal(meta.PLUGIN_REPO_SHORT, 'bowenliang123/dsh-context')
+    assert.equal(meta.PLUGIN_REPO, 'https://github.com/Aelithis/dsh-context')
+    assert.equal(meta.PLUGIN_REPO_SHORT, 'Aelithis/dsh-context')
   })
 
   test('build defines win: the short form strips a github prefix and keeps any other URL whole', async () => {
     globals.__DSH_CTX_VERSION__ = '9.9.9'
     let meta = await importMeta()
     assert.equal(meta.PLUGIN_VERSION, '9.9.9')
-    assert.equal(meta.PLUGIN_REPO, 'https://github.com/bowenliang123/dsh-context')
+    assert.equal(meta.PLUGIN_REPO, 'https://github.com/Aelithis/dsh-context')
 
     globals.__DSH_CTX_REPO__ = 'https://github.com/acme/widget'
     meta = await importMeta()

@@ -16,7 +16,7 @@ import { disposeRetention } from '../../src/client/retention'
 import { type CodeHighlighter, type HighlightSpan } from '@deepseek-ai/dsh-client-ui-primitives'
 import { postRoute, postRouteEnvelope, postRouteQuietly, RouteError } from '../../src/client/route'
 import { briefNodes, briefOf } from '../../src/client/brief'
-import { ATTACHMENT_ROUTE, BACKFILL_ROUTE, BALANCE_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, SKILLS_ROUTE, VERSION_ROUTE } from '../../src/client/apiRoutes'
+import { ATTACHMENT_ROUTE, BACKFILL_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, SKILLS_ROUTE } from '../../src/client/apiRoutes'
 import { assemble, headerAt, systemAt } from '../../src/shared/assemble'
 
 describe('commands', () => {
@@ -705,7 +705,7 @@ describe('apiRoutes', () => {
 
 describe('apiRoutes', () => {
   test('every fetch route stays browser-relative under the plugin namespace', () => {
-    for (const route of [ATTACHMENT_ROUTE, BACKFILL_ROUTE, BALANCE_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, SKILLS_ROUTE, VERSION_ROUTE]) {
+    for (const route of [ATTACHMENT_ROUTE, BACKFILL_ROUTE, COMMANDS_ROUTE, DETAIL_ROUTE, FLEET_ROUTE, SKILLS_ROUTE]) {
       assert.match(route, /^api\/dsh-context\/\w+$/, route)
     }
   })
